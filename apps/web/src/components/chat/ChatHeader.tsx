@@ -19,7 +19,6 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react";
-import { isTrailingDoubleClick } from "../Sidebar.logic";
 import { Badge } from "../ui/badge";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { toastManager } from "../ui/toast";
@@ -42,6 +41,7 @@ import { cn } from "~/lib/utils";
 import { textDirection } from "~/textDirection";
 import { useClientSettings } from "../../hooks/useSettings";
 import { GuestShareIndicator } from "./GuestShareControls";
+import { ProjectSwitcher, ThreadSwitcher } from "./BreadcrumbSwitchers";
 
 interface ChatHeaderProps {
   activeThreadEnvironmentId: EnvironmentId;
@@ -87,6 +87,7 @@ export const ChatHeader = memo(function ChatHeader({
   const interfaceFont = useClientSettings((settings) => settings.fontFamilySans);
   const breadcrumbContainerRef = useRef<HTMLDivElement>(null);
   const [collapseParentTitle, setCollapseParentTitle] = useState(false);
+  const [threadSwitcherOpen, setThreadSwitcherOpen] = useState(false);
   const activeThreadRef = scopeThreadRef(activeThreadEnvironmentId, activeThreadId);
   const canOperateThread = useEnvironmentScope(
     activeThreadEnvironmentId,
@@ -203,15 +204,16 @@ export const ChatHeader = memo(function ChatHeader({
     onFind: onFindInThread,
     canShareWithGuest,
   });
-  const openMenuFromTitle = (event: ReactMouseEvent<HTMLButtonElement>) => {
-    if (isTrailingDoubleClick(event.detail)) return;
-    const rect = event.currentTarget.getBoundingClientRect();
+  const titleButtonRef = useRef<HTMLButtonElement | null>(null);
+  const openTitleMenuNow = () => {
+    const rect = titleButtonRef.current?.getBoundingClientRect();
+    if (!rect) return;
     openMenu({ x: rect.left, y: rect.bottom + 4 });
   };
-  // A native menu takes the second click, so only the in-page menu lets a double-click reach here.
   const handleTitleDoubleClick = (event: ReactMouseEvent) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     if ((event.target as HTMLElement).closest("[data-thread-title-chevron]") !== null) return;
+    setThreadSwitcherOpen(false);
     closeMenu();
     startRename();
   };
@@ -262,13 +264,18 @@ export const ChatHeader = memo(function ChatHeader({
           <>
             <WorkspaceBreadcrumbItem className="shrink">
               <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <button
-                      type="button"
-                      aria-label={`New thread in ${activeProjectName}`}
-                      onClick={onNewThreadInProject}
-                      className="inline-flex min-w-0 max-w-full cursor-pointer items-center gap-1.5 rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                <ProjectSwitcher
+                  activeProject={activeProject}
+                  onNewThreadInProject={onNewThreadInProject}
+                  trigger={
+                    <TooltipTrigger
+                      render={
+                        <button
+                          type="button"
+                          aria-label={`Switch project, current: ${activeProjectName}`}
+                          className="group/project-crumb inline-flex min-w-0 max-w-full cursor-pointer items-center gap-1.5 rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                        />
+                      }
                     />
                   }
                 >
@@ -276,8 +283,12 @@ export const ChatHeader = memo(function ChatHeader({
                   <WorkspaceBreadcrumbText className="max-w-40">
                     {activeProjectName}
                   </WorkspaceBreadcrumbText>
-                </TooltipTrigger>
-                <TooltipPopup side="top">New thread in {activeProjectName}</TooltipPopup>
+                  <ChevronDownIcon
+                    aria-hidden
+                    className="size-3.5 shrink-0 opacity-0 transition-opacity group-hover/project-crumb:opacity-100 group-focus-visible/project-crumb:opacity-100"
+                  />
+                </ProjectSwitcher>
+                <TooltipPopup side="top">{activeProjectName}</TooltipPopup>
               </Tooltip>
             </WorkspaceBreadcrumbItem>
             <WorkspaceBreadcrumbSeparator>
@@ -343,15 +354,24 @@ export const ChatHeader = memo(function ChatHeader({
             />
           ) : isServerThread ? (
             <Tooltip>
-              <TooltipTrigger
-                render={
-                  <button
-                    type="button"
-                    aria-label={`Thread actions for ${activeThreadTitle}`}
-                    aria-haspopup="menu"
-                    onClick={openMenuFromTitle}
-                    onDoubleClick={canOperateThread ? handleTitleDoubleClick : undefined}
-                    className="group/thread-title inline-flex min-w-0 max-w-full cursor-pointer items-center gap-1 rounded-sm text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              <ThreadSwitcher
+                activeProject={activeProject}
+                activeThreadRef={activeThreadRef}
+                open={threadSwitcherOpen}
+                onOpenChange={setThreadSwitcherOpen}
+                onNewThread={onNewThreadInProject}
+                onShowThreadActions={openTitleMenuNow}
+                trigger={
+                  <TooltipTrigger
+                    render={
+                      <button
+                        ref={titleButtonRef}
+                        type="button"
+                        aria-label={`Switch thread, current: ${activeThreadTitle}`}
+                        onDoubleClick={canOperateThread ? handleTitleDoubleClick : undefined}
+                        className="group/thread-title inline-flex min-w-0 max-w-full cursor-pointer items-center gap-1 rounded-sm text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                      />
+                    }
                   />
                 }
               >
@@ -363,22 +383,38 @@ export const ChatHeader = memo(function ChatHeader({
                   data-thread-title-chevron
                   className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/thread-title:opacity-100 group-focus-visible/thread-title:opacity-100"
                 />
-              </TooltipTrigger>
+              </ThreadSwitcher>
               <TooltipPopup side="top">{activeThreadTitle}</TooltipPopup>
             </Tooltip>
           ) : (
             <Tooltip>
-              <TooltipTrigger
-                render={
-                  <h2
-                    aria-label={activeThreadTitle}
-                    className="min-w-0 flex-1"
-                    dir={textDirection(activeThreadTitle)}
+              <ThreadSwitcher
+                activeProject={activeProject}
+                activeThreadRef={activeThreadRef}
+                open={threadSwitcherOpen}
+                onOpenChange={setThreadSwitcherOpen}
+                onNewThread={onNewThreadInProject}
+                trigger={
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        aria-label={`Switch thread, current: ${activeThreadTitle}`}
+                        className="group/thread-title inline-flex min-w-0 max-w-full cursor-pointer items-center gap-1 rounded-sm text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                      />
+                    }
                   />
                 }
               >
-                <WorkspaceBreadcrumbText>{activeThreadTitle}</WorkspaceBreadcrumbText>
-              </TooltipTrigger>
+                <h2 className="min-w-0" dir={textDirection(activeThreadTitle)}>
+                  <WorkspaceBreadcrumbText>{activeThreadTitle}</WorkspaceBreadcrumbText>
+                </h2>
+                <ChevronDownIcon
+                  aria-hidden
+                  data-thread-title-chevron
+                  className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/thread-title:opacity-100 group-focus-visible/thread-title:opacity-100"
+                />
+              </ThreadSwitcher>
               <TooltipPopup side="top">{activeThreadTitle}</TooltipPopup>
             </Tooltip>
           )}
