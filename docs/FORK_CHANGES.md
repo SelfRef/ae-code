@@ -24,7 +24,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 | [7]  | Date-versioned releases (`vYYYY.MM.DD`): the Linux x64 server archive                                                                                                  | done    |
 | [6]  | Daily sync: a workflow rebases the patch stack onto upstream and force-pushes `main`                                                                                   | done    |
 | [5]  | Claude usage limits for a setup-token session: let `rate_limit_event` stream updates fill the bars when `get_usage` is unsupported                                     | planned |
-| [4]  | Project and thread switchers in the chat breadcrumb (ported from a community branch, below)                                                                            | planned |
+| [4]  | Project and thread switchers in the chat breadcrumb (ported from a community branch, below)                                                                            | done    |
 | 3    | Claude reply text streams while it is written (upstream's `ClaudeAdapterV2` drops `text_delta`, issue #17270; port of the closed PR #22165 onto the 2026-11-08 `main`) | done    |
 | [2]  | GitHub Issues panel: list, read, comment, edit, label, close/reopen issues per project                                                                                 | planned |
 | [1]  | Linux desktop as a Device-panel device (headless Mutter/GNOME Shell + capture + input)                                                                                 | planned |
@@ -258,11 +258,10 @@ discussion #22991 (picker discoverability); discussion #31438 "Project and threa
 `mollymillions-code/t3code` (2 commits, web only, no contract or server change; what it does is in
 [FORK_REFERENCES.md](./FORK_REFERENCES.md#other-notable-forks)).
 
-Plan: cherry-pick those two commits onto the fork's `main` (MIT, authorship kept). Checked 2026-11-09: they merge
-cleanly onto upstream `main` (`b7d33af938`). The diff is 5 files, +725/−71: three new files
-(`BreadcrumbSwitchers.tsx`, `breadcrumbSwitcher.logic.ts` and its test) and edits to `ChatHeader.tsx` (~130 lines,
-the rebase risk) and its browser test. Verify with `vp test run` on the two test files, `vp run check:changed`, and
-one pass in a dev client. If upstream adopts the discussion, drop the commits.
+Done: the two commits are one commit on the fork's `main` (MIT, authorship kept; the second fixed the first, so they
+were squashed). They merged cleanly. The diff is 5 files, +725/−71: three new files (`BreadcrumbSwitchers.tsx`,
+`breadcrumbSwitcher.logic.ts` and its test) and edits to `ChatHeader.tsx` (~130 lines, the rebase risk) and its browser
+test. Both test files pass. If upstream adopts the discussion, drop the commit.
 
 ## Claude usage limits with a setup-token (change 5)
 
