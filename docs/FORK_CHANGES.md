@@ -8,6 +8,7 @@ Upstream: [pingdotgg/t3code](https://github.com/pingdotgg/t3code). This fork is 
 
 | #   | Change                                                                                                                                                                 | Status  |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| 6   | Daily sync: a workflow rebases the patch stack onto upstream and force-pushes `main`                                                                                   | done    |
 | 5   | Claude usage limits for a setup-token session: let `rate_limit_event` stream updates fill the bars when `get_usage` is unsupported                                     | planned |
 | 4   | Project and thread switchers in the chat breadcrumb (ported from a community branch, below)                                                                            | planned |
 | 3   | Claude reply text streams while it is written (upstream's `ClaudeAdapterV2` drops `text_delta`, issue #17270; port of the closed PR #22165 onto the 2026-11-08 `main`) | done    |
@@ -252,6 +253,22 @@ Unverified (spike first): whether this CLI version puts `utilization` in `rate_l
 
 Rebase cost: three small edits to existing files (two in `usageLimits.ts`, one client condition) and tests beside them. Drop the change if upstream stops discarding stream updates for `unsupported` providers.
 
+## Daily sync (change 6)
+
+`.github/workflows/ae-sync.yml` runs every day at 03:17 UTC (and on demand): it rebases `main` onto upstream's `main`
+and force-pushes it. A conflict fails the run and pushes nothing; no issue is opened, the failed run is the signal.
+Resolve it locally with the procedure in the next section and push.
+
+- **Only `ae-*.yml` workflows run on this fork.** Upstream's use runners (`blacksmith-*`) and secrets a fork does not
+  have, so their jobs would queue forever. The sync run disables every active workflow that is not `ae-*`, so a workflow
+  upstream adds is switched off on the next run. A rebase never touches that setting.
+- **Secret `SYNC_TOKEN`:** a fine-grained personal access token for this repository with Contents and Workflows
+  read/write. The default `GITHUB_TOKEN` cannot push changes to `.github/workflows`, which upstream edits often.
+- **Force-push safety:** `--force-with-lease` pinned to the commit the run started from, so a push made meanwhile wins
+  and the run fails.
+- GitHub pauses scheduled workflows after 60 days without repository activity; a daily push keeps them alive, and the run
+  can be started by hand from the Actions tab.
+
 ## Keeping the fork up to date with upstream
 
 `main` is a linear stack of patch commits on top of upstream's `main`: no merge commits, no feature branches. Staying
@@ -274,7 +291,7 @@ current means rebasing that stack onto the newest upstream `main`, never merging
   (`git push --force-with-lease origin main`). Agents rewrite unpushed commits freely and ask before touching pushed
   ones.
 
-**Sync procedure** (by hand; there is no automation yet)
+**Sync procedure** (done daily by `ae-sync.yml`, see "Daily sync (change 6)"; by hand after a conflict)
 
 1. `git fetch upstream`, then `git log --oneline HEAD..upstream/main` to see what is coming.
 2. `git rebase upstream/main`. `git config rerere.enabled true` is set, so a conflict is resolved once and replayed on
