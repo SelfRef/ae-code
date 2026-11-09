@@ -1,9 +1,12 @@
 import type { ClientSettings } from "@t3tools/contracts";
 
-// Ids are stored in client settings, so never rename one.
+import { isElectron } from "../../env";
+
+// Ids are stored in client settings, so never rename one. Open in editor is off in a browser
+// because the editor opens on the server's machine, not the viewer's.
 export const THREAD_DETAILS_ITEMS = [
   { id: "environment", label: "Environment and worktree", defaultVisible: true },
-  { id: "openIn", label: "Open in editor", defaultVisible: true },
+  { id: "openIn", label: "Open in editor", defaultVisible: isElectron },
   { id: "scripts", label: "Project scripts", defaultVisible: true },
   { id: "branch", label: "Branch and pull request", defaultVisible: true },
   { id: "gitActions", label: "Git actions", defaultVisible: true },
