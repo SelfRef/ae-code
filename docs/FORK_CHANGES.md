@@ -24,7 +24,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 | [8]  | Docker image of the release server on GHCR                                                                                                                             | done    |
 | [7]  | Date-versioned releases (`vYYYY.MM.DD`): the Linux x64 server archive                                                                                                  | done    |
 | [6]  | Daily sync: a workflow rebases the patch stack onto upstream and force-pushes `main`                                                                                   | done    |
-| [5]  | Claude usage limits for a setup-token session: let `rate_limit_event` stream updates fill the bars when `get_usage` is unsupported                                     | planned |
+| [5]  | Claude usage limits for a setup-token session: let `rate_limit_event` stream updates fill the bars when `get_usage` is unsupported                                     | done    |
 | [4]  | Project and thread switchers in the chat breadcrumb (ported from a community branch, below)                                                                            | done    |
 | 3    | Claude reply text streams while it is written (upstream's `ClaudeAdapterV2` drops `text_delta`, issue #17270; port of the closed PR #22165 onto the 2026-11-08 `main`) | done    |
 | [2]  | GitHub Issues panel: list, read, comment, edit, label, close/reopen issues per project                                                                                 | planned |
@@ -271,17 +271,29 @@ Problem: a Claude session authenticated by `CLAUDE_CODE_OAUTH_TOKEN` (the long-l
 
 Why stream events don't rescue it: during a turn the CLI emits `rate_limit_event` frames built from the response's rate-limit headers, which any subscription token receives. `ClaudeAdapterV2` already maps them with `claudeRateLimitEventToUpdate` (needs a numeric `utilization`; five-hour and seven-day windows, and the overage bucket once named by a probe). But `applyUsageLimitsUpdate` (`packages/provider-core/src/server/usageLimits.ts`) returns `previous` unchanged while `previous.unavailable.reason === "unsupported"`, and a later probe result replaces the published value (`resolveUsageLimitsAfterProbe`), so the bars never appear.
 
-Plan: let Claude's stream events fill the windows even when the probe says `unsupported`.
+Done: Claude's stream events fill the windows even when the probe says `unsupported`.
 
-1. `applyUsageLimitsUpdate` drops the `unsupported` early return for updates that carry windows. This helper is shared with Codex and the other providers, so keep the change to that one condition and check their tests (`codexUsageLimits.test.ts`, `usageLimits` tests) still pass; if another provider relies on "unsupported means stay empty", gate it behind an optional flag on the update that only the Claude adapter sets.
-2. `resolveUsageLimitsAfterProbe`: when the probe is `unsupported` and the published value already has stream windows, keep the windows instead of replacing them with the empty probe result.
-3. Client: check that the Limits row (web `apps/web`, mobile `ComposerUsageLimits.tsx`, `UsageLimitsSection.tsx`) renders windows even when `unavailable` is set. If it tests `unavailable` first, show the windows when there are any.
+- **The spike.** A real turn with `CLAUDE_CODE_OAUTH_TOKEN` alone (an empty home, no stored login), Claude Code 2.1.316:
+  the `rate_limit_event` has no top-level `utilization`. It carries `rate_limit_info.unifiedWindows` with `five_hour` and
+  `seven_day`, each with `utilization` (0 to 1), `resetsAt` and `status`. The SDK typings we pin do not have the field,
+  and `claudeRateLimitEventToUpdate` only read the top-level one, which the CLI adds at warning thresholds, so the plan
+  as first written would have rendered nothing.
+- `claudeRateLimitEventToUpdate` reads `unifiedWindows` structurally (new `readUnifiedWindows`); a top-level
+  threshold window still wins for its own id. This also refreshes both bars on every event for a normal login.
+- `makeManagedServerProvider` takes `streamFillsUnsupportedLimits`, set only by `ClaudeDriver`. With it,
+  `applyUsageLimitsUpdate` fills an `unsupported` snapshot and drops its `unavailable` marker, and
+  `resolveUsageLimitsAfterProbe` keeps windows the stream already filled when a later probe is `unsupported` (as it
+  already does for `probeFailed`). Codex and the other providers keep the old rule: unsupported means stay empty. A
+  test pins that.
+- The client needed no change: the snapshot has windows and no `unavailable`, so the Limits row renders as for any login.
 
-Expected behaviour: no bars until the first turn after a restart, then the windows named in the events, refreshed each turn. Only what the events carry shows (no per-model buckets, no spend).
+Expected behaviour: no bars until the first turn after a restart, then both windows, refreshed each turn. Only what the
+events carry shows (no per-model buckets, no spend). Tested in `claudeUsageLimits.test.ts` and `usageLimits.test.ts`.
+Checked in a dev server started with only the setup-token (an empty home, no stored login): after one Haiku turn,
+Usage → Limits showed Claude's Session and Weekly bars.
 
-Unverified (spike first): whether this CLI version puts `utilization` in `rate_limit_event` frames for a setup-token session; check with a real turn and a log of the raw `rate_limit_info`. If it doesn't, there is nothing to render and the only way to get bars is a full login instead of the token.
-
-Rebase cost: three small edits to existing files (two in `usageLimits.ts`, one client condition) and tests beside them. Drop the change if upstream stops discarding stream updates for `unsupported` providers.
+Rebase cost: small edits in `claudeUsageLimits.ts`, `usageLimits.ts`, `managedProvider.ts` and `ClaudeDriver.ts`, and tests
+beside them. Drop the flag if upstream starts using stream updates for `unsupported` providers.
 
 ## Daily sync (change 6)
 

@@ -151,24 +151,48 @@ function makeWindow(
   };
 }
 
+/**
+ * Newer CLIs send both subscription windows on every event as `unifiedWindows`, which the SDK
+ * typings we pin do not have yet, so it is read structurally.
+ */
+function readUnifiedWindows(info: SDKRateLimitInfo): ReadonlyArray<ServerProviderUsageWindow> {
+  const raw = (info as { readonly unifiedWindows?: unknown }).unifiedWindows;
+  if (typeof raw !== "object" || raw === null) return [];
+  const windows: ServerProviderUsageWindow[] = [];
+  for (const id of Object.keys(WINDOWS)) {
+    const entry = (raw as Record<string, unknown>)[id];
+    if (typeof entry !== "object" || entry === null) continue;
+    const { utilization, resetsAt } = entry as { utilization?: unknown; resetsAt?: unknown };
+    if (typeof utilization !== "number") continue;
+    windows.push(
+      makeWindow(
+        id,
+        utilization * 100,
+        isoFromEpochSeconds(typeof resetsAt === "number" ? resetsAt : undefined),
+      ),
+    );
+  }
+  return windows;
+}
+
 /** Stream utilization is 0-1. Drop unnamed overage buckets until probed to avoid unreconcilable rows. */
 export function claudeRateLimitEventToUpdate(
   info: SDKRateLimitInfo,
   names: ClaudeScopedLimitNames,
 ): ProviderUsageLimitsUpdate | undefined {
+  const windows = new Map(readUnifiedWindows(info).map((window) => [window.id, window] as const));
   const type: string | undefined = info.rateLimitType;
-  if (!type || typeof info.utilization !== "number") {
-    return undefined;
+  if (type && typeof info.utilization === "number") {
+    const usedPercent = info.utilization * 100;
+    const resetsAt = isoFromEpochSeconds(info.resetsAt);
+    if (type in WINDOWS) {
+      windows.set(type, makeWindow(type, usedPercent, resetsAt));
+    } else if (type === OVERAGE_INCLUDED_EVENT_TYPE && names.overageIncluded) {
+      const window = scopedWindow(names.overageIncluded, usedPercent, resetsAt);
+      windows.set(window.id, window);
+    }
   }
-  const usedPercent = info.utilization * 100;
-  const resetsAt = isoFromEpochSeconds(info.resetsAt);
-  if (type in WINDOWS) {
-    return { windows: [makeWindow(type, usedPercent, resetsAt)] };
-  }
-  if (type === OVERAGE_INCLUDED_EVENT_TYPE && names.overageIncluded) {
-    return { windows: [scopedWindow(names.overageIncluded, usedPercent, resetsAt)] };
-  }
-  return undefined;
+  return windows.size === 0 ? undefined : { windows: [...windows.values()] };
 }
 
 /** get_usage percentages are already 0-100. */
