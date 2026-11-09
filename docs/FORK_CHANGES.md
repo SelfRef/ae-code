@@ -8,6 +8,7 @@ Upstream: [pingdotgg/t3code](https://github.com/pingdotgg/t3code). This fork is 
 
 | #   | Change                                                                                                                                                                 | Status  |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| 15  | Remove a built-in provider (Codex, Claude, ...) from Settings and the registry, with Restore                                                                           | done    |
 | 14  | No git hooks: upstream's pre-commit hook, its `prepare` script and the `staged` config in `vite.config.ts` are removed (they need Node on the committing host)         | done    |
 | 13  | Memory: saved preferences and decisions agents on any provider can recall and save, with a Settings page (modelled on GOAT's, cut down)                                | done    |
 | 12  | Edit the latest message in place: the prompt becomes an inline editor, saving rewinds the thread and resends (idea from MT Code)                                       | planned |
@@ -476,6 +477,21 @@ person needs. User guide: `docs/user/memory.md`.
   `server.ts` (one layer), `McpHttpServer.ts`, `t3McpToolPresentation.ts` with `t3ToolSummary.ts`, the Claude read-only
   allowlist, `runtimeInstructions.ts` with the Antigravity append, client-runtime `state/server.ts`, the settings
   navigation and search (`settingsSearch.ts`, `SettingsSidebarNav.tsx`, `_chat.settings.tsx`) and the generated route tree.
+
+## Removing a built-in provider (change 15)
+
+Upstream lists Codex and Claude in Settings → Providers whether or not their CLI is installed, and offers no way to
+drop one: a built-in provider has only its on/off switch. A deployment that ships without one (an image with no Codex
+CLI) is left with a dead row and a dead entry in the model pickers.
+
+- **Remove** on a built-in provider's row saves its default instance as `{ enabled: false, hidden: true }`
+  (`ProviderInstanceConfig.hidden`, optional). Its other settings are kept.
+- The server leaves a `hidden` instance out of the registry (`deriveProviderInstanceConfigMap`), so it is not probed
+  and not offered. Settings does not list it; threads that used it get the usual unavailable message.
+- **Restore** is a button under the provider list, one per removed provider: it clears `hidden` and turns the instance on.
+- No data migration: the field is new and optional. An older server ignores it and shows the provider disabled.
+- **Rebase cost.** `providerInstance.ts` (one field), `ProviderInstanceRegistryHydration.ts` (three lines),
+  `ProviderSettingsPanel.tsx` (row filter, two callbacks, a footer button).
 
 ## Keeping the fork up to date with upstream
 
