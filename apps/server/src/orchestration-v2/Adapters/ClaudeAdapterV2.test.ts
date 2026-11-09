@@ -325,6 +325,25 @@ describe("ClaudeAdapterV2 runtime query policy", () => {
     }
   });
 
+  it("starts a session with the saved-memory digest, once, in the system prompt", () => {
+    const appendOf = (memoryDigest?: string) =>
+      (
+        ClaudeAdapterV2.makeClaudeQueryOptions({
+          modelSelection: CLAUDE_TEST_MODEL_SELECTION,
+          nativeThreadId: "native-memory-digest",
+          resume: false,
+          cwd: "/workspace",
+          ...(memoryDigest === undefined ? {} : { memoryDigest }),
+        }).systemPrompt as { readonly append?: string }
+      ).append ?? "";
+    const digest = "<saved_memory>\n- Reply in Polish\n</saved_memory>";
+
+    assert.include(appendOf(digest), digest);
+    assert.equal(appendOf(digest).split("Reply in Polish").length, 2);
+    assert.notInclude(appendOf(""), "Reply in Polish");
+    assert.notInclude(appendOf(), "Reply in Polish");
+  });
+
   it("passes every --add-dir launch directory to Claude", () => {
     const options = ClaudeAdapterV2.makeClaudeQueryOptions({
       modelSelection: CLAUDE_TEST_MODEL_SELECTION,
