@@ -8,6 +8,7 @@ Upstream: [pingdotgg/t3code](https://github.com/pingdotgg/t3code). This fork is 
 
 | #   | Change                                                                                                                                                                 | Where                                          | Status       |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------ |
+| 5   | Claude usage limits for a setup-token session: let `rate_limit_event` stream updates fill the bars when `get_usage` is unsupported                                     | `main`                                         | planned      |
 | 4   | Project and thread switchers in the chat breadcrumb                                                                                                                    | `main`, ported from a community branch (below) | planned      |
 | 3   | Claude reply text streams while it is written (upstream's `ClaudeAdapterV2` drops `text_delta`, issue #17270; port of the closed PR #22165 onto the 2026-11-08 `main`) | `main` (`7ace0751ef`), one commit, tests pass  | done locally |
 | 2   | GitHub Issues panel: list, read, comment, edit, label, close/reopen issues per project                                                                                 | branch `issues` (not started)                  | planned      |
@@ -229,6 +230,24 @@ cleanly onto upstream `main` (`b7d33af938`). The diff is 5 files, +725/−71: th
 (`BreadcrumbSwitchers.tsx`, `breadcrumbSwitcher.logic.ts` and its test) and edits to `ChatHeader.tsx` (~130 lines,
 the rebase risk) and its browser test. Verify with `vp test run` on the two test files, `vp run check:changed`, and
 one pass in a dev client. If upstream adopts the discussion, drop the commits.
+
+## Claude usage limits with a setup-token (change 5)
+
+Problem: a Claude session authenticated by `CLAUDE_CODE_OAUTH_TOKEN` (the long-lived token from `claude setup-token`) shows "Limits: Unavailable". The token has only the `user:inference` scope; the SDK's `get_usage` control request needs `user:profile`, so it answers `rate_limits_available: false` and `claudeUsageResponseToLimits` (`apps/server/src/provider/claudeUsageLimits.ts`) records `unavailable.reason = "unsupported"`. A login made with `claude auth login` has the scope and gets the bars. `claude auth status` shows which one wins (`oauth_token` means the env token shadows a stored login).
+
+Why stream events don't rescue it: during a turn the CLI emits `rate_limit_event` frames built from the response's rate-limit headers, which any subscription token receives. `ClaudeAdapterV2` already maps them with `claudeRateLimitEventToUpdate` (needs a numeric `utilization`; five-hour and seven-day windows, and the overage bucket once named by a probe). But `applyUsageLimitsUpdate` (`packages/provider-core/src/server/usageLimits.ts`) returns `previous` unchanged while `previous.unavailable.reason === "unsupported"`, and a later probe result replaces the published value (`resolveUsageLimitsAfterProbe`), so the bars never appear.
+
+Plan: let Claude's stream events fill the windows even when the probe says `unsupported`.
+
+1. `applyUsageLimitsUpdate` drops the `unsupported` early return for updates that carry windows. This helper is shared with Codex and the other providers, so keep the change to that one condition and check their tests (`codexUsageLimits.test.ts`, `usageLimits` tests) still pass; if another provider relies on "unsupported means stay empty", gate it behind an optional flag on the update that only the Claude adapter sets.
+2. `resolveUsageLimitsAfterProbe`: when the probe is `unsupported` and the published value already has stream windows, keep the windows instead of replacing them with the empty probe result.
+3. Client: check that the Limits row (web `apps/web`, mobile `ComposerUsageLimits.tsx`, `UsageLimitsSection.tsx`) renders windows even when `unavailable` is set. If it tests `unavailable` first, show the windows when there are any.
+
+Expected behaviour: no bars until the first turn after a restart, then the windows named in the events, refreshed each turn. Only what the events carry shows (no per-model buckets, no spend).
+
+Unverified (spike first): whether this CLI version puts `utilization` in `rate_limit_event` frames for a setup-token session; check with a real turn and a log of the raw `rate_limit_info`. If it doesn't, there is nothing to render and the only way to get bars is a full login instead of the token.
+
+Rebase cost: three small edits to existing files (two in `usageLimits.ts`, one client condition) and tests beside them. Drop the change if upstream stops discarding stream updates for `unsupported` providers.
 
 ## Keeping the fork easy to rebase
 
