@@ -62,6 +62,7 @@ import {
   reconcileRowsDraft,
   seedRowsDraft,
 } from "./ProviderSettingsForm";
+import { ClaudeMemorySettings } from "./ClaudeMemorySettings";
 import { ProviderModelsSection } from "./ProviderModelsSection";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { ProviderAccentColorPicker } from "./ProviderAccentColorPicker";
@@ -1350,6 +1351,10 @@ export function ProviderInstanceCard({
         >
           {runtimeFields}
         </SettingsSection>
+      ) : null}
+
+      {instance.driver === "claudeAgent" && environmentId !== undefined ? (
+        <ClaudeMemorySettings environmentId={environmentId} />
       ) : null}
 
       <SettingsSection

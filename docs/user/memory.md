@@ -21,7 +21,8 @@ search and save tools, but no starting list.
 
 ## Import Claude's memories
 
-**Import from Claude** (Settings → Memory) copies what Claude Code saved on its own into this memory. Enter the folder
+**Import…** under **Settings → Providers → Claude → Memory** copies what Claude Code saved on its own into this
+memory. Enter the folder
 that holds Claude's project folders (`~/.claude/projects` is the default, on the machine the environment runs on) and
 **Scan**:
 
@@ -36,13 +37,15 @@ rather than sharing the whole thing.
 
 ## Switches
 
-Both are at the top of **Settings → Memory** and apply to new sessions, not ones already running.
+Both apply to new sessions, not ones already running.
 
-- **Agent memory** (on by default). Off: agents are not told about memory, and its tools answer that memory is turned
-  off. Your saved memories stay, and you can still read, edit and forget them on the page.
-- **Turn off Claude's built-in memory** (on by default, and only while agent memory is on). New Claude sessions then run
-  without Claude Code's own memory files, so there is one store instead of two. Other providers' own memory is not
-  affected.
+- **Agent memory** (on by default), at the top of **Settings → Memory**. Off: agents are not told about memory, and its
+  tools answer that memory is turned off. Your saved memories stay, and you can still read, edit and forget them on the
+  page.
+- **Turn off Claude's built-in memory** (on by default, and only while agent memory is on), under **Settings →
+  Providers → Claude → Memory**. New Claude sessions then run without Claude Code's own memory files, so there is one
+  store instead of two. It is a setting of the environment, so every Claude instance there shows the same switch. Other
+  providers' own memory is not affected.
 
 ## Scopes
 
