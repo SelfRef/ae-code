@@ -371,6 +371,13 @@ export function resolveThreadProviderStack(
   return [...previous.slice(-(THREAD_PROVIDER_STACK_LIMIT - 1)), current];
 }
 
+/** Subagents that still work, whether or not the turn that started them has ended. */
+export function pendingSubagentTasks(thread: {
+  readonly pendingBackgroundTasks?: EnvironmentThreadShell["pendingBackgroundTasks"] | undefined;
+}) {
+  return (thread.pendingBackgroundTasks ?? []).filter((task) => task.kind === "subagent");
+}
+
 /**
  * Both shell and detail timers count from the activity-owning run's work
  * start, never last activity. A wake keeps the start of the work it continues.

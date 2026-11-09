@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [19] | Sidebar shows running subagents: a thread whose turn ended but whose subagents still work reads "N subagents" instead of a stalled "Waiting"                           | done    |
 | [18] | Steer controls: "Stop it and send now" for a steer stuck behind a long command (Claude; take back not built; not found in any fork)                                    | done    |
 | [17] | No product analytics: the server sends no usage events unless `T3CODE_TELEMETRY_ENABLED=true` (idea from E4 Code)                                                      | done    |
 | [16] | MCP servers from Settings: one list of stdio and HTTP servers for Claude, OpenCode, Antigravity and Codex sessions (smaller version of E4 Code's patch)                | planned |
@@ -47,6 +48,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 [16]: #mcp-servers-from-settings-change-16
 [17]: #no-product-analytics-change-17
 [18]: #steer-controls-change-18
+[19]: #sidebar-subagent-status-change-19
 
 `done` means it is a commit on `main`; the commit is found by subject (`git log --grep`), not by hash, because every
 rebase onto upstream changes the hashes. The history rules and the sync procedure are in the last section.
@@ -504,6 +506,20 @@ Type-Delta coordinates checkpoint mutations across steers ([FORK_REFERENCES.md](
 Rebase cost: one new RPC (contract, rpc, permission, authorization, instrumentation and `ws.ts` entries), one optional
 capability flag, one optional adapter method, small edits in `ClaudeAdapterV2.ts`, `ThreadManagementService.ts`,
 `threadWorkflows.ts` and `QueuedRunsControl.tsx`.
+
+## Sidebar subagent status (change 19)
+
+Subagent threads have no sidebar row, so a thread that started one and then ended its turn looked finished: the shell
+runtime parks at `idle` while a subagent is in `pendingBackgroundTasks`, and the row showed a muted "Waiting" with a
+timer counting from the run's end.
+
+- `resolveSidebarThreadStatus` (web) and `resolveThreadListV2Status` (mobile) return `working` when a pending task has
+  `kind: "subagent"`, below failed/limited so a failure still shows. `pendingSubagentTasks`
+  (`packages/client-runtime/src/state/models.ts`) is the shared filter.
+- The row label reads "1 subagent" or "N subagents" while the turn is not running (no timer: tasks carry no start time,
+  and the run's end would lie). The status pill reads "Subagents". The web hover card lists each subagent's description.
+- No contract or server change; the roster was already on the thread shell. Subagent rows under the parent were left out.
+- Other background work (monitors, awaited commands, `background_task`) still reads "Waiting".
 
 ## MCP servers from Settings (change 16)
 
