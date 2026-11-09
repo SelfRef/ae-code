@@ -8,6 +8,7 @@ Upstream: [pingdotgg/t3code](https://github.com/pingdotgg/t3code). This fork is 
 
 | #   | Change                                                                                                                                                                 | Status  |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| 7   | Date-versioned releases (`vYYYY.MM.DD`): the Linux x64 server archive                                                                                                  | done    |
 | 6   | Daily sync: a workflow rebases the patch stack onto upstream and force-pushes `main`                                                                                   | done    |
 | 5   | Claude usage limits for a setup-token session: let `rate_limit_event` stream updates fill the bars when `get_usage` is unsupported                                     | planned |
 | 4   | Project and thread switchers in the chat breadcrumb (ported from a community branch, below)                                                                            | planned |
@@ -41,7 +42,7 @@ Icons: `assets/prod` is the Aperte icon on a dark Nord tile; `nightly` and `dev`
 
 Caveats:
 
-- The desktop installers (AppImage, deb, dmg, exe) are not built or tested. The release workflow only runs in upstream's repository, so `SelfRef/ae-code` has no releases yet; the install scripts and the in-app updater point at releases that do not exist until the fork publishes some. A server image does not need them: build the CLI archive from source (see the stack's Dockerfile, which follows `release-desktop.yml`'s "Build CLI archive" steps).
+- Only the Linux x64 server archive is released (`ae-release.yml`, see "Releases (change 7)"); no desktop installer (AppImage, deb, dmg, exe) is built or tested, so the desktop app's in-app updater finds nothing. The install scripts and `t3 update` read `SelfRef/ae-code` releases for upstream's `t3-<version>-<platform>` archives, which the fork does not publish; the release's `ae-code-linux-x64.tar.gz` is unpacked by hand. A server image does not need them: build the CLI archive from source (see the stack's Dockerfile, which follows `release-desktop.yml`'s "Build CLI archive" steps).
 - Data written by upstream's T3 Code is not read: see the next section.
 
 ### Moving to the AperteDev org
@@ -268,6 +269,33 @@ Resolve it locally with the procedure in the next section and push.
   and the run fails.
 - GitHub pauses scheduled workflows after 60 days without repository activity; a daily push keeps them alive, and the run
   can be started by hand from the Actions tab.
+
+## Releases (change 7)
+
+`.github/workflows/ae-release.yml` is started by the daily sync (or by hand, with `force` to release an unchanged
+`main`). It publishes a GitHub release when `main` is not the commit of the latest release. Upstream's `release.yml` is
+not used: it needs `blacksmith-*` runners, relay and Clerk configuration, signing secrets and the Play APK. The `cli` job
+repeats the CLI archive steps of upstream's `release-desktop.yml` (build, resource monitor, `build-cli-archive.ts`,
+smoke test) on a GitHub-hosted runner, without Electron; that workflow itself is not called, so the sync leaves it
+disabled.
+
+- **Versions:** tag and title `vYYYY.MM.DD`, then `vYYYY.MM.DD.1`, `.2` for later releases the same day. The apps need a
+  semver, so the packages (and the updater feed) carry `YYYY.MMDD.N`: `2026.1109.0` for `v2026.11.09`. It increases
+  with every release, which is all the updater needs.
+- **Release notes:** the upstream commit the release sits on, then what changed since the previous release: a compare
+  link between the two upstream commits (`pingdotgg/t3code`), and the fork patches that release did not have. A patch
+  counts as new by its subject, because every rebase rewrites the hashes, so a fixup that keeps the subject is not
+  listed. The first release lists every patch. The full list is the table above.
+- **Contents:** `ae-code-linux-x64.tar.gz`, the Linux x64 server: the single executable `ae-code` with the web client,
+  the resource monitor and its own libatomic (`ae-code serve`). Upstream's archive is `t3-<version>-linux-x64.tar.gz`
+  holding `t3`; the workflow renames both after the smoke test, because the server's update and install code looks for
+  upstream's names and the fork's source is left alone. The file name has no version so that
+  `releases/latest/download/ae-code-linux-x64.tar.gz` always points at the newest one. The executable still calls itself
+  `t3` in its help text.
+- **Not built:** the desktop app (AppImage, `.deb`, macOS, Windows), arm64 server; no relay or Clerk configuration (T3
+  Connect sign-in is absent, pairing with a server works as before), no npm launcher, no tests or checks. A broken
+  `main` shows as a failed build.
+- **Not run yet.** The first run is by hand from the Actions tab; expect to fix what it finds.
 
 ## Keeping the fork up to date with upstream
 
