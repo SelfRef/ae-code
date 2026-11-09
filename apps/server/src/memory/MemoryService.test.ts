@@ -1,6 +1,7 @@
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import { expect, it } from "@effect/vitest";
 import { MEMORY_MAX_COUNT, MemoryId, ProjectId } from "@t3tools/contracts";
+import { getMemoryPolicy, nativeMemoryDisabled } from "@t3tools/provider-core/server/memoryPolicy";
 import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -140,6 +141,39 @@ it.layer(layer)("MemoryService", (it) => {
         "invalid",
         "not_found",
       ]);
+    }),
+  );
+
+  it.effect("starts on, keeps what is saved while off, and tells the adapters", () =>
+    Effect.gen(function* () {
+      const memory = yield* MemoryService.MemoryService;
+      expect((yield* memory.list({})).settings).toEqual({
+        enabled: true,
+        disableNativeMemory: true,
+      });
+      yield* memory.requireEnabled;
+
+      const saved = yield* memory.save({ scope: "user", text: "Reply in Polish", source: "user" });
+      expect(yield* memory.setSettings({ enabled: false })).toEqual({
+        enabled: false,
+        disableNativeMemory: true,
+      });
+      // Off for agents; the page still lists, edits and forgets.
+      expect((yield* memory.requireEnabled.pipe(Effect.flip)).code).toBe("disabled");
+      expect(getMemoryPolicy()).toEqual({ enabled: false, disableNativeMemory: true });
+      expect(nativeMemoryDisabled()).toBe(false);
+      expect((yield* memory.list({})).memories.map((entry) => entry.id)).toEqual([saved.id]);
+
+      yield* memory.setSettings({ enabled: true, disableNativeMemory: false });
+      yield* memory.requireEnabled;
+      expect(nativeMemoryDisabled()).toBe(false);
+      expect((yield* memory.list({})).settings).toEqual({
+        enabled: true,
+        disableNativeMemory: false,
+      });
+      yield* memory.setSettings({ disableNativeMemory: true });
+      expect(nativeMemoryDisabled()).toBe(true);
+      yield* memory.remove(saved.id);
     }),
   );
 

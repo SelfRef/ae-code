@@ -17,7 +17,7 @@ import * as EffectAcpErrors from "effect-acp/errors";
 
 import * as ProviderHost from "@t3tools/provider-core/server/ProviderHost";
 import {
-  MEMORY_INSTRUCTIONS,
+  memoryInstructions,
   PULL_REQUEST_LINKING_INSTRUCTIONS,
 } from "@t3tools/provider-core/server/runtimeInstructions";
 import type { AntigravityAuth } from "../../provider/AntigravityAuth.ts";
@@ -148,7 +148,9 @@ export function makeAntigravityAcpAdapterFlavor(
           options.makeRuntime({
             ...input,
             clientFileReads: true,
-            sessionSystemPromptAppend: `${PULL_REQUEST_LINKING_INSTRUCTIONS}\n\n${MEMORY_INSTRUCTIONS}`,
+            sessionSystemPromptAppend: [PULL_REQUEST_LINKING_INSTRUCTIONS, memoryInstructions()]
+              .filter((part) => part !== "")
+              .join("\n\n"),
             additionalDirectories: [options.host.paths.attachmentsDir],
           }),
         )

@@ -66,6 +66,7 @@ export const CLIENT_GUARDED_RPC_SCOPES = {
   // Saved memory is read by every agent here, so changing it is a settings change.
   [WS_METHODS.memorySave]: AuthSettingsWriteScope,
   [WS_METHODS.memoryDelete]: AuthSettingsWriteScope,
+  [WS_METHODS.memorySetSettings]: AuthSettingsWriteScope,
   [WS_METHODS.scheduledTasksUpsert]: AuthOrchestrationOperateScope,
   [WS_METHODS.scheduledTasksSetEnabled]: AuthOrchestrationOperateScope,
   [WS_METHODS.scheduledTasksDelete]: AuthOrchestrationOperateScope,

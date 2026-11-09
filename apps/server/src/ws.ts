@@ -2358,6 +2358,8 @@ export const layerWsRpc = (
             .save({ ...input, source: "user" })
             .pipe(Effect.map((saved) => ({ memory: saved }))),
         [WS_METHODS.memoryDelete]: (input) => memory.remove(input.id),
+        [WS_METHODS.memorySetSettings]: (input) =>
+          memory.setSettings(input).pipe(Effect.map((settings) => ({ settings }))),
         [WS_METHODS.scheduledTasksSubscribe]: (_input) =>
           scheduledTasks.subscribeList().pipe(Stream.map(withVisibleWebhookUrls)),
         [WS_METHODS.scheduledTasksUpsert]: (input) => scheduledTasks.upsert(input),

@@ -374,6 +374,8 @@ import {
   MemoryListResult,
   MemorySaveInput,
   MemorySaveResult,
+  MemorySetSettingsInput,
+  MemorySetSettingsResult,
 } from "./memory.ts";
 import {
   ScheduledTaskDeleteInput,
@@ -560,6 +562,7 @@ export const WS_METHODS = {
   memoryList: "memory.list",
   memorySave: "memory.save",
   memoryDelete: "memory.delete",
+  memorySetSettings: "memory.setSettings",
 
   scheduledTasksSubscribe: "scheduledTasks.subscribe",
   scheduledTasksUpsert: "scheduledTasks.upsert",
@@ -2076,6 +2079,12 @@ const WsMemoryDeleteRpc = Rpc.make(WS_METHODS.memoryDelete, {
   error: Schema.Union([MemoryError, EnvironmentAuthorizationError]),
 });
 
+const WsMemorySetSettingsRpc = Rpc.make(WS_METHODS.memorySetSettings, {
+  payload: MemorySetSettingsInput,
+  success: MemorySetSettingsResult,
+  error: Schema.Union([MemoryError, EnvironmentAuthorizationError]),
+});
+
 const WsSubscribeAuthAccessRpc = Rpc.make(WS_METHODS.subscribeAuthAccess, {
   payload: Schema.Struct({}),
   success: AuthAccessStreamEvent,
@@ -2158,6 +2167,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsMemoryListRpc,
   WsMemorySaveRpc,
   WsMemoryDeleteRpc,
+  WsMemorySetSettingsRpc,
   WsScheduledTasksSubscribeRpc,
   WsScheduledTasksUpsertRpc,
   WsScheduledTasksSetEnabledRpc,

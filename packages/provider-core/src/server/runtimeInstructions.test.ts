@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest";
 
-import { buildRuntimeInstructions } from "./runtimeInstructions.ts";
+import { setMemoryPolicy } from "./memoryPolicy.ts";
+import { buildRuntimeInstructions, memoryInstructions } from "./runtimeInstructions.ts";
 
 describe("buildRuntimeInstructions", () => {
   it("leaves PR linking to a session that already carries it, and keeps runtime identity", () => {
@@ -24,6 +25,18 @@ describe("buildRuntimeInstructions", () => {
       buildRuntimeInstructions({ harness: "Codex", pullRequestLinking: false }),
       "<memory>",
     );
+  });
+
+  it("leaves memory out while it is turned off in Settings", () => {
+    setMemoryPolicy({ enabled: false, disableNativeMemory: true });
+    try {
+      const instructions = buildRuntimeInstructions({ harness: "Codex" });
+      assert.notInclude(instructions, "<memory>");
+      assert.include(instructions, "<pull_request_linking>");
+      assert.strictEqual(memoryInstructions(), "");
+    } finally {
+      setMemoryPolicy({ enabled: true, disableNativeMemory: false });
+    }
   });
 
   it("links PRs the agent creates, takes over, or pushes to, and no others", () => {
