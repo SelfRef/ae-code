@@ -1172,6 +1172,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     scope: "project-defaults",
   },
   {
+    id: "confirm-push-to-default-branch",
+    title: "Confirm pushes to the default branch",
+    to: "/settings/source-control",
+    searchTerms: ["git push main master default branch prompt dialog warning feature branch pr"],
+  },
+  {
     id: "review-guides",
     title: "Review guides (beta)",
     to: "/settings/source-control",
