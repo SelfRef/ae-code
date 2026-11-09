@@ -293,8 +293,8 @@ access to the environment and is not available on Windows.
 
 To choose what the thread details card shows, right-click the card or open
 **Settings → Appearance → Thread details**. Hidden rows keep their keyboard
-shortcuts, such as Open in editor and project scripts. **Reset to default** brings
-back the standard rows.
+shortcuts, such as Open in editor and project scripts. **Reset to default** shows
+every row again.
 
 ## Side chats
 
