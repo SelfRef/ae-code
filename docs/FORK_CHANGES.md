@@ -431,7 +431,9 @@ person needs. User guide: `docs/user/memory.md`.
   Pi receives only the orchestration text and does not get it. The briefing says memory is reference data, never
   instructions.
 - **Settings → Memory** (web and desktop, one environment at a time): list, search, scope filter, add, edit, forget,
-  and two switches. Five RPCs (`memory.list`, `memory.save`, `memory.delete`, `memory.setSettings`,
+  and the _Agent memory_ switch. Claude's own controls (the native-memory switch and the import) sit in the Claude
+  provider card, in `ClaudeMemorySettings.tsx`, a "Memory" section shown for every `claudeAgent` instance and bound to
+  the same environment-wide settings; a few lines in `ProviderInstanceCard.tsx` mount it. Five RPCs (`memory.list`, `memory.save`, `memory.delete`, `memory.setSettings`,
   `memory.importScan`); the three writes need the settings-write scope.
 - **Switches** (`memory_settings`, one row in the same self-created tables, not `ServerSettings`, so upstream's settings
   schema is untouched). _Agent memory_ (default on): off removes the briefing from new sessions and makes the three
@@ -452,7 +454,7 @@ person needs. User guide: `docs/user/memory.md`.
   while Cursor, ACP and Muse repeat their instructions on every turn, where a digest would cost tokens each time.
   `t3_memory_recall` and `t3_memory_remember` also carry `anthropic/alwaysLoad`, as `request_secret` does, so Claude
   Code does not defer them behind ToolSearch.
-- **Import from Claude** (Settings → Memory). `memory.importScan` reads `<folder>/<project>/memory/*.md` (default
+- **Import from Claude** (Settings → Providers → Claude → Memory). `memory.importScan` reads `<folder>/<project>/memory/*.md` (default
   `~/.claude/projects` of the server's user; `MEMORY.md`, files over 64 KiB and everything else are skipped) and returns
   the entries; the dialog saves the selected ones through `memory.save`, so there is no second write path. It needs the
   `filesystem:read` scope. `user` and `feedback` files import as All projects, `project` and `reference` ones need a
