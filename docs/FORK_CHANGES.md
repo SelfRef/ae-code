@@ -10,7 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| [18] | Steer controls: a steered follow-up stuck behind a long tool call can be taken back or made to interrupt it (not found in any fork)                                    | planned |
+| [18] | Steer controls: "Stop it and send now" for a steer stuck behind a long command (Claude; take back not built; not found in any fork)                                    | done    |
 | [17] | No product analytics: the server sends no usage events unless `T3CODE_TELEMETRY_ENABLED=true` (idea from E4 Code)                                                      | done    |
 | [16] | MCP servers from Settings: one list of stdio and HTTP servers for Claude, OpenCode, Antigravity and Codex sessions (smaller version of E4 Code's patch)                | planned |
 | [15] | Remove a built-in provider (Codex, Claude, ...) from Settings and the registry, with Restore                                                                           | done    |
@@ -445,42 +445,66 @@ dashed message at the end of the thread with **Send now**, edit and remove, and 
 oldest one. A message that is already a steer has none of that: `UserMessageIntentMarker` in
 `TimelineUserMessageRow.tsx` is a label with a tooltip.
 
-Findings in the source:
+Findings, measured against the real Claude Code CLI (2.1.316, stream-json, Haiku, a foreground `timeout 90 tail -f
+/dev/null` as the long command, a message with `priority: "now"` sent 8 s in):
 
-- The Claude adapter sends a steer with `priority: "now"` (`ClaudeAdapterV2.steerTurn`) and declares
-  `activeSteeringInterruptsTools: true`. The SDK's own type notes say only some calls step aside for such a message
-  (today WebFetch and WebSearch, marked `detachedToolCall`), so a foreground Bash call is probably not preempted. That is
-  the likely reason the message waited; unverified.
-- The installed Claude SDK (0.3.316) has `cancel_async_message` (withdraw a uuid-stamped message that is still in the
-  queue; a no-op once it was folded into a turn) and an interrupt request with `cancel_queued`.
-- The contract already has `dispatchMode` `restart_active` (interrupt the active run and start the message as a new one)
-  and the `queued-message.promote-to-steer` command, and adapters declare `supportsActiveSteering`,
-  `activeSteeringInterruptsTools` and `supportsSteeringByInterruptRestart` (`orchestrationV2.ts`), so "interrupt and
-  send" may need no new server command.
+- **The steer waits for the command.** It was delivered 81 s later, when the command ended (the turn's result then read
+  `aborted_tools`). `priority: "now"` only preempts calls the SDK lets step aside (WebFetch and WebSearch,
+  `detachedToolCall`), not a foreground shell, whatever `activeSteeringInterruptsTools: true` says.
+- **A plain interrupt does not help.** The `interrupt` control request answered with the steer in `still_queued`, but the
+  command kept running to its end. Stop in the thread has the same limit for a foreground command.
+- **Stopping the shell task does.** A foreground shell is a task (`task_started`, `task_type: "local_bash"`,
+  `is_backgrounded: false`). `stop_task` on it killed the command at once (`[killed]`), the result read `aborted_tools`,
+  and the steer ran one second later. The adapter already handles that result as part of a steer (`steeredTurns`).
+- **Withdraw works.** `cancel_async_message` with the uuid of a steer still queued behind the command answered
+  `cancelled: true`, and the steer never ran.
+- **There is a delivery signal.** A uuid-stamped message gets `command_lifecycle` frames: `queued` when sent, `started`
+  when the CLI takes it (the adapter already reads these for turn prompts). Steers are not uuid-stamped today.
+
+Built (web and desktop, Claude): **Stop it and send now**.
+
+- A line above the composer, `Your message is waiting for <command> to finish`, with a **Stop it and send now** button.
+  It shows while the newest steer (typed as a steer, or a queued message sent with **Send now**, which promotes it to a
+  steer) has no answer yet and a command that began before it still runs. Derived on the client in
+  `deriveThreadQueueWorkflowState` (`waitingSteer`, `packages/client-runtime`), so it needs no new projection field.
+- RPC `orchestration.expediteSteer` (`threadId`), operate scope, run under the thread lock with a 15 s bound, through
+  `ThreadManagementService.expediteSteer` to the optional adapter method `expediteSteer`, offered when the provider
+  declares `turns.supportsSteerExpedite`. Errors: `not-running`, `unsupported`, `unavailable`, `expedite-failed`.
+- Claude: `ClaudeAdapterV2` keeps the ids of foreground shell tasks (set on `task_started` with `is_backgrounded` exactly
+  `false`, cleared on `task_notification` and at the turn's result) and `expediteSteer` calls `stopTask` on them. Nothing
+  else is touched: background shells, the turn and subagents keep running. With no foreground command it fails instead
+  of doing nothing. Tested in `ClaudeAdapterV2.test.ts`; the derivation in `threadWorkflows.test.ts`.
+- Not a stop of the turn: only the command ends, the model reads its `[killed]` result and then the steer.
+- `ChatView.tsx` mounts the queue control only while something is queued; it now also mounts it while a steer waits
+  (found by the run below, the first version never rendered the line).
+
+Checked in a running dev server (headless Chromium driving the web client, Claude Haiku 4.5 with the user's login):
+a thread running `timeout 400 tail -f /dev/null`, a steer typed in the composer, the line appeared, **Stop it and
+send now** delivered the steer in about a second and the turn ended with the reply. The same with a message queued
+(`Ctrl+Enter`), sent with **Send now** (it becomes a steer, the line appears), then **Stop it and send now**.
+
+Not built, in this order:
+
+1. **Take back.** Stamp the steer with a uuid, call `cancel_async_message`, mark the message withdrawn and return its text
+   to the composer. Needs a withdrawn state on the message, so a contract change that every client follows. The
+   `command_lifecycle` `started` frame would also give a real "delivered" signal to replace the client-side guess.
+2. **Other providers.** OpenCode 2.0.26 with a local Qwen model has the same stall: a steer sent while a foreground
+   `timeout 200 tail -f /dev/null` ran got no reply for 60 s and the command was still running; it shows no line,
+   because it does not declare `supportsSteerExpedite`. It needs its own way to stop that command (a tool-call abort
+   or an interrupt and resend; `supportsSteeringByInterruptRestart` is true there). Codex and the ACP providers
+   (Antigravity and others) are not measured. Each needs its own spike before it declares the flag.
+3. **Mobile.** The data is shared (`queueWorkflowAtom`); the mobile queue is a sheet, so the line needs its own place in
+   the thread view.
+4. **Agents.** An MCP option on `t3_thread_send` for the same action.
 
 Forks: checked on 2026-11-09 by searching the fork-own commit subjects of twelve forks for steer, queue, send now,
 interrupt and follow-up; none has it. Related work only: t3dpcode keeps queued follow-ups on the server, KamiCode edits
 and cancels queued messages (upstream has both now), K-code lets ACP agents steer live turns and cancel open prompts,
 Type-Delta coordinates checkpoint mutations across steers ([FORK_REFERENCES.md](./FORK_REFERENCES.md)).
 
-Plan:
-
-1. **Pending steer.** A steer shows as pending (dashed, "waiting for the agent") until the provider takes it, with two
-   actions: **Take back**, which withdraws it (Claude: `cancel_async_message`) and returns the text and attachments to
-   the composer, and **Interrupt and send now**, which stops the running tool or turn and delivers it (the existing
-   `restart_active` path). Once the provider has consumed it, it becomes the normal sent message.
-2. **Per adapter.** Take back needs a withdraw mechanism, so it is Claude only at first; Codex, OpenCode and the ACP
-   providers get **Interrupt and send now** where `supportsSteeringByInterruptRestart` or an interrupt exists, and "not
-   supported" otherwise. The message row must say which actions the provider offers.
-3. **Surfaces.** Web and desktop timeline rows first, then mobile (queued messages sit above its composer). A keybinding
-   next to `thread.steerQueuedMessage`. The server owns the state, so every client sees the same pending steer.
-
-Spike first: reproduce it (a foreground `sleep 300` in a Claude thread, then a steer) with the cheapest Claude model;
-check whether the steer waits, and which event the SDK emits when a message is consumed (a `command_lifecycle` frame
-would be the "delivered" signal). Without one, "pending" has to mean "a tool call is still running". Then check
-`cancel_async_message` on a pending steer and the interrupt-then-send ordering. Rebase cost: a small component for the
-pending row, edits in `TimelineUserMessageRow.tsx`, `ClaudeAdapterV2.ts` and one contract command if withdraw cannot reuse
-an existing one.
+Rebase cost: one new RPC (contract, rpc, permission, authorization, instrumentation and `ws.ts` entries), one optional
+capability flag, one optional adapter method, small edits in `ClaudeAdapterV2.ts`, `ThreadManagementService.ts`,
+`threadWorkflows.ts` and `QueuedRunsControl.tsx`.
 
 ## MCP servers from Settings (change 16)
 

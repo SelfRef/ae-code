@@ -89,6 +89,7 @@ import {
   workflowOpeningParentThreadId,
 } from "@t3tools/client-runtime/state/subagentRuntime";
 import {
+  deriveThreadQueueWorkflowState,
   getUserQueuedThreadRuns,
   threadSupportsProviderHandoff,
 } from "@t3tools/client-runtime/state/thread-workflows";
@@ -3064,13 +3065,17 @@ export default function ChatView(props: ChatViewProps) {
   const queuedRunCount = serverProjection ? getUserQueuedThreadRuns(serverProjection).length : 0;
   // The queue control is mounted for every server thread but joins the footer only while it shows
   // something, by its own rule: an optimistic message stops counting once the server has it.
+  // A steer waiting behind a running command shows its notice in the same place.
   const hasQueuedTurns =
     queuedRunCount > 0 ||
     optimisticUserMessages.some(
       (message) =>
         message.inputIntent === "queued_turn" &&
         !serverProjection?.messages.some((committed) => committed.id === message.id),
-    );
+    ) ||
+    (serverProjection
+      ? deriveThreadQueueWorkflowState(serverProjection).waitingSteer !== null
+      : false);
   const scrollToEndSummary =
     [childInputNow?.waitingLabel ?? null, queuedRunCount === 0 ? null : `${queuedRunCount} queued`]
       .filter((part) => part !== null)
