@@ -1,0 +1,248 @@
+name: AE release
+
+# Date-versioned releases of the fork: vYYYY.MM.DD, vYYYY.MM.DD.1 for a second
+# one the same day. Started by ae-sync.yml after each daily rebase, or by hand.
+# Nothing is released when main is the commit of the latest release.
+#
+# The apps need a semver, so the date is also written as YYYY.MMDD.N (the
+# release's `version` output) into the package versions: 2026.1109.0 for
+# v2026.11.09, 2026.1109.1 for v2026.11.09.1.
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Release even if main is the commit of the latest release
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# gh would otherwise pick the upstream remote the release notes step adds.
+env:
+  GH_REPO: ${{ github.repository }}
+
+concurrency:
+  group: ae-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare
+    if: github.repository != 'pingdotgg/t3code'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      release: ${{ steps.meta.outputs.release }}
+      ref: ${{ steps.meta.outputs.ref }}
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - id: meta
+        name: Resolve the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          set -euo pipefail
+          ref="$(git rev-parse HEAD)"
+          last="$(gh release list --limit 1 --json tagName --jq '.[0].tagName // ""')"
+          if [[ -n "$last" && "$FORCE" != "true" && "$(git rev-parse "$last^{commit}")" == "$ref" ]]; then
+            echo "main is already released as $last."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          day="$(date -u +%Y.%m.%d)"
+          n=0
+          if git rev-parse -q --verify "refs/tags/v$day" > /dev/null; then
+            n=1
+            while git rev-parse -q --verify "refs/tags/v$day.$n" > /dev/null; do n=$((n + 1)); done
+          fi
+          tag="v$day"
+          if [[ "$n" -gt 0 ]]; then tag="$tag.$n"; fi
+          version="$(date -u +%Y).$((10#$(date -u +%m) * 100 + 10#$(date -u +%d))).$n"
+          {
+            echo "release=true"
+            echo "ref=$ref"
+            echo "tag=$tag"
+            echo "version=$version"
+          } >> "$GITHUB_OUTPUT"
+
+  # The Linux x64 server as an archive: the server bundle and web client packed
+  # into a single executable, with the resource monitor and libatomic beside it.
+  # These are the CLI archive steps of upstream's release-desktop.yml without
+  # Electron, relay or Clerk configuration, or signing.
+  cli:
+    name: Linux x64 server
+    needs: [prepare]
+    if: needs.prepare.outputs.release == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      # Builds in other repositories report "dev" telemetry.
+      T3CODE_TELEMETRY_CHANNEL: dev
+      RUST_TARGET: x86_64-unknown-linux-gnu
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.ref }}
+
+      - name: Setup dependencies
+        uses: ./.github/actions/setup-ci-deps
+        with:
+          install-args: --filter=t3... --filter=@t3tools/web... --filter=@t3tools/scripts...
+
+      - name: Align package versions to the release version
+        run: node scripts/update-release-package-versions.ts "$VERSION"
+
+      # t3#build depends on the web build: apps/server/dist holds the server
+      # bundle and the web client.
+      - name: Build the server and web client
+        run: vp run --filter t3 build
+
+      - name: Cache resource monitor
+        id: resource_monitor_cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: native/resource-monitor/target/${{ env.RUST_TARGET }}/release/t3-resource-monitor
+          key: resource-monitor-${{ env.RUST_TARGET }}-${{ hashFiles('native/resource-monitor/Cargo.lock', 'native/resource-monitor/Cargo.toml', 'native/resource-monitor/src/**') }}
+
+      - name: Setup Rust
+        if: steps.resource_monitor_cache.outputs.cache-hit != 'true'
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: stable
+          targets: ${{ env.RUST_TARGET }}
+
+      - name: Build resource monitor
+        if: steps.resource_monitor_cache.outputs.cache-hit != 'true'
+        run: cargo build --locked --release --manifest-path native/resource-monitor/Cargo.toml --target "$RUST_TARGET"
+
+      - name: Apply web client branding
+        run: node scripts/apply-web-brand-assets.ts production apps/server/dist/client
+
+      - name: Build the single executable
+        run: node apps/server/scripts/cli.ts build-exe --verbose
+
+      # The archive ships libatomic.so.1 and points the executable's RUNPATH at it.
+      - name: Install patchelf
+        run: command -v patchelf || { sudo apt-get update && sudo apt-get install -y patchelf; }
+
+      - name: Build the archive
+        run: |
+          set -euo pipefail
+          monitor="$RUNNER_TEMP/resource-monitor/linux-x64"
+          mkdir -p "$monitor"
+          cp "native/resource-monitor/target/$RUST_TARGET/release/t3-resource-monitor" "$monitor/"
+          node scripts/build-cli-archive.ts --platform linux --arch x64 --version "$VERSION" \
+            --resource-monitor-dir "$RUNNER_TEMP/resource-monitor" --output-dir release-cli
+
+      - name: Smoke-test the archive
+        run: node scripts/smoke-cli-archive.ts --archive release-cli/* --expect-version "$VERSION"
+
+      # The server's own update and install code expects upstream's names (`t3`
+      # in t3-<version>-linux-x64.tar.gz), so the archive is renamed only here:
+      # ae-code-linux-x64.tar.gz holding an `ae-code` executable.
+      - name: Rename to ae-code
+        run: |
+          set -euo pipefail
+          mkdir stage
+          tar -xzf release-cli/t3-*.tar.gz -C stage
+          mv stage/t3-* stage/ae-code-linux-x64
+          mv stage/ae-code-linux-x64/t3 stage/ae-code-linux-x64/ae-code
+          stage/ae-code-linux-x64/ae-code --version
+          mkdir release-assets
+          tar --hard-dereference -C stage -czf release-assets/ae-code-linux-x64.tar.gz ae-code-linux-x64
+
+      - name: Upload the archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-linux-x64
+          path: release-assets/ae-code-linux-x64.tar.gz
+          if-no-files-found: error
+          # Already gzip; deflating it again saves under 2%.
+          compression-level: 0
+          retention-days: 1
+
+  release:
+    name: Publish GitHub Release
+    needs: [prepare, cli]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.ref }}
+          fetch-depth: 0
+          filter: blob:none
+
+      - name: Download the archive
+        uses: actions/download-artifact@v8
+        with:
+          name: cli-linux-x64
+          path: release-assets
+
+      # What changed since the previous release: a link to upstream's commits
+      # between the two upstream bases, and the fork patches whose subjects the
+      # previous release did not have (every rebase rewrites the hashes, so the
+      # subject is the identity). The whole patch list is docs/FORK_CHANGES.md.
+      - name: Write release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ needs.prepare.outputs.ref }}
+        run: |
+          set -euo pipefail
+          git remote add upstream https://github.com/pingdotgg/t3code.git
+          git fetch --no-tags --filter=blob:none upstream main
+          base="$(git merge-base HEAD upstream/main)"
+          last="$(gh release list --limit 1 --json tagName --jq '.[0].tagName // ""')"
+          git log --reverse --format='%s' "$base..HEAD" > patches.txt
+          {
+            echo "Built from ${GITHUB_REPOSITORY}@${REF:0:10} on top of pingdotgg/t3code@${base:0:10}."
+            echo
+            if [[ -n "$last" ]] && git rev-parse -q --verify "refs/tags/$last^{commit}" > /dev/null; then
+              last_base="$(git merge-base "$last" upstream/main)"
+              git log --format='%s' "$last_base..$last" > last-patches.txt
+              if [[ "$last_base" == "$base" ]]; then
+                echo "Upstream: no changes since $last."
+              else
+                echo "Upstream changes since $last: https://github.com/pingdotgg/t3code/compare/${last_base:0:10}...${base:0:10}"
+              fi
+              echo
+              new="$(grep -vxFf last-patches.txt patches.txt | sed 's/^/- /' || true)"
+              if [[ -n "$new" ]]; then
+                echo "New fork changes since $last:"
+                echo "$new"
+              else
+                echo "No new fork changes since $last."
+              fi
+            else
+              echo "Fork changes:"
+              sed 's/^/- /' patches.txt
+            fi
+          } > release-notes.md
+          cat release-notes.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          REF: ${{ needs.prepare.outputs.ref }}
+        run: |
+          gh release create "$TAG" \
+            --target "$REF" \
+            --title "AE Code $TAG" \
+            --notes-file release-notes.md \
+            --latest \
+            release-assets/ae-code-linux-x64.tar.gz
