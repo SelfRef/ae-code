@@ -1487,6 +1487,10 @@ export function createServerEnvironmentAtoms<R, E>(
       refreshIntervalMs: 5_000,
       idleTtlMs: 0,
     }),
+    memoryList: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:server:memory:list",
+      tag: WS_METHODS.memoryList,
+    }),
     scheduledTaskWebhookDeliveries: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:server:scheduled-task:webhook-deliveries",
       tag: WS_METHODS.scheduledTasksListWebhookDeliveries,
@@ -1757,6 +1761,18 @@ export function createServerEnvironmentAtoms<R, E>(
     signalProcess: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:server:signal-process",
       tag: WS_METHODS.serverSignalProcess,
+    }),
+    saveMemory: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:memory:save",
+      tag: WS_METHODS.memorySave,
+      scheduler: configScheduler,
+      concurrency: configConcurrency,
+    }),
+    deleteMemory: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:memory:delete",
+      tag: WS_METHODS.memoryDelete,
+      scheduler: configScheduler,
+      concurrency: configConcurrency,
     }),
     upsertScheduledTask: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:server:scheduled-task:upsert",
