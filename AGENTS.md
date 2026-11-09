@@ -4,16 +4,16 @@ T3 Code is a minimal GUI for coding agents. A Node WebSocket server wraps provid
 
 ## This fork
 
-This checkout is a personal fork (`origin` = SelfRef/ae-code, `upstream` = pingdotgg/t3code). It ships as AE Code: app id `dev.aperte.AECode`, state in `~/.ae`, Electron profile `ae-code`, releases and updates from `SelfRef/ae-code`; env vars (`T3CODE_*`), package names and the `t3` command keep upstream's names. See `docs/FORK_CHANGES.md`. Its changes are not offered upstream: never open a PR, issue or discussion against `upstream`.
+This checkout is a personal fork (`origin` = SelfRef/ae-code, `upstream` = pingdotgg/t3code). It ships as AE Code: app id `dev.aperte.AECode`, state in `~/.ae`, Electron profile `ae-code`, releases and updates from `SelfRef/ae-code`; env vars (`T3CODE_*`), package names and the `t3` command keep upstream's names. See `docs/ROADMAP.md`. Its changes are not offered upstream: never open a PR, issue or discussion against `upstream`.
 
 - Commit straight to `main`; no feature branches unless asked. Push only when history was rewritten and the push needs a force (a rebase onto upstream, an autosquash): then push yourself with `git push --force-with-lease=main:<the origin/main you started from> origin main`, once the result is verified. A regular fast-forward push is the owner's: leave it unless asked.
 - Commit messages: Conventional Commits, one line, no body, no `Co-Authored-By` or other AI attribution in commits or files.
-- `main` is a linear stack of patch commits on top of `upstream/main`. Stay current by rebasing onto it (`git fetch upstream && git rebase upstream/main`, `rerere` is on), never by merging; no merge commits. After a verified rebase, force-push with `--force-with-lease`. Procedure and history rules: "Keeping the fork up to date with upstream" in `docs/FORK_CHANGES.md`.
+- `main` is a linear stack of patch commits on top of `upstream/main`. Stay current by rebasing onto it (`git fetch upstream && git rebase upstream/main`, `rerere` is on), never by merging; no merge commits. After a verified rebase, force-push with `--force-with-lease`. Procedure and history rules: "Keeping the fork up to date with upstream" in `docs/ROADMAP.md`.
 - Keep the fork easy to rebase: one logical change per commit, small diffs to upstream files, new code in new files where it fits.
 - A fix or follow-up goes into the commit it fixes (`git commit --fixup=<commit>`, then `GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash <base>`), not into a separate `fix:` commit. Rewrite unpushed commits freely; ask before rewriting pushed ones (other than a rebase onto upstream), since that needs a force-push.
-- A change's entry in `docs/FORK_CHANGES.md` is edited in the commit that lands the change, not in a later `docs:` commit. Don't put the fork's own commit hashes in docs (rebases change them; upstream's are stable).
+- A change's entry in `docs/ROADMAP.md` is edited in the commit that lands the change, not in a later `docs:` commit. Don't put the fork's own commit hashes in docs (rebases change them; upstream's are stable).
 - The fork is public: keep it generic, with no hostnames, paths or details of the setup it is deployed in.
-- Renaming or moving anything persisted (state dirs, profile names, database or settings locations) needs a row and migration steps in the "Data migration" section of `docs/FORK_CHANGES.md`, in the same commit.
+- Renaming or moving anything persisted (state dirs, profile names, database or settings locations) needs a row and migration steps in the "Data migration" section of `docs/ROADMAP.md`, in the same commit.
 - Keep upstream's identifiers (env vars, package and component names, file names) and change values only, so rebases stay small.
 - The fork has no git hooks (upstream's pre-commit hook and its `prepare` script are removed), so nothing formats on commit: run `vp fmt <files>` and `vp run check:changed` yourself. If the host has no Node, run them from a `node` container that mounts this checkout, and commit on the host.
 
