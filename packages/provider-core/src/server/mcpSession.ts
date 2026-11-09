@@ -1,4 +1,9 @@
-import type { EnvironmentId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
+import type {
+  EnvironmentId,
+  ProviderInstanceId,
+  ResolvedMcpServer,
+  ThreadId,
+} from "@t3tools/contracts";
 import type * as Effect from "effect/Effect";
 
 /**
@@ -20,6 +25,8 @@ export interface McpProviderSessionConfig {
   readonly agentDeviceEnvironment?: Readonly<Record<string, string>>;
   /** True while a delegated task this thread started will wake it with its result. */
   readonly hasPendingWake?: Effect.Effect<boolean>;
+  /** The user's own MCP servers for this provider instance, secrets resolved, beside `t3-code`. */
+  readonly extraServers?: ReadonlyArray<ResolvedMcpServer>;
 }
 
 export function withAgentDeviceEnvironment(
