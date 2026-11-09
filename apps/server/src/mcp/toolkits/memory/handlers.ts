@@ -21,6 +21,7 @@ export const layer = McpToolAccess.toLayer(MemoryToolkit, {
     Effect.gen(function* () {
       const { caller } = yield* readCaller();
       const memory = yield* MemoryService.MemoryService;
+      yield* memory.requireEnabled.pipe(Effect.mapError(failure));
       const found = yield* memory
         .recall({ query, projectId: caller?.projectId, limit: RECALL_LIMIT })
         .pipe(Effect.mapError(failure));
@@ -31,6 +32,7 @@ export const layer = McpToolAccess.toLayer(MemoryToolkit, {
     Effect.gen(function* () {
       const { caller } = yield* readCaller();
       const memory = yield* MemoryService.MemoryService;
+      yield* memory.requireEnabled.pipe(Effect.mapError(failure));
       const saved = yield* memory
         .save({
           id: input.memoryId,
@@ -47,6 +49,7 @@ export const layer = McpToolAccess.toLayer(MemoryToolkit, {
   t3_memory_forget: McpToolAccess.actsAsCaller(({ memoryId }) =>
     Effect.gen(function* () {
       const memory = yield* MemoryService.MemoryService;
+      yield* memory.requireEnabled.pipe(Effect.mapError(failure));
       return yield* memory.remove(memoryId).pipe(Effect.mapError(failure));
     }),
   ),

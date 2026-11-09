@@ -1573,6 +1573,12 @@ export function createServerEnvironmentAtoms<R, E>(
       scheduler: configScheduler,
       concurrency: configConcurrency,
     }),
+    setMemorySettings: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:memory:set-settings",
+      tag: WS_METHODS.memorySetSettings,
+      scheduler: configScheduler,
+      concurrency: configConcurrency,
+    }),
     upsertScheduledTask: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:server:scheduled-task:upsert",
       tag: WS_METHODS.scheduledTasksUpsert,
