@@ -4206,12 +4206,17 @@ function buildAssistantArtifacts(input: {
   readonly text: string;
   readonly ordinal: number;
   readonly startedAt: DateTime.Utc;
-  readonly completedAt: DateTime.Utc;
+  readonly updatedAt: DateTime.Utc;
+  // A streaming item is still running and has no completion time.
+  readonly streaming?: boolean;
 }): {
   readonly node: OrchestrationV2ExecutionNode;
   readonly message: OrchestrationV2ConversationMessage;
   readonly turnItem: OrchestrationV2TurnItem;
 } {
+  const streaming = input.streaming === true;
+  const status = streaming ? "running" : "completed";
+  const completedAt = streaming ? null : input.updatedAt;
   const nodeId = input.idAllocator.derive.nodeFromProviderItem({
     driver: CLAUDE_PROVIDER,
     nativeItemId: input.nativeItemId,
@@ -4238,7 +4243,7 @@ function buildAssistantArtifacts(input: {
       parentNodeId: input.turnInput.rootNodeId,
       rootNodeId: input.turnInput.rootNodeId,
       kind: "assistant_message",
-      status: "completed",
+      status,
       countsForRun: false,
       providerThreadId: input.turnInput.providerThread.id,
       providerTurnId: input.providerTurnId,
@@ -4246,7 +4251,7 @@ function buildAssistantArtifacts(input: {
       runtimeRequestId: null,
       checkpointScopeId: null,
       startedAt: input.startedAt,
-      completedAt: input.completedAt,
+      completedAt,
     },
     message: {
       createdBy: "agent",
@@ -4258,9 +4263,9 @@ function buildAssistantArtifacts(input: {
       role: "assistant",
       text: input.text,
       attachments: [],
-      streaming: false,
-      createdAt: input.completedAt,
-      updatedAt: input.completedAt,
+      streaming,
+      createdAt: input.updatedAt,
+      updatedAt: input.updatedAt,
     },
     turnItem: {
       id: turnItemId,
@@ -4272,15 +4277,15 @@ function buildAssistantArtifacts(input: {
       nativeItemRef,
       parentItemId: null,
       ordinal: input.ordinal,
-      status: "completed",
+      status,
       title: null,
       startedAt: input.startedAt,
-      completedAt: input.completedAt,
-      updatedAt: input.completedAt,
+      completedAt,
+      updatedAt: input.updatedAt,
       type: "assistant_message",
       messageId,
       text: input.text,
-      streaming: false,
+      streaming,
     },
   };
 }
@@ -4344,6 +4349,13 @@ interface ActiveClaudeTurnContext {
     emittedNativeItemIds: Set<string>;
     // The CLI repeats a notice that ends a prompt as the turn's result text.
     noticeTexts: Set<string>;
+    // Text blocks pair with their snapshots by order within a message, as
+    // thinking blocks do, so a block's snapshot completes its streamed item.
+    readonly streamBlocks: Map<number, string>;
+    readonly nextBlockIndex: Map<string, number>;
+    readonly snapshotBlockIndex: Map<string, number>;
+    readonly streamedStartedAt: Map<string, DateTime.Utc>;
+    readonly streamedItemIdBySnapshot: Map<string, string>;
   };
   readonly reasoning: {
     messageId: string | null;
@@ -7899,6 +7911,55 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
               });
             }),
         });
+        // Completed by the block's snapshot, or by flushTurn when the turn ends first.
+        const assistantDeltas = yield* makeProviderTextDeltaCoalescer({
+          flushIntervalMs: 50,
+          emit:
+            /* Provider events include streaming deltas; avoid a span for each update. */
+            Effect.fnUntraced(function* (update) {
+              const context = yield* Ref.get(activeTurn);
+              if (context === null || context.nativeTurnId !== update.turnId) return;
+              const startedAt = context.assistant.streamedStartedAt.get(update.itemId);
+              if (
+                startedAt === undefined ||
+                update.text.length === 0 ||
+                context.assistant.emittedNativeItemIds.has(update.itemId)
+              ) {
+                return;
+              }
+              if (update.completed) context.assistant.emittedNativeItemIds.add(update.itemId);
+              const artifacts = buildAssistantArtifacts({
+                idAllocator,
+                turnInput: context.input,
+                providerTurnId: context.providerTurnId,
+                nativeItemId: update.itemId,
+                text: update.text,
+                ordinal: yield* resolveItemOrdinal(context, update.itemId),
+                startedAt,
+                updatedAt: yield* DateTime.now,
+                streaming: !update.completed,
+              });
+              yield* emitProviderEvent({
+                type: "node.updated",
+                driver: CLAUDE_PROVIDER,
+                node: artifacts.node,
+              });
+              // Clients render streaming text from the turn item, as for Codex,
+              // so the message only carries the final text.
+              if (update.completed) {
+                yield* emitProviderEvent({
+                  type: "message.updated",
+                  driver: CLAUDE_PROVIDER,
+                  message: artifacts.message,
+                });
+              }
+              yield* emitProviderEvent({
+                type: "turn_item.updated",
+                driver: CLAUDE_PROVIDER,
+                turnItem: artifacts.turnItem,
+              });
+            }),
+        });
 
         const endToolCalls = Effect.fnUntraced(function* (input: {
           readonly context: ActiveClaudeTurnContext | null;
@@ -7961,6 +8022,7 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
           readonly result?: SDKResultMessage;
         }) {
           yield* reasoningDeltas.flushTurn(input.context.nativeTurnId);
+          yield* assistantDeltas.flushTurn(input.context.nativeTurnId);
           if (input.context.compaction?.status === "running") {
             const reason = input.result?.subtype === "success" ? input.result.result.trim() : "";
             yield* emitProviderEvent({
@@ -8044,7 +8106,7 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
               text: input.context.assistant.fallbackText,
               ordinal,
               startedAt: input.context.startedAt,
-              completedAt: input.completedAt,
+              updatedAt: input.completedAt,
             });
             yield* Effect.all(
               [
@@ -8272,6 +8334,15 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
           if (input.context.assistant.emittedNativeItemIds.has(input.nativeItemId)) {
             return;
           }
+          if (input.context.assistant.streamedStartedAt.has(input.nativeItemId)) {
+            // The snapshot's text is authoritative over the streamed deltas.
+            yield* assistantDeltas.complete({
+              turnId: input.context.nativeTurnId,
+              itemId: input.nativeItemId,
+              finalText: input.text,
+            });
+            return;
+          }
           input.context.assistant.emittedNativeItemIds.add(input.nativeItemId);
           const now = yield* DateTime.now;
           const ordinal = yield* resolveItemOrdinal(input.context, input.nativeItemId);
@@ -8283,7 +8354,7 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
             text: input.text,
             ordinal,
             startedAt: now,
-            completedAt: now,
+            updatedAt: now,
           });
           yield* Effect.all(
             [
@@ -9033,9 +9104,11 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
           if (message.type === "stream_event" && !message.parent_tool_use_id) {
             const event = message.event;
             const reasoning = context.reasoning;
+            const assistant = context.assistant;
             if (event.type === "message_start") {
               reasoning.messageId = event.message.id;
               reasoning.streamBlocks.clear();
+              assistant.streamBlocks.clear();
               const usage: ClaudeMessageUsage | undefined = event.message.usage;
               context.streamUsage =
                 usage === undefined ? null : { messageId: event.message.id, usage };
@@ -9074,7 +9147,34 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
                   delta: event.delta.thinking,
                 });
               }
+            } else if (
+              event.type === "content_block_start" &&
+              event.content_block.type === "text" &&
+              reasoning.messageId !== null
+            ) {
+              const index = assistant.nextBlockIndex.get(reasoning.messageId) ?? 0;
+              assistant.nextBlockIndex.set(reasoning.messageId, index + 1);
+              const itemId = `${reasoning.messageId}:text:${index}`;
+              assistant.streamBlocks.set(event.index, itemId);
+              assistant.streamedStartedAt.set(itemId, yield* DateTime.now);
+              yield* resolveItemOrdinal(context, itemId);
+              yield* assistantDeltas.append({
+                turnId: context.nativeTurnId,
+                itemId,
+                delta: event.content_block.text,
+              });
+            } else if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+              const itemId = assistant.streamBlocks.get(event.index);
+              if (itemId !== undefined) {
+                yield* assistantDeltas.append({
+                  turnId: context.nativeTurnId,
+                  itemId,
+                  delta: event.delta.text,
+                });
+              }
             } else if (event.type === "content_block_stop") {
+              // A text item stays open until its snapshot or the turn's end completes it.
+              assistant.streamBlocks.delete(event.index);
               const itemId = reasoning.streamBlocks.get(event.index);
               if (itemId !== undefined) {
                 yield* reasoningDeltas.complete({
@@ -9093,11 +9193,23 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
             !context.reasoning.snapshots.has(message.uuid)
           ) {
             context.reasoning.snapshots.add(message.uuid);
-            // The SDK snapshots each completed block; count thinking blocks separately to preserve streamed ids.
+            // The SDK snapshots each completed block; count thinking and text blocks separately to preserve streamed ids.
             for (const block of message.message.content) {
               if (block.type !== "thinking") {
                 const update = context.reasoning.lastThinking;
                 context.reasoning.lastThinking = null;
+                if (block.type === "text") {
+                  const assistant = context.assistant;
+                  const index = assistant.snapshotBlockIndex.get(message.message.id) ?? 0;
+                  assistant.snapshotBlockIndex.set(message.message.id, index + 1);
+                  const itemId = `${message.message.id}:text:${index}`;
+                  if (
+                    assistant.streamedStartedAt.has(itemId) &&
+                    !assistant.streamedItemIdBySnapshot.has(message.uuid)
+                  ) {
+                    assistant.streamedItemIdBySnapshot.set(message.uuid, itemId);
+                  }
+                }
                 if (
                   block.type === "tool_use" &&
                   update !== null &&
@@ -9956,7 +10068,9 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
           if (assistantText !== null && assistantText.text.length > 0) {
             yield* emitAssistantTextArtifacts({
               context,
-              nativeItemId: assistantText.nativeItemId,
+              nativeItemId:
+                context.assistant.streamedItemIdBySnapshot.get(assistantText.nativeItemId) ??
+                assistantText.nativeItemId,
               text: assistantText.text,
             });
             return;
@@ -11242,6 +11356,11 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
                 fallbackNativeItemId: `assistant:${turnInput.runId}`,
                 emittedNativeItemIds: new Set(),
                 noticeTexts: new Set(),
+                streamBlocks: new Map(),
+                nextBlockIndex: new Map(),
+                snapshotBlockIndex: new Map(),
+                streamedStartedAt: new Map(),
+                streamedItemIdBySnapshot: new Map(),
               },
               reasoning: {
                 messageId: null,
