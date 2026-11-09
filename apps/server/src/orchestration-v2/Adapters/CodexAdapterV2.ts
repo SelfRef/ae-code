@@ -1427,6 +1427,15 @@ function codexThreadRuntimeParams(input: {
     ...(input.modelSelection === undefined ? {} : { model: input.modelSelection.model }),
     config: {
       ...CODEX_THREAD_CONFIG,
+      // The user's own servers; Codex takes each as `mcp_servers.<name>`, beside T3's.
+      ...Object.fromEntries(
+        (mcpSession?.extraServers ?? []).map((server) => [
+          `mcp_servers.${server.name}`,
+          server.transport === "http"
+            ? { url: server.url, http_headers: { ...server.headers } }
+            : { command: server.command, args: [...server.args], env: { ...server.env } },
+        ]),
+      ),
       // One app-server serves many threads, so the id goes in per-thread shell config, not its env.
       ...(input.threadId === null
         ? {}

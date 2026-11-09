@@ -617,6 +617,48 @@ describe("ClaudeAdapterV2 MCP query overrides", () => {
     assert.isFalse(overrides.allowedTools?.includes(ClaudeAdapterV2.CLAUDE_T3_MCP_TOOL_WILDCARD));
   });
 
+  it("adds the user's MCP servers and pre-approves only trusted ones outside a read-only sandbox", () => {
+    const threadId = ThreadId.make("thread-claude-user-mcp");
+    const mcpSession: McpProviderSession.McpProviderSessionConfig = {
+      ...mcpSessionFor(threadId),
+      extraServers: [
+        {
+          transport: "http",
+          name: "hub",
+          url: "https://hub.example/mcp/$smart/code",
+          headers: { Authorization: "Bearer hub-key" },
+          trusted: true,
+        },
+        {
+          transport: "stdio",
+          name: "local",
+          command: "npx",
+          args: ["-y", "some-mcp"],
+          env: { TOKEN: "abc" },
+          trusted: false,
+        },
+      ],
+    };
+    const open = ClaudeAdapterV2.claudeMcpQueryOverrides({ mcpSession, readOnlySandbox: false });
+    assert.deepEqual(open.mcpServers?.hub, {
+      type: "http",
+      url: "https://hub.example/mcp/$smart/code",
+      headers: { Authorization: "Bearer hub-key" },
+    });
+    assert.deepEqual(open.mcpServers?.local, {
+      type: "stdio",
+      command: "npx",
+      args: ["-y", "some-mcp"],
+      env: { TOKEN: "abc" },
+    });
+    assert.isDefined(open.mcpServers?.["t3-code"]);
+    assert.isTrue(open.allowedTools?.includes("mcp__hub__*"));
+    assert.isFalse(open.allowedTools?.includes("mcp__local__*"));
+    const readOnly = ClaudeAdapterV2.claudeMcpQueryOverrides({ mcpSession, readOnlySandbox: true });
+    assert.isFalse(readOnly.allowedTools?.includes("mcp__hub__*"));
+    assert.isDefined(readOnly.mcpServers?.hub);
+  });
+
   it("invalidates live-query reuse when MCP credentials rotate", () => {
     const threadId = ThreadId.make("thread-claude-mcp-credential-rotation");
     const mcpSession = mcpSessionFor(threadId);

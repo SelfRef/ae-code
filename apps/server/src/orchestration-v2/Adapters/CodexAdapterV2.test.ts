@@ -1660,6 +1660,75 @@ describe("CodexAdapterV2 post-settle continuation", () => {
     ),
   );
 
+  it.effect("adds the user's MCP servers beside T3's, remote and stdio", () =>
+    Effect.gen(function* () {
+      const scenario = "user-mcp-servers";
+      yield* (yield* McpProviderSessions.McpProviderSessions).set({
+        environmentId: EnvironmentId.make("environment-codex-user-mcp"),
+        threadId: ThreadId.make(`thread-${scenario}`),
+        providerSessionId: `provider-session-${scenario}`,
+        providerInstanceId: ProviderInstanceId.make("codex"),
+        endpoint: "http://127.0.0.1:43123/mcp",
+        authorizationHeader: "Bearer secret-codex-token",
+        browserToolsAvailable: true,
+        extraServers: [
+          {
+            transport: "http",
+            name: "hub",
+            url: "https://hub.example/mcp/$smart/code",
+            headers: { Authorization: "Bearer hub-key" },
+            trusted: false,
+          },
+          {
+            transport: "stdio",
+            name: "local",
+            command: "npx",
+            args: ["-y", "some-mcp"],
+            env: { TOKEN: "abc" },
+            trusted: false,
+          },
+        ],
+      });
+      const requests: Array<{ readonly config: Record<string, unknown> }> = [];
+      yield* makeCodexReplayHarness(
+        makeCodexReplayTranscript({
+          scenario,
+          entries: codexReplayPreamble({
+            nativeThreadId: "user-mcp-thread",
+            nativeTurnId: "unused",
+            prompt: "unused",
+          }).slice(0, 5),
+        }),
+        () => Effect.void,
+        (method, params) =>
+          Effect.sync(() => {
+            if (method === "thread/start") requests.push(params as never);
+          }),
+      );
+      const config = requests[0]!.config;
+      assert.deepEqual(config["mcp_servers.hub"], {
+        url: "https://hub.example/mcp/$smart/code",
+        http_headers: { Authorization: "Bearer hub-key" },
+      });
+      assert.deepEqual(config["mcp_servers.local"], {
+        command: "npx",
+        args: ["-y", "some-mcp"],
+        env: { TOKEN: "abc" },
+      });
+      assert.isDefined(config["mcp_servers.t3-code"]);
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(
+        Layer.mergeAll(
+          IdAllocator.layer,
+          McpProviderSessions.layer,
+          NodeServices.layer,
+          NodeCrypto.layer,
+        ),
+      ),
+    ),
+  );
+
   // regression: #15839 launch-arg MCP servers survive the thread's t3-code server
   it.effect("replays historical and dotted MCP config while enforcing other thread config", () =>
     Effect.gen(function* () {

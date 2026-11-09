@@ -2037,12 +2037,32 @@ export function claudeMcpQueryOverrides(input: {
   if (session === undefined) {
     return input.allowedTools === undefined ? {} : { allowedTools: input.allowedTools };
   }
+  const extraServers = session.extraServers ?? [];
+  // A read-only sandbox lets only annotated read-only T3 tools through; a user's server is not annotated.
+  const trustedExtraTools = input.readOnlySandbox
+    ? []
+    : extraServers.filter((server) => server.trusted).map((server) => `mcp__${server.name}__*`);
   const mcpAllowedTools = input.readOnlySandbox
     ? CLAUDE_READ_ONLY_T3_MCP_ALLOWED_TOOLS
     : [CLAUDE_T3_MCP_TOOL_WILDCARD];
   return {
-    allowedTools: Array.from(new Set([...(input.allowedTools ?? []), ...mcpAllowedTools])),
+    allowedTools: Array.from(
+      new Set([...(input.allowedTools ?? []), ...mcpAllowedTools, ...trustedExtraTools]),
+    ),
     mcpServers: {
+      ...Object.fromEntries(
+        extraServers.map((server) => [
+          server.name,
+          server.transport === "http"
+            ? ({ type: "http", url: server.url, headers: { ...server.headers } } as const)
+            : ({
+                type: "stdio",
+                command: server.command,
+                args: [...server.args],
+                env: { ...server.env },
+              } as const),
+        ]),
+      ),
       "t3-code": {
         type: "http",
         url: session.endpoint,

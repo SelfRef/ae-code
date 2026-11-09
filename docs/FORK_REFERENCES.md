@@ -29,7 +29,7 @@ What is wanted, who has it, and what this fork does about it. "Planned" and "don
 
 | Feature                                                            | Forks                                   | Here                                                         |
 | ------------------------------------------------------------------ | --------------------------------------- | ------------------------------------------------------------ |
-| Manage MCP servers from Settings                                   | E4 Code, MT Code (plugin marketplace)   | planned, change 16                                           |
+| Manage MCP servers from Settings                                   | E4 Code, MT Code (plugin marketplace)   | done, change 16 (no OAuth, no catalog yet)                   |
 | Self-hosted Android push                                           | t3dpcode (Expo push), MT Code           | planned, change 10 (ntfy instead)                            |
 | Task board, inbox of what needs you                                | T3 Kanban, T3 Agents, Magnesium         | planned, change 11 (derived from thread state)               |
 | Edit the latest message in place                                   | MT Code                                 | planned, change 12                                           |

@@ -47,6 +47,7 @@ import * as ProjectService from "../project/ProjectService.ts";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import * as ServerSettings from "../serverSettings.ts";
 import * as McpSessionRegistry from "../mcp/McpSessionRegistry.ts";
+import { resolveMcpServers } from "../mcpServers/resolveMcpServers.ts";
 import * as EventSink from "./EventSink.ts";
 import * as CommandOutputHub from "./CommandOutputHub.ts";
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
@@ -406,6 +407,18 @@ export const layerWithOptions = (
           );
         },
       );
+      // A failed read leaves the session without the user's servers rather than without T3's own.
+      const readExtraMcpServers = (providerInstanceId: ProviderInstanceId) =>
+        options.configureMcp === false || Option.isNone(serverSettings)
+          ? Effect.succeed([])
+          : serverSettings.value.getSettings.pipe(
+              Effect.map((settings) => resolveMcpServers(settings, providerInstanceId)),
+              Effect.catch((cause) =>
+                Effect.logWarning("Could not read the MCP servers setting.", { cause }).pipe(
+                  Effect.as([]),
+                ),
+              ),
+            );
       const readLinkedEnvironments = Effect.gen(function* () {
         if (options.configureMcp === false || Option.isNone(serverSettings)) return undefined;
         return yield* serverSettings.value.getSettings.pipe(
@@ -490,6 +503,7 @@ export const layerWithOptions = (
                   Effect.map((thread) => thread.lineage.relationshipToParent === "subagent"),
                   Effect.orElseSucceed(() => false),
                 );
+                const extraServers = yield* readExtraMcpServers(providerInstanceId);
                 const existing = yield* mcpSessions.read(threadId);
                 if (existing !== undefined) {
                   // Reserve before async validation so release cannot revoke between validation and reservation.
@@ -514,6 +528,8 @@ export const layerWithOptions = (
                     // A credential issued while the lineage read failed is replaced once it works.
                     (resolved.thread.subagent === true) === subagent
                   ) {
+                    // The credential carries over; the user's servers may have changed since.
+                    yield* mcpSessions.set({ ...existing, extraServers });
                     return { mcpCredentialId: existing.providerSessionId, issued: false };
                   }
                   dropMcpCredentialReservation(threadId, existing.providerSessionId);
@@ -526,7 +542,7 @@ export const layerWithOptions = (
                   capabilities,
                   subagent,
                 });
-                yield* mcpSessions.set(credential.config);
+                yield* mcpSessions.set({ ...credential.config, extraServers });
                 reserveMcpCredential(threadId, credential.config.providerSessionId);
                 return { mcpCredentialId: credential.config.providerSessionId, issued: true };
               }),
