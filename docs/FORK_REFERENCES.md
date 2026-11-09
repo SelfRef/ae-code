@@ -27,36 +27,37 @@ and a size is the commit's size on the fork's own, older base, so a port costs s
 What is wanted, who has it, and what this fork does about it. "Planned" and "done" refer to rows in
 [FORK_CHANGES.md](./FORK_CHANGES.md).
 
-| Feature                                                           | Forks                                   | Here                                                         |
-| ----------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------ |
-| Manage MCP servers from Settings                                  | E4 Code, MT Code (plugin marketplace)   | planned, change 16                                           |
-| Self-hosted Android push                                          | t3dpcode (Expo push), MT Code           | planned, change 10 (ntfy instead)                            |
-| Task board, inbox of what needs you                               | T3 Kanban, T3 Agents, Magnesium         | planned, change 11 (derived from thread state)               |
-| Edit the latest message in place                                  | MT Code                                 | planned, change 12                                           |
-| No product analytics by default                                   | E4 Code                                 | done, change 17                                              |
-| Memory for agents                                                 | GOAT, seatedro, Scripted Alchemy, akeru | done, change 13 (modelled on GOAT)                           |
-| Project and thread switchers in the breadcrumb                    | mollymillions-code branch               | planned, change 4                                            |
-| Review surface: files, Reviewed marks, review guide               | E4 Code                                 | not planned                                                  |
-| Start, stop and monitor local model servers from the thread panel | DeepQuantum                             | not planned yet                                              |
-| Multi-thread split view (up to 4 panes)                           | Type-Delta, androforsov                 | not planned yet                                              |
-| Prompt suggestion ghost text from the agent's own turn            | Type-Delta                              | not planned yet (touches projections)                        |
-| Git graph panel                                                   | AVACode                                 | not planned yet                                              |
-| Move a worktree thread into another checkout                      | EduardoDadalt                           | not planned yet                                              |
-| Setting to omit the default branch prefix                         | 9cb14c1ec0                              | not planned yet (small)                                      |
-| Sign-in through a forward-auth proxy (CORS preflight, timeouts)   | K-code (Cloudflare Access)              | not planned yet; relevant behind Authelia                    |
-| Switch Claude or Codex accounts, usage bars with pace             | hafencity-dev, TemMax, Dylan-Grinboju   | not planned; only for several subscriptions                  |
-| Local-model runaway-reply watchdog, "Local" instead of a price    | MiaAI-Lab                               | not planned yet                                              |
-| Draft pull requests by default                                    | MT Code                                 | not planned yet                                              |
-| Per-provider permission defaults                                  | MT Code                                 | not planned yet                                              |
-| Advisor model for Claude                                          | MT Code                                 | not planned yet                                              |
-| Fork a Claude or Codex conversation                               | t3dpcode                                | not planned yet                                              |
-| Import conversations started outside T3                           | t3dpcode, K-code, aaditagrawal          | not planned yet (not checked against upstream)               |
-| Disable Git checkpoints                                           | t3dpcode                                | not planned yet                                              |
-| Agent hub grid, stop one subagent, full transcript mode           | K-code                                  | not planned yet (subagent stop may already exist upstream)   |
-| Usage allowances, storage cleanup, execution inspector            | xiaoxin                                 | upstream has Usage and storage cleanup; the rest not planned |
-| `.worktreeinclude`, SSH agent forwarding, multi-machine projects  | MT Code                                 | not planned yet                                              |
-| Sidebar layouts, grouping by repository, project icons            | Jarne47                                 | upstream has grouping (beta); the rest not planned           |
-| Computer Use, Computer View                                       | MT Code                                 | overlaps change 1 (Linux desktop in the Device panel)        |
+| Feature                                                            | Forks                                   | Here                                                         |
+| ------------------------------------------------------------------ | --------------------------------------- | ------------------------------------------------------------ |
+| Manage MCP servers from Settings                                   | E4 Code, MT Code (plugin marketplace)   | planned, change 16                                           |
+| Self-hosted Android push                                           | t3dpcode (Expo push), MT Code           | planned, change 10 (ntfy instead)                            |
+| Task board, inbox of what needs you                                | T3 Kanban, T3 Agents, Magnesium         | planned, change 11 (derived from thread state)               |
+| Edit the latest message in place                                   | MT Code                                 | planned, change 12                                           |
+| Take back a steered message, or make it interrupt a long tool call | none found (searched 2026-11-09)        | planned, change 18                                           |
+| No product analytics by default                                    | E4 Code                                 | done, change 17                                              |
+| Memory for agents                                                  | GOAT, seatedro, Scripted Alchemy, akeru | done, change 13 (modelled on GOAT)                           |
+| Project and thread switchers in the breadcrumb                     | mollymillions-code branch               | planned, change 4                                            |
+| Review surface: files, Reviewed marks, review guide                | E4 Code                                 | not planned                                                  |
+| Start, stop and monitor local model servers from the thread panel  | DeepQuantum                             | not planned yet                                              |
+| Multi-thread split view (up to 4 panes)                            | Type-Delta, androforsov                 | not planned yet                                              |
+| Prompt suggestion ghost text from the agent's own turn             | Type-Delta                              | not planned yet (touches projections)                        |
+| Git graph panel                                                    | AVACode                                 | not planned yet                                              |
+| Move a worktree thread into another checkout                       | EduardoDadalt                           | not planned yet                                              |
+| Setting to omit the default branch prefix                          | 9cb14c1ec0                              | not planned yet (small)                                      |
+| Sign-in through a forward-auth proxy (CORS preflight, timeouts)    | K-code (Cloudflare Access)              | not planned yet; relevant behind Authelia                    |
+| Switch Claude or Codex accounts, usage bars with pace              | hafencity-dev, TemMax, Dylan-Grinboju   | not planned; only for several subscriptions                  |
+| Local-model runaway-reply watchdog, "Local" instead of a price     | MiaAI-Lab                               | not planned yet                                              |
+| Draft pull requests by default                                     | MT Code                                 | not planned yet                                              |
+| Per-provider permission defaults                                   | MT Code                                 | not planned yet                                              |
+| Advisor model for Claude                                           | MT Code                                 | not planned yet                                              |
+| Fork a Claude or Codex conversation                                | t3dpcode                                | not planned yet                                              |
+| Import conversations started outside T3                            | t3dpcode, K-code, aaditagrawal          | not planned yet (not checked against upstream)               |
+| Disable Git checkpoints                                            | t3dpcode                                | not planned yet                                              |
+| Agent hub grid, stop one subagent, full transcript mode            | K-code                                  | not planned yet (subagent stop may already exist upstream)   |
+| Usage allowances, storage cleanup, execution inspector             | xiaoxin                                 | upstream has Usage and storage cleanup; the rest not planned |
+| `.worktreeinclude`, SSH agent forwarding, multi-machine projects   | MT Code                                 | not planned yet                                              |
+| Sidebar layouts, grouping by repository, project icons             | Jarne47                                 | upstream has grouping (beta); the rest not planned           |
+| Computer Use, Computer View                                        | MT Code                                 | overlaps change 1 (Linux desktop in the Device panel)        |
 
 ## Forks that add features
 
