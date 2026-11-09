@@ -1,3 +1,4 @@
+import { useAtomValue } from "@effect/atom-react";
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { deriveThreadQueueWorkflowState } from "@t3tools/client-runtime/state/thread-workflows";
 import { assistantCitationsToPlainText } from "@t3tools/shared/assistantCitations";
@@ -18,6 +19,7 @@ import {
   ArrowUpIcon,
   CalendarClockIcon,
   ChevronDownIcon,
+  CircleStopIcon,
   Clock3Icon,
   MessagesSquareIcon,
   PencilIcon,
@@ -27,12 +29,14 @@ import * as DateTime from "effect/DateTime";
 import { useId, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from "react";
 
 import { useAssetUrls } from "../../assets/assetUrls";
+import { orchestrationEnvironment } from "../../state/orchestration";
 import { threadEnvironment } from "../../state/threads";
 import { useQuietThreadShell, useThreadProjection } from "../../state/entities";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { isImageAttachment, type ChatMessage } from "../../types";
 import { cn } from "~/lib/utils";
 import { Button, InlineButton } from "../ui/button";
+import { toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import type { TimestampFormat } from "@t3tools/contracts/settings";
 import { GuestMessageName } from "./guestMessageStyle";
@@ -223,7 +227,16 @@ export function QueuedRunsControl({
     },
   }));
 
-  if (items.length === 0) return null;
+  const waitingSteerNotice =
+    workflow?.waitingSteer == null ? null : (
+      <WaitingSteerNotice
+        environmentId={props.environmentId}
+        threadId={props.threadId}
+        command={workflow.waitingSteer.command}
+        standalone={items.length === 0}
+      />
+    );
+  if (items.length === 0) return waitingSteerNotice;
 
   const remove = async (runId: RunId) => {
     setBusyRunId(runId);
@@ -244,6 +257,7 @@ export function QueuedRunsControl({
       // Anchors the sr-only live region; unanchored, it escapes the timeline scroller and makes the chat column scroll.
       className="relative mx-auto flex w-full max-w-(--chat-content-max-width) flex-col gap-2 pb-4"
     >
+      {waitingSteerNotice}
       <span className="sr-only" aria-live="polite">
         {items.length} queued
       </span>
@@ -398,6 +412,67 @@ export function QueuedRunsControl({
         </div>
       ) : null}
     </section>
+  );
+}
+
+/** A steer sits behind a running command until it ends; this lets the user end the command now. */
+function WaitingSteerNotice(props: {
+  readonly environmentId: EnvironmentId;
+  readonly threadId: ThreadId;
+  readonly command: string;
+  /** Alone, it takes the queue's place in the thread; in the queue, the queue's section holds it. */
+  readonly standalone: boolean;
+}) {
+  const expedite = useAtomCommand(orchestrationEnvironment.expediteSteer);
+  const canExpedite = useAtomValue(
+    orchestrationEnvironment.expediteSteer.permissionAtom(props.environmentId),
+  );
+  const [busy, setBusy] = useState(false);
+  const stopAndSend = async () => {
+    if (busy) return;
+    setBusy(true);
+    const result = await expedite({
+      environmentId: props.environmentId,
+      input: { threadId: props.threadId },
+    });
+    setBusy(false);
+    if (result._tag === "Failure") {
+      toastManager.add({ type: "error", title: "Could not stop the running command" });
+    }
+  };
+  return (
+    <div
+      role="status"
+      data-waiting-steer="true"
+      className={cn(
+        "flex items-center justify-end gap-2 text-xs text-muted-foreground",
+        props.standalone && "relative mx-auto w-full max-w-(--chat-content-max-width) pb-3",
+      )}
+    >
+      <span className="min-w-0 truncate">
+        Your message is waiting for{" "}
+        {props.command.length > 0 ? (
+          <code className="font-mono text-foreground/80">{props.command}</code>
+        ) : (
+          "the running command"
+        )}{" "}
+        to finish
+      </span>
+      <Tooltip>
+        <TooltipTrigger render={<span className="flex shrink-0" />}>
+          <Button
+            size="xs"
+            variant="ghost-muted"
+            disabled={busy || !canExpedite}
+            onClick={stopAndSend}
+          >
+            <CircleStopIcon />
+            Stop it and send now
+          </Button>
+        </TooltipTrigger>
+        <TooltipPopup>Stop the running command so the agent reads your message now</TooltipPopup>
+      </Tooltip>
+    </div>
   );
 }
 

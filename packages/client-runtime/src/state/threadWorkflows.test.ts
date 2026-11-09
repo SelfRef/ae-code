@@ -12,6 +12,7 @@ const capabilities = (input?: {
   readonly queued?: boolean;
   readonly steer?: boolean;
   readonly restartSteer?: boolean;
+  readonly expedite?: boolean;
   readonly nativeFork?: boolean;
   readonly portableFork?: boolean;
 }) =>
@@ -20,6 +21,7 @@ const capabilities = (input?: {
       supportsQueuedMessages: input?.queued ?? false,
       supportsActiveSteering: input?.steer ?? false,
       supportsSteeringByInterruptRestart: input?.restartSteer ?? false,
+      supportsSteerExpedite: input?.expedite ?? false,
     },
     threads: {
       canForkThread: input?.nativeFork ?? false,
@@ -135,6 +137,83 @@ describe("thread workflows", () => {
     expect(state.activeRun?.id).toBe("active");
     expect(state.canPromoteToSteer).toBe(true);
     expect(state.canSendNow).toBe(false);
+  });
+
+  describe("steer waiting behind a running command", () => {
+    const item = (
+      ordinal: number,
+      type: string,
+      extra: Record<string, unknown> = {},
+    ): Record<string, unknown> => ({
+      id: `item-${ordinal}`,
+      runId: "active",
+      ordinal,
+      type,
+      ...extra,
+    });
+    const command = (ordinal: number, status = "running") =>
+      item(ordinal, "command_execution", {
+        status,
+        input: "timeout 580 gh run watch 42\n# second line",
+      });
+    const steer = (ordinal: number, inputIntent = "steer") =>
+      item(ordinal, "user_message", { messageId: `message-${ordinal}`, inputIntent });
+    const derive = (turnItems: ReadonlyArray<Record<string, unknown>>, expedite = true) =>
+      deriveThreadQueueWorkflowState({
+        thread: { id: "thread", activeProviderThreadId: "provider-thread" },
+        runs: [
+          {
+            id: "active",
+            status: "running",
+            providerThreadId: "provider-thread",
+            activeAttemptId: "attempt-active",
+            ordinal: 1,
+          },
+        ],
+        messages: [],
+        turnItems,
+        providerTurns: [
+          { id: "provider-turn-active", runAttemptId: "attempt-active", status: "running" },
+        ],
+        providerThreads: [
+          { id: "provider-thread", appThreadId: "thread", providerSessionId: "provider-session" },
+        ],
+        providerSessions: [
+          {
+            id: "provider-session",
+            status: "running",
+            capabilities: capabilities({ steer: true, expedite }),
+          },
+        ],
+      } as never).waitingSteer;
+
+    it("names the steer and the first line of the command it waits behind", () => {
+      expect(
+        derive([item(1, "user_message", { inputIntent: "prompt" }), command(2), steer(3)]),
+      ).toEqual({
+        messageId: "message-3",
+        command: "timeout 580 gh run watch 42",
+      });
+      expect(derive([command(1), steer(2, "promoted_queued_to_steer")])?.messageId).toBe(
+        "message-2",
+      );
+    });
+
+    it("follows the newest steer", () => {
+      expect(derive([command(1), steer(2), steer(3)])?.messageId).toBe("message-3");
+    });
+
+    it("is empty once the agent answers, the command ends, or the command is newer", () => {
+      expect(derive([command(1), steer(2), item(3, "assistant_message")])).toBeNull();
+      expect(derive([command(1), steer(2), item(3, "reasoning")])).toBeNull();
+      expect(derive([command(1, "completed"), steer(2)])).toBeNull();
+      expect(derive([steer(1), command(2)])).toBeNull();
+      expect(derive([command(1)])).toBeNull();
+    });
+
+    it("needs a provider that can stop the command", () => {
+      expect(derive([command(1), steer(2)], false)).toBeNull();
+    });
   });
 
   it.each(["completed", "interrupted", "cancelled", "failed"])(

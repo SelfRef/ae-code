@@ -257,6 +257,13 @@ not been sent yet. On mobile they appear above the composer. Each shows its text
 images. **Send now** sends a message right away, into the running turn if there is one. You can
 also edit or remove it.
 
+A steer does not interrupt a command the agent is waiting on, such as a build or `gh run watch`: the
+agent reads the message when the command ends. While that is the case, a line above the composer says
+`Your message is waiting for <command> to finish`. **Stop it and send now** ends only that command, so
+the agent reads your message at once and sees the command as stopped; the turn, background commands
+and subagents keep running. This is available for Claude on web and desktop, and needs the permission to
+operate threads.
+
 If you stop the agent or the server restarts, queued messages keep their order and are held.
 Press **Resume** in an empty composer to continue. **Resume** also continues a stopped
 run or one that hit a usage limit, even with nothing queued. Sending a new message also resumes the queue, unless it steers a turn that is already

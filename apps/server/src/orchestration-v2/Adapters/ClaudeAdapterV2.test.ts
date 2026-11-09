@@ -3465,6 +3465,100 @@ describe("ClaudeAdapterV2 background wake turns", () => {
     });
   const makeWakeHarness = makeWakeHarnessWithOptions();
 
+  it.effect("expediteSteer stops only the foreground commands of the active turn", () =>
+    Effect.gen(function* () {
+      const idAllocator = yield* IdAllocator.IdAllocatorV2;
+      const stopped: Array<string> = [];
+      const harness = yield* makeWakeHarnessWithOptions({
+        stopTask: (taskId) =>
+          Effect.sync(() => {
+            stopped.push(taskId);
+          }),
+      });
+      const input = makeClaudeTestTurnInput({
+        threadId: harness.threadId,
+        providerThread: harness.providerThread,
+        now: yield* DateTime.now,
+        attemptId: RunAttemptId.make("expedite-attempt"),
+        text: "Watch the run.",
+        attachments: [],
+      });
+      yield* harness.runtime.startTurn(input);
+      const expedite = harness.runtime.expediteSteer;
+      assert.isDefined(expedite);
+      const request = {
+        providerThread: harness.providerThread,
+        providerTurnId: idAllocator.derive.providerTurn({
+          driver: ClaudeAdapterV2.CLAUDE_PROVIDER,
+          nativeTurnId: `turn:${input.attemptId}`,
+        }),
+      };
+      const taskStarted = (taskId: string, isBackgrounded: boolean, uuid: string) =>
+        claudeSdkFrame({
+          type: "system",
+          subtype: "task_started",
+          task_id: taskId,
+          tool_use_id: `tool-${taskId}`,
+          description: "gh run watch",
+          is_backgrounded: isBackgrounded,
+          task_type: "local_bash",
+          uuid,
+          session_id: WAKE_NATIVE_SESSION,
+        });
+
+      // Nothing runs in the foreground yet, so there is nothing to stop.
+      assert.isTrue(Exit.isFailure(yield* expedite!(request).pipe(Effect.exit)));
+
+      yield* harness.offerAndWait(
+        taskStarted("foreground", false, "00000000-0000-4000-8000-000000000901"),
+      );
+      yield* harness.offerAndWait(
+        taskStarted("background", true, "00000000-0000-4000-8000-000000000902"),
+      );
+      yield* expedite!(request);
+      assert.deepEqual(stopped, ["foreground"]);
+
+      // Another turn's id never reaches the query.
+      assert.isTrue(
+        Exit.isFailure(
+          yield* expedite!({
+            ...request,
+            providerTurnId: idAllocator.derive.providerTurn({
+              driver: ClaudeAdapterV2.CLAUDE_PROVIDER,
+              nativeTurnId: "turn:other",
+            }),
+          }).pipe(Effect.exit),
+        ),
+      );
+      assert.deepEqual(stopped, ["foreground"]);
+
+      yield* harness.offerAndWait(
+        claudeSdkFrame({
+          type: "system",
+          subtype: "task_notification",
+          task_id: "foreground",
+          tool_use_id: "tool-foreground",
+          status: "stopped",
+          output_file: "/tmp/claude-replay/tasks/foreground.output",
+          summary: "gh run watch",
+          uuid: "00000000-0000-4000-8000-000000000903",
+          session_id: WAKE_NATIVE_SESSION,
+        }),
+      );
+      assert.isTrue(Exit.isFailure(yield* expedite!(request).pipe(Effect.exit)));
+      assert.deepEqual(stopped, ["foreground"]);
+    }).pipe(
+      Effect.provide(
+        Layer.mergeAll(
+          IdAllocator.layer,
+          McpProviderSessions.layer,
+          NodeServices.layer,
+          NodeCrypto.layer,
+        ),
+      ),
+    ),
+  );
+
   it.effect.each(["release-after", "cancel-after", "release-before", "resume-pending"] as const)(
     "keeps attachment reservations across compaction: %s boundary",
     (outcome) =>

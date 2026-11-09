@@ -285,6 +285,8 @@ export const OrchestrationV2TurnCapabilities = Schema.Struct({
   supportsActiveSteering: Schema.Boolean,
   // Some native steering mechanisms cancel pending tools before consuming the message.
   activeSteeringInterruptsTools: Schema.optional(Schema.Boolean),
+  // A steer can wait behind a running command; some providers can stop that command so it lands now.
+  supportsSteerExpedite: Schema.optional(Schema.Boolean),
   // Some take text only, so a steer with attachments restarts the turn instead.
   activeSteeringAcceptsAttachments: Schema.optional(Schema.Boolean),
   supportsSteeringByInterruptRestart: Schema.Boolean,
@@ -3624,6 +3626,7 @@ export const ORCHESTRATION_V2_WS_METHODS = {
   getWorkflowScript: "orchestration.getWorkflowScript",
   getNativeChildWork: "orchestration.getNativeChildWork",
   stopWorkflow: "orchestration.stopWorkflow",
+  expediteSteer: "orchestration.expediteSteer",
   forceStopThread: "orchestration.forceStopThread",
   getTurnItem: "orchestration.getTurnItem",
   launchThread: "orchestration.launchThread",
@@ -4041,6 +4044,33 @@ export class OrchestrationV2StopWorkflowError extends Schema.TaggedError<Orchest
   }
 }
 
+export const OrchestrationV2ExpediteSteerInput = Schema.Struct({
+  threadId: ThreadId,
+});
+export type OrchestrationV2ExpediteSteerInput = typeof OrchestrationV2ExpediteSteerInput.Type;
+
+export class OrchestrationV2ExpediteSteerError extends Schema.TaggedError<OrchestrationV2ExpediteSteerError>()(
+  "OrchestrationV2ExpediteSteerError",
+  {
+    threadId: ThreadId,
+    reason: Schema.Literals(["not-running", "unsupported", "unavailable", "expedite-failed"]),
+    cause: Schema.optional(Schema.Defect()),
+  },
+) {
+  override get message(): string {
+    switch (this.reason) {
+      case "not-running":
+        return "This thread has no running turn.";
+      case "unsupported":
+        return "This provider cannot stop a running command to deliver a message.";
+      case "unavailable":
+        return "This thread has no live provider session.";
+      case "expedite-failed":
+        return "Failed to stop the running command.";
+    }
+  }
+}
+
 export const OrchestrationV2ForceStopThreadInput = Schema.Struct({
   threadId: ThreadId,
   /** The run the user saw ignore Stop; Force stop refuses once a newer run has started. */
@@ -4315,6 +4345,10 @@ export const OrchestrationV2RpcSchemas = {
   },
   stopWorkflow: {
     input: OrchestrationV2StopWorkflowInput,
+    output: Schema.Void,
+  },
+  expediteSteer: {
+    input: OrchestrationV2ExpediteSteerInput,
     output: Schema.Void,
   },
   forceStopThread: {

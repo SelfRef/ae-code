@@ -33,7 +33,7 @@ What is wanted, who has it, and what this fork does about it. "Planned" and "don
 | Self-hosted Android push                                           | t3dpcode (Expo push), MT Code           | planned, change 10 (ntfy instead)                            |
 | Task board, inbox of what needs you                                | T3 Kanban, T3 Agents, Magnesium         | planned, change 11 (derived from thread state)               |
 | Edit the latest message in place                                   | MT Code                                 | planned, change 12                                           |
-| Take back a steered message, or make it interrupt a long tool call | none found (searched 2026-11-09)        | planned, change 18                                           |
+| Take back a steered message, or make it interrupt a long tool call | none found (searched 2026-11-09)        | stop-and-send done for Claude, take back planned, change 18  |
 | No product analytics by default                                    | E4 Code                                 | done, change 17                                              |
 | Memory for agents                                                  | GOAT, seatedro, Scripted Alchemy, akeru | done, change 13 (modelled on GOAT)                           |
 | Project and thread switchers in the breadcrumb                     | mollymillions-code branch               | planned, change 4                                            |

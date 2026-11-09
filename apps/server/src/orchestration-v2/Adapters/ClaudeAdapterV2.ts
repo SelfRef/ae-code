@@ -422,6 +422,7 @@ export const ClaudeProviderCapabilitiesV2 = {
     supportsInterrupt: true,
     supportsActiveSteering: true,
     activeSteeringInterruptsTools: true,
+    supportsSteerExpedite: true,
     supportsSteeringByInterruptRestart: false,
     supportsQueuedMessages: true,
     terminalStatusQuality: "strong",
@@ -3244,6 +3245,16 @@ function isClaudeNonSubagentTask(message: SDKMessage): boolean {
   return isClaudeOpaqueBackgroundTaskType(claudeTaskTypeFromSdkMessage(message));
 }
 
+// Only an explicit false is a call the tool blocks on; older CLIs omit the flag on background shells too.
+function isClaudeForegroundShellTask(message: SDKMessage): boolean {
+  return (
+    message.type === "system" &&
+    message.subtype === "task_started" &&
+    claudeTaskTypeFromSdkMessage(message) === "local_bash" &&
+    message.is_backgrounded === false
+  );
+}
+
 function isClaudeBackgroundTasksChangedMessage(message: SDKMessage): boolean {
   return message.type === "system" && (message.subtype as string) === "background_tasks_changed";
 }
@@ -5189,6 +5200,9 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
         );
         const interruptedTurns = yield* Ref.make(new Set<OrchestrationV2ProviderTurn["id"]>());
         const steeredTurns = yield* Ref.make(new Set<OrchestrationV2ProviderTurn["id"]>());
+        // The CLI only takes a steer between tool calls, so a command run in the foreground holds it
+        // until it ends. These are the ids to stop when the user wants the steer delivered now.
+        const foregroundShellTaskIds = yield* Ref.make(new Set<string>());
         const queryContext = yield* Ref.make<ClaudeLiveQueryContext | null>(null);
         // Wake buffers replay result frames, so ledger growth is measured once on arrival.
         const resultLedgerUsage = new WeakMap<SDKMessage, ClaudeLedgerUsage>();
@@ -9612,6 +9626,11 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
 
           if (message.type === "system" && message.subtype === "task_started") {
             if (isClaudeNonSubagentTask(message)) {
+              if (isClaudeForegroundShellTask(message)) {
+                yield* Ref.update(foregroundShellTaskIds, (current) =>
+                  new Set(current).add(message.task_id),
+                );
+              }
               const tailedCall =
                 message.tool_use_id === undefined
                   ? undefined
@@ -9756,6 +9775,11 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
           }
 
           if (message.type === "system" && message.subtype === "task_notification") {
+            yield* Ref.update(foregroundShellTaskIds, (current) => {
+              const next = new Set(current);
+              next.delete(message.task_id);
+              return next;
+            });
             const isRegistered = (yield* Ref.get(sessionSubagentsByTaskId)).has(message.task_id);
             // A task whose start is still held for the next wake drain has no
             // node to finish yet; hold its outcome behind that start, or the
@@ -10169,6 +10193,7 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
               next.delete(context.providerTurnId);
               return next;
             });
+            yield* Ref.set(foregroundShellTaskIds, new Set());
             if (!isClaudeProviderContinuationTurn(context.input)) {
               yield* markAbsorbedWake(liveQuery.nativeThreadId);
             }
@@ -12191,6 +12216,45 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
                   }),
               ),
             );
+          }),
+          expediteSteer: Effect.fn("ClaudeAdapterV2.expediteSteer")(function* ({
+            providerThread,
+            providerTurnId,
+          }) {
+            const liveQuery = yield* Ref.get(queryContext);
+            const currentTurn = yield* Ref.get(activeTurn);
+            if (
+              liveQuery === null ||
+              liveQuery.stopping ||
+              liveQuery.nativeThreadId !== providerThread.nativeThreadRef?.nativeId ||
+              currentTurn?.providerTurnId !== providerTurnId
+            ) {
+              return yield* new ProviderAdapter.ProviderAdapterProtocolError({
+                driver: CLAUDE_PROVIDER,
+                detail: `Claude provider turn ${providerTurnId} is not the active turn.`,
+              });
+            }
+            const taskIds = [...(yield* Ref.get(foregroundShellTaskIds))];
+            if (taskIds.length === 0) {
+              return yield* new ProviderAdapter.ProviderAdapterProtocolError({
+                driver: CLAUDE_PROVIDER,
+                detail: "No foreground command is running.",
+              });
+            }
+            // The CLI delivers the pending steer once the call ends, as it does for any aborted tool.
+            const outcomes = yield* Effect.forEach(
+              taskIds,
+              (taskId) => liveQuery.query.stopTask(taskId).pipe(Effect.exit),
+              { concurrency: "unbounded" },
+            );
+            const failure = outcomes.find(Exit.isFailure);
+            if (failure !== undefined && outcomes.every(Exit.isFailure)) {
+              return yield* new ProviderAdapter.ProviderAdapterProtocolError({
+                driver: CLAUDE_PROVIDER,
+                detail: "Failed to stop the foreground command.",
+                cause: failure.cause,
+              });
+            }
           }),
           awaitBackgroundTasks: Effect.fn("ClaudeAdapterV2.awaitBackgroundTasks")(
             function* ({ providerThread, taskIds, awaited }) {

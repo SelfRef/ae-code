@@ -181,6 +181,10 @@ export function createOrchestrationEnvironmentAtoms<R, E>(
       label: "environment-data:orchestration:stop-workflow",
       tag: ORCHESTRATION_V2_WS_METHODS.stopWorkflow,
     }),
+    expediteSteer: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:orchestration:expedite-steer",
+      tag: ORCHESTRATION_V2_WS_METHODS.expediteSteer,
+    }),
     forceStopThread: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:orchestration:force-stop-thread",
       tag: ORCHESTRATION_V2_WS_METHODS.forceStopThread,

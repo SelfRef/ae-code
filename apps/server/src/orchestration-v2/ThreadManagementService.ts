@@ -13,6 +13,8 @@ import {
   CommandId,
   isListedThreadLineage,
   MessageId,
+  OrchestrationV2ExpediteSteerError,
+  type OrchestrationV2ExpediteSteerInput,
   OrchestrationV2StopWorkflowError,
   type OrchestrationV2StopWorkflowInput,
   OrchestrationV2ForceStopThreadError,
@@ -468,6 +470,13 @@ export interface ThreadManagementServiceShape {
   readonly stopWorkflow: (
     input: OrchestrationV2StopWorkflowInput,
   ) => Effect.Effect<void, OrchestrationV2StopWorkflowError>;
+  /**
+   * Stops the command a steer waits behind, so the steer lands now. The provider decides what
+   * that means; a provider that cannot do it answers `unsupported`.
+   */
+  readonly expediteSteer: (
+    input: OrchestrationV2ExpediteSteerInput,
+  ) => Effect.Effect<void, OrchestrationV2ExpediteSteerError>;
   /**
    * Kills the thread's agent for a provider that no longer responds, then ends
    * its turn as interrupted. Never kills a process other working threads share.
@@ -1416,6 +1425,64 @@ const make = Effect.gen(function* () {
     (effect, input) => effect.pipe((effect) => threadDispatch.withLock(input.threadId, effect)),
   );
 
+  const expediteSteer: ThreadManagementServiceShape["expediteSteer"] = Effect.fn(
+    "ThreadManagementService.expediteSteer",
+  )(
+    function* (input) {
+      const unavailable = (cause?: unknown) =>
+        new OrchestrationV2ExpediteSteerError({ ...input, reason: "unavailable", cause });
+      const records = yield* orchestrator
+        .getThreadRecords(input.threadId, ["runs", "providerThreads", "providerTurns"])
+        .pipe(Effect.mapError(unavailable));
+      if (records.thread.deletedAt !== null) return yield* unavailable();
+      // Check mode limits under the lock so users cannot raise modes between validation and Stop.
+      const limit = yield* DispatchModeLimit;
+      const exceeded =
+        limit === undefined ? undefined : exceededDispatchModeLimit(limit, records.thread);
+      if (limit !== undefined && exceeded !== undefined) {
+        if (limit.refused !== undefined) {
+          yield* Ref.set(limit.refused, {
+            threadId: input.threadId,
+            runtimeMode: records.thread.runtimeMode,
+            interactionMode: records.thread.interactionMode,
+            mode: exceeded,
+          });
+        }
+        return yield* unavailable();
+      }
+      const run = records.runs.findLast((candidate) => candidate.status === "running");
+      const providerTurn =
+        run === undefined
+          ? undefined
+          : records.providerTurns.find(
+              (turn) => turn.runAttemptId === run.activeAttemptId && turn.status === "running",
+            );
+      if (run === undefined || providerTurn === undefined) {
+        return yield* new OrchestrationV2ExpediteSteerError({ ...input, reason: "not-running" });
+      }
+      const providerThread = records.providerThreads.find(
+        (candidate) => candidate.id === run.providerThreadId,
+      );
+      if (providerThread?.providerSessionId == null) return yield* unavailable();
+      const runtime = yield* sessions
+        .get(providerThread.providerSessionId)
+        .pipe(Effect.mapError(unavailable));
+      if (Option.isNone(runtime)) return yield* unavailable();
+      if (runtime.value.expediteSteer === undefined) {
+        return yield* new OrchestrationV2ExpediteSteerError({ ...input, reason: "unsupported" });
+      }
+      // Bounded so a provider that never answers cannot hold the thread lock.
+      yield* runtime.value.expediteSteer({ providerThread, providerTurnId: providerTurn.id }).pipe(
+        Effect.timeout("15 seconds"),
+        Effect.mapError(
+          (cause) =>
+            new OrchestrationV2ExpediteSteerError({ ...input, reason: "expedite-failed", cause }),
+        ),
+      );
+    },
+    (effect, input) => effect.pipe((effect) => threadDispatch.withLock(input.threadId, effect)),
+  );
+
   const awaitBackgroundTasks: ThreadManagementServiceShape["awaitBackgroundTasks"] = Effect.fn(
     "ThreadManagementService.awaitBackgroundTasks",
   )(function* (input) {
@@ -1622,6 +1689,7 @@ const make = Effect.gen(function* () {
     interruptThread,
     stopDelegatedTasks,
     stopWorkflow,
+    expediteSteer,
     forceStopThread,
     awaitBackgroundTasks,
     getThreadEventSequence: orchestrator.getThreadEventSequence,

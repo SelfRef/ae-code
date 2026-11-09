@@ -31,8 +31,17 @@ export interface QueuedThreadRun {
   readonly message?: Message;
 }
 
+/** A steer the agent has not taken yet because a command that began earlier is still running. */
+export interface WaitingSteer {
+  readonly messageId: Message["id"];
+  /** The first line of the command the steer waits behind. */
+  readonly command: string;
+}
+
 export interface ThreadQueueWorkflowState {
   readonly activeRun: Run | null;
+  /** Set only when the provider can stop that command (`supportsSteerExpedite`). */
+  readonly waitingSteer: WaitingSteer | null;
   readonly queuedRuns: ReadonlyArray<QueuedThreadRun>;
   readonly isHeld: boolean;
   readonly canPromoteToSteer: boolean;
@@ -128,6 +137,48 @@ export function getUserQueuedThreadRuns(
   );
 }
 
+/**
+ * The newest steer of the run is waiting while a command that began before it still runs and the
+ * agent has said nothing since. The provider holds a steer until the call ends, so the command is
+ * the only thing between the message and the agent.
+ */
+function deriveWaitingSteer(projection: Projection, run: Run): WaitingSteer | null {
+  const items = projection.turnItems.filter((item) => item.runId === run.id);
+  const steer = items
+    .filter(
+      (item) =>
+        item.type === "user_message" &&
+        (item.inputIntent === "steer" || item.inputIntent === "promoted_queued_to_steer"),
+    )
+    .reduce<(typeof items)[number] | null>(
+      (latest, item) => (latest === null || item.ordinal > latest.ordinal ? item : latest),
+      null,
+    );
+  if (steer === null || steer.type !== "user_message") return null;
+  const answered = items.some(
+    (item) =>
+      item.ordinal > steer.ordinal &&
+      (item.type === "assistant_message" || item.type === "reasoning"),
+  );
+  if (answered) return null;
+  const blocking = items
+    .filter(
+      (item) =>
+        item.type === "command_execution" &&
+        item.status === "running" &&
+        item.ordinal < steer.ordinal,
+    )
+    .reduce<(typeof items)[number] | null>(
+      (latest, item) => (latest === null || item.ordinal > latest.ordinal ? item : latest),
+      null,
+    );
+  if (blocking === null || blocking.type !== "command_execution") return null;
+  return {
+    messageId: steer.messageId,
+    command: blocking.input.split("\n", 1)[0]?.trim() ?? "",
+  };
+}
+
 export function deriveThreadQueueWorkflowState(projection: Projection): ThreadQueueWorkflowState {
   const activeRun = resolveActiveThreadRun(projection);
   const session = resolveThreadProviderSession(projection);
@@ -163,6 +214,12 @@ export function deriveThreadQueueWorkflowState(projection: Projection): ThreadQu
 
   return {
     activeRun,
+    waitingSteer:
+      activeRun?.status === "running" &&
+      hasSteerableProviderTurn &&
+      capabilities?.supportsSteerExpedite === true
+        ? deriveWaitingSteer(projection, activeRun)
+        : null,
     queuedRuns,
     isHeld: projection.runs.some((run) => run.status === "queued" && run.queueHeld === true),
     canSendNow:
