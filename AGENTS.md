@@ -4,13 +4,15 @@ T3 Code is a minimal GUI for coding agents. A Node WebSocket server wraps provid
 
 ## This fork
 
-This checkout is a personal fork (`origin` = SelfRef/t3code, `upstream` = pingdotgg/t3code). Its changes are not offered upstream: never open a PR, issue or discussion against `upstream`.
+This checkout is a personal fork (`origin` = SelfRef/ae-code, `upstream` = pingdotgg/t3code). It ships as AE Code: app id `dev.aperte.AECode`, state in `~/.ae`, Electron profile `ae-code`, releases and updates from `SelfRef/ae-code`; env vars (`T3CODE_*`), package names and the `t3` command keep upstream's names. See `docs/FORK_CHANGES.md`. Its changes are not offered upstream: never open a PR, issue or discussion against `upstream`.
 
 - Commit straight to `main`; no feature branches unless asked. Never push; the owner pushes.
 - Commit messages: Conventional Commits, one line, no body, no `Co-Authored-By` or other AI attribution in commits or files.
 - Keep the fork easy to rebase onto `upstream/main`: one logical change per commit, small diffs to upstream files, new code in new files where it fits.
 - The fork is public: keep it generic, with no hostnames, paths or details of the setup it is deployed in.
-- Commit hooks need Node. If the host has none, run the hooks from a `node` container that mounts this checkout, and make the signed commit on the host.
+- Renaming or moving anything persisted (state dirs, profile names, database or settings locations) needs a row and migration steps in the "Data migration" section of `docs/FORK_CHANGES.md`, in the same commit.
+- Keep upstream's identifiers (env vars, package and component names, file names) and change values only, so rebases stay small.
+- The pre-commit hook is not installed on this checkout (`core.hooksPath` is unset), so nothing formats on commit. If the host has no Node, run `vp fmt <files>` and the tests from a `node` container that mounts this checkout, and commit on the host.
 
 ## Constraints that shape every change
 
@@ -33,7 +35,7 @@ This checkout is a personal fork (`origin` = SelfRef/t3code, `upstream` = pingdo
 ## The three ways to hurt yourself
 
 1. **Killing by pattern.** Never `pkill -f`, `pgrep | kill`, or `kill` a PID you found by matching a name, path, or worktree string. Your own agent process has this worktree's path in its argv, and this machine runs several other dev servers at once. Kill only a PID you captured at spawn, or the owner of your port from `ss -H -ltnp` after confirming `/proc/<pid>/cwd` is your worktree.
-2. **Writing to the live install.** `~/.t3/userdata` is the developer's real T3 Code database, in use while you work. Reading it and copying from it are fine, and a good way to get real test data (see Test data). Never start a server against it, never open it read-write, never clean it up.
+2. **Writing to the live install.** `~/.ae/userdata` is the developer's real AE Code database, in use while you work. Reading it and copying from it are fine, and a good way to get real test data (see Test data). Never start a server against it, never open it read-write, never clean it up.
 3. **Baking in origins.** Never set `VITE_HTTP_URL` or `VITE_WS_URL` for dev. Dev is single-origin and Vite proxies `/api`, `/ws`, `/oauth`, and `/.well-known`. Setting them bakes localhost into the bundle and silently breaks every remote browser.
 
 Most work on this repo is done by T3 Code itself, often remotely: be careful about accessing data, killing dev servers, and anything else that could damage the running instance.
@@ -67,7 +69,7 @@ The most common defect in this repo is a change that works on the path you teste
 An empty database is a bad test. Seed your worktree's `.t3` with a copy of real data instead of pointing at live state:
 
 - The first `vp run dev` in a worktree does this when its database is missing and the source is at most 500 MiB. Larger sources warn and dev starts with an empty database. `--no-seed` or `T3CODE_DEV_SEED=0` skips seeding. Manual migration still accepts larger sources and may use substantial disk space before pruning.
-- Run `vp run migrate-dev-db` with your dev server stopped to refresh. It rebuilds `<worktree>/.t3/userdata/statev2.sqlite` from a read-only snapshot of `~/.t3/userdata/statev2.sqlite`. It keeps recent projects and their stopped threads, and drops scheduled tasks, pending work, auth sessions, and links to other environments, so your dev server never runs the developer's agents or reaches their other machines. Raise `--projects` and `--threads-per-project` for more data.
+- Run `vp run migrate-dev-db` with your dev server stopped to refresh. It rebuilds `<worktree>/.t3/userdata/statev2.sqlite` from a read-only snapshot of `~/.ae/userdata/statev2.sqlite`. It keeps recent projects and their stopped threads, and drops scheduled tasks, pending work, auth sessions, and links to other environments, so your dev server never runs the developer's agents or reaches their other machines. Raise `--projects` and `--threads-per-project` for more data.
 - Refresh `statev2.sqlite`, not `state.sqlite`. The server copies the V1 `state.sqlite` only when `statev2.sqlite` is missing.
 - Bring `secrets` and `settings.json` only if the flow under test needs them.
 - Copy in, never symlink. Data flows one way: into your sandbox, never back out.
