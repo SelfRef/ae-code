@@ -666,6 +666,14 @@ export interface ProviderAdapterV2SessionRuntime {
     readonly taskId: string;
   }) => Effect.Effect<void, ProviderAdapterV2Error>;
   /**
+   * Stops what a steer waits behind, such as a running command, so the steer is delivered now.
+   * Stops nothing else: the turn, its subagents and background tasks keep running.
+   */
+  readonly expediteSteer?: (input: {
+    readonly providerThread: OrchestrationV2ProviderThread;
+    readonly providerTurnId: OrchestrationV2ProviderTurn["id"];
+  }) => Effect.Effect<void, ProviderAdapterV2Error>;
+  /**
    * Marks or unmarks background tasks the agent will resume from, using the ids the agent saw.
    * Ids not running on this provider thread come back unmatched and change nothing.
    */
