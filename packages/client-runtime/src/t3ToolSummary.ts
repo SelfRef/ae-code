@@ -349,6 +349,15 @@ export function summarizeT3ToolCalls(
         quantity(countEntities(entityIds("cwd")), "repository", "repositories"),
       );
       break;
+    case "memory-recall":
+      label = phrase("Recalled", "recall", `saved memory ${times}`);
+      break;
+    case "memory-remember":
+      label = phrase("Saved", "save", `memory ${times}`);
+      break;
+    case "memory-forget":
+      label = phrase("Forgot", "forget", `memory ${times}`);
+      break;
     case "environment-read":
       label = phrase("Checked", "check", `environment preferences ${times}`);
       break;

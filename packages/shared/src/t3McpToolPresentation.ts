@@ -50,6 +50,9 @@ export type T3McpToolSummaryAction =
   | "project-update"
   | "project-delete"
   | "project-clone"
+  | "memory-recall"
+  | "memory-remember"
+  | "memory-forget"
   | "environment-read"
   | "environment-links"
   | "environment-link"
@@ -355,6 +358,9 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
     "environment-update",
   ),
   t3_thread_launch: tool(["Launch", "Launching", "Launched", "a project thread"], "thread-create"),
+  t3_memory_recall: tool(["Recall", "Recalling", "Recalled", "saved memory"], "memory-recall"),
+  t3_memory_remember: tool(["Save", "Saving", "Saved", "a memory"], "memory-remember"),
+  t3_memory_forget: tool(["Forget", "Forgetting", "Forgot", "a memory"], "memory-forget"),
   t3_project_list: tool(["List", "Listing", "Listed", "projects"], "project-list"),
   t3_project_read: tool(["Read", "Reading", "Read", "a project"], "project-read"),
   t3_project_create: tool(["Register", "Registering", "Registered", "a project"], "project-create"),
