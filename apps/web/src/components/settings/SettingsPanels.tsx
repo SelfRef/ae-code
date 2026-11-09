@@ -2112,7 +2112,7 @@ export function AboutSettingsPanel() {
           {...searchableSetting("privacy-policy")}
           description={
             telemetryOff === undefined
-              ? "How we handle your data, including the anonymous usage data T3 Code collects."
+              ? "How we handle your data. AE Code sends no anonymous usage data."
               : `How we handle your data. ${telemetryOff}`
           }
           control={
