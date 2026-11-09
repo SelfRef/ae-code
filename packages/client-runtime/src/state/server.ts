@@ -1573,6 +1573,11 @@ export function createServerEnvironmentAtoms<R, E>(
       scheduler: configScheduler,
       concurrency: configConcurrency,
     }),
+    // A command, not a query: it reads server files, which the client guards by scope.
+    scanClaudeMemories: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:memory:import-scan",
+      tag: WS_METHODS.memoryImportScan,
+    }),
     setMemorySettings: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:server:memory:set-settings",
       tag: WS_METHODS.memorySetSettings,
