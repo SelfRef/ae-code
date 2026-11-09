@@ -1,7 +1,7 @@
 # Fork references
 
 Other forks of [pingdotgg/t3code](https://github.com/pingdotgg/t3code) and what each adds on top of upstream, kept as
-a source of ideas and code to port. What this fork does itself is in [FORK_CHANGES.md](./FORK_CHANGES.md); it links
+a source of ideas and code to port. What this fork does itself is in [ROADMAP.md](./ROADMAP.md); it links
 here for where an idea came from. Snapshot of 2026-11-09.
 
 **How this was gathered.** GitHub lists about 10,100 forks of upstream. Two surveys feed this file, both on 2026-11-09.
@@ -25,7 +25,7 @@ and a size is the commit's size on the fork's own, older base, so a port costs s
 ## Feature index
 
 What is wanted, who has it, and what this fork does about it. "Planned" and "done" refer to rows in
-[FORK_CHANGES.md](./FORK_CHANGES.md).
+[ROADMAP.md](./ROADMAP.md).
 
 | Feature                                                            | Forks                                   | Here                                                         |
 | ------------------------------------------------------------------ | --------------------------------------- | ------------------------------------------------------------ |

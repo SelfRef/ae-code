@@ -2,7 +2,7 @@ name: AE sync
 
 # Rebases the fork's patch stack onto upstream's main every day and force-pushes
 # main. A conflict fails the run and pushes nothing: resolve it locally (see
-# docs/FORK_CHANGES.md, "Keeping the fork up to date with upstream").
+# docs/ROADMAP.md, "Keeping the fork up to date with upstream").
 on:
   schedule:
     # Avoid minute zero, when GitHub scheduled jobs are busiest.
