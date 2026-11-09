@@ -84,6 +84,33 @@ export type MemoryDeleteInput = typeof MemoryDeleteInput.Type;
 export const MemoryDeleteResult = Schema.Struct({ id: MemoryId });
 export type MemoryDeleteResult = typeof MemoryDeleteResult.Type;
 
+/** `path` is the folder that holds one directory per project, as Claude Code keeps them: `~/.claude/projects`. */
+export const MemoryImportScanInput = Schema.Struct({ path: Schema.optional(Schema.String) });
+export type MemoryImportScanInput = typeof MemoryImportScanInput.Type;
+
+export const MemoryImportEntry = Schema.Struct({
+  file: Schema.String,
+  name: Schema.String,
+  /** Claude's own kind: user, feedback, project or reference. */
+  kind: Schema.NullOr(Schema.String),
+  /** What would be saved: the description, then the body. */
+  text: Schema.String,
+});
+export type MemoryImportEntry = typeof MemoryImportEntry.Type;
+
+export const MemoryImportGroup = Schema.Struct({
+  /** The directory's name, the project's path with its separators turned into dashes. */
+  directory: Schema.String,
+  entries: Schema.Array(MemoryImportEntry),
+});
+export type MemoryImportGroup = typeof MemoryImportGroup.Type;
+
+export const MemoryImportScanResult = Schema.Struct({
+  path: Schema.String,
+  groups: Schema.Array(MemoryImportGroup),
+});
+export type MemoryImportScanResult = typeof MemoryImportScanResult.Type;
+
 export class MemoryError extends Schema.TaggedError<MemoryError>()("MemoryError", {
   code: Schema.Literals(["invalid", "not_found", "limit", "unavailable", "disabled"]),
   message: Schema.String,
