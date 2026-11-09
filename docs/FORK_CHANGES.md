@@ -6,26 +6,43 @@ Upstream: [pingdotgg/t3code](https://github.com/pingdotgg/t3code). This fork is 
 **Policy: no PRs.** Changes are not offered upstream (its `CONTRIBUTING.md` turns away unsolicited features; its
 `AGENTS.md` says "a large number of our users run forks"). They live in this fork, kept easy to rebase on upstream.
 
-| #   | Change                                                                                                                                                                 | Status  |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| 17  | No product analytics: the server sends no usage events unless `T3CODE_TELEMETRY_ENABLED=true` (idea from E4 Code)                                                      | done    |
-| 16  | Manage MCP servers from Settings: extra stdio and HTTP servers added to every provider session (port of E4 Code's patch or a smaller own version)                      | planned |
-| 15  | Remove a built-in provider (Codex, Claude, ...) from Settings and the registry, with Restore                                                                           | done    |
-| 14  | No git hooks: upstream's pre-commit hook, its `prepare` script and the `staged` config in `vite.config.ts` are removed (they need Node on the committing host)         | done    |
-| 13  | Memory: saved preferences and decisions agents on any provider can recall and save, with a Settings page (modelled on GOAT's, cut down)                                | done    |
-| 12  | Edit the latest message in place: the prompt becomes an inline editor, saving rewinds the thread and resends (idea from MT Code)                                       | planned |
-| 11  | Inbox and board across projects, derived from thread state: what needs you, what runs, what awaits review (idea from T3 Kanban, not 1:1)                               | planned |
-| 10  | Self-hosted Android push: the server notifies through ntfy instead of the hosted relay                                                                                 | planned |
-| 9   | Android app: AE Code package id, built and signed by the release workflow                                                                                              | done    |
-| 8   | Docker image of the release server on GHCR                                                                                                                             | done    |
-| 7   | Date-versioned releases (`vYYYY.MM.DD`): the Linux x64 server archive                                                                                                  | done    |
-| 6   | Daily sync: a workflow rebases the patch stack onto upstream and force-pushes `main`                                                                                   | done    |
-| 5   | Claude usage limits for a setup-token session: let `rate_limit_event` stream updates fill the bars when `get_usage` is unsupported                                     | planned |
-| 4   | Project and thread switchers in the chat breadcrumb (ported from a community branch, below)                                                                            | planned |
-| 3   | Claude reply text streams while it is written (upstream's `ClaudeAdapterV2` drops `text_delta`, issue #17270; port of the closed PR #22165 onto the 2026-11-08 `main`) | done    |
-| 2   | GitHub Issues panel: list, read, comment, edit, label, close/reopen issues per project                                                                                 | planned |
-| 1   | Linux desktop as a Device-panel device (headless Mutter/GNOME Shell + capture + input)                                                                                 | planned |
-| 0   | Rebrand as AE Code: own app id and state dir, Aperte icon                                                                                                              | done    |
+| #    | Change                                                                                                                                                                 | Status  |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [17] | No product analytics: the server sends no usage events unless `T3CODE_TELEMETRY_ENABLED=true` (idea from E4 Code)                                                      | done    |
+| [16] | Manage MCP servers from Settings: extra stdio and HTTP servers added to every provider session (port of E4 Code's patch or a smaller own version)                      | planned |
+| [15] | Remove a built-in provider (Codex, Claude, ...) from Settings and the registry, with Restore                                                                           | done    |
+| 14   | No git hooks: upstream's pre-commit hook, its `prepare` script and the `staged` config in `vite.config.ts` are removed (they need Node on the committing host)         | done    |
+| [13] | Memory: saved preferences and decisions agents on any provider can recall and save, with a Settings page (modelled on GOAT's, cut down)                                | done    |
+| [12] | Edit the latest message in place: the prompt becomes an inline editor, saving rewinds the thread and resends (idea from MT Code)                                       | planned |
+| [11] | Inbox and board across projects, derived from thread state: what needs you, what runs, what awaits review (idea from T3 Kanban, not 1:1)                               | planned |
+| [10] | Self-hosted Android push: the server notifies through ntfy instead of the hosted relay                                                                                 | planned |
+| [9]  | Android app: AE Code package id, built and signed by the release workflow                                                                                              | done    |
+| [8]  | Docker image of the release server on GHCR                                                                                                                             | done    |
+| [7]  | Date-versioned releases (`vYYYY.MM.DD`): the Linux x64 server archive                                                                                                  | done    |
+| [6]  | Daily sync: a workflow rebases the patch stack onto upstream and force-pushes `main`                                                                                   | done    |
+| [5]  | Claude usage limits for a setup-token session: let `rate_limit_event` stream updates fill the bars when `get_usage` is unsupported                                     | planned |
+| [4]  | Project and thread switchers in the chat breadcrumb (ported from a community branch, below)                                                                            | planned |
+| 3    | Claude reply text streams while it is written (upstream's `ClaudeAdapterV2` drops `text_delta`, issue #17270; port of the closed PR #22165 onto the 2026-11-08 `main`) | done    |
+| [2]  | GitHub Issues panel: list, read, comment, edit, label, close/reopen issues per project                                                                                 | planned |
+| [1]  | Linux desktop as a Device-panel device (headless Mutter/GNOME Shell + capture + input)                                                                                 | planned |
+| [0]  | Rebrand as AE Code: own app id and state dir, Aperte icon                                                                                                              | done    |
+
+[0]: #identity-change-0
+[1]: #linux-desktop-in-the-device-panel-change-1
+[2]: #issues-panel-change-2
+[4]: #breadcrumb-switchers-change-4
+[5]: #claude-usage-limits-with-a-setup-token-change-5
+[6]: #daily-sync-change-6
+[7]: #releases-changes-7-and-9
+[8]: #docker-image-change-8
+[9]: #releases-changes-7-and-9
+[10]: #self-hosted-android-push-change-10
+[11]: #inbox-and-board-change-11
+[12]: #edit-the-latest-message-in-place-change-12
+[13]: #memory-change-13
+[15]: #removing-a-built-in-provider-change-15
+[16]: #mcp-servers-from-settings-change-16
+[17]: #no-product-analytics-change-17
 
 `done` means it is a commit on `main`; the commit is found by subject (`git log --grep`), not by hash, because every
 rebase onto upstream changes the hashes. The history rules and the sync procedure are in the last section.
