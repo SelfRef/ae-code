@@ -15,6 +15,25 @@ Memory is background, not orders. Agents are told to treat it as reference data 
 changed. A short note about memory goes into each new session, but the memories themselves are sent to a model only when
 an agent asks for them.
 
+A new Claude session starts with your newest memories already in front of it (all-projects ones first, then the
+thread's project's), the way Claude's own memory index would be. The rest are one search away. Other providers get the
+search and save tools, but no starting list.
+
+## Import Claude's memories
+
+**Import from Claude** (Settings → Memory) copies what Claude Code saved on its own into this memory. Enter the folder
+that holds Claude's project folders (`~/.claude/projects` is the default, on the machine the environment runs on) and
+**Scan**:
+
+- Notes Claude kept about you or your preferences (`user`, `feedback`) import as **All projects**.
+- Notes about one project (`project`, `reference`) need a project. The dialog picks it when the project's path matches
+  Claude's folder name; otherwise choose one per folder.
+- A note over 2000 characters is listed but cannot be imported: split it first. One you already saved is not added
+  twice. Claude's files are never changed.
+
+Claude Code keeps conversation transcripts in the same folder, so on a container copy only the `memory` folders there
+rather than sharing the whole thing.
+
 ## Switches
 
 Both are at the top of **Settings → Memory** and apply to new sessions, not ones already running.

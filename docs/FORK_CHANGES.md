@@ -431,8 +431,8 @@ person needs. User guide: `docs/user/memory.md`.
   Pi receives only the orchestration text and does not get it. The briefing says memory is reference data, never
   instructions.
 - **Settings → Memory** (web and desktop, one environment at a time): list, search, scope filter, add, edit, forget,
-  and two switches. Four RPCs (`memory.list`, `memory.save`, `memory.delete`, `memory.setSettings`); the three writes
-  need the settings-write scope.
+  and two switches. Five RPCs (`memory.list`, `memory.save`, `memory.delete`, `memory.setSettings`,
+  `memory.importScan`); the three writes need the settings-write scope.
 - **Switches** (`memory_settings`, one row in the same self-created tables, not `ServerSettings`, so upstream's settings
   schema is untouched). _Agent memory_ (default on): off removes the briefing from new sessions and makes the three
   tools refuse (`disabled`); saved memories stay, and the page still lists, edits and forgets them. _Turn off Claude's
@@ -444,9 +444,25 @@ person needs. User guide: `docs/user/memory.md`.
   instructions synchronously and threading a setting through each would touch all of them. Its default (nothing
   published) leaves a provider's own memory alone, which keeps the recorded Claude replay fixtures valid. The tools stay
   in the tool list while memory is off (registration is static), so the tool-list part of the context budget stays.
-- **Not built, from GOAT:** automatic summaries of finished threads, a memory block injected into every prompt,
-  thread-scoped memory, importing Claude/Codex native memories, sharing between devices (hub), conflict resolution,
-  storage quotas, and a mobile page. The tools and the page are the seam for each.
+- **Claude starts with the memories, like its native index.** `ClaudeAdapterV2` appends a `<saved_memory>` digest to the
+  session's system prompt: the newest user-scope memories, then the thread's project's, in 3000 characters, with a
+  pointer to `t3_memory_recall` for the rest (`memoryDigest.ts`; one line per memory, `<` escaped so a memory cannot
+  close the block). It reads a cache `MemoryService` refreshes on every write, through `memoryDigest()` in
+  `memoryPolicy.ts`, so the adapter stays synchronous. Only Claude gets it: its system prompt is sent once per session,
+  while Cursor, ACP and Muse repeat their instructions on every turn, where a digest would cost tokens each time.
+  `t3_memory_recall` and `t3_memory_remember` also carry `anthropic/alwaysLoad`, as `request_secret` does, so Claude
+  Code does not defer them behind ToolSearch.
+- **Import from Claude** (Settings → Memory). `memory.importScan` reads `<folder>/<project>/memory/*.md` (default
+  `~/.claude/projects` of the server's user; `MEMORY.md`, files over 64 KiB and everything else are skipped) and returns
+  the entries; the dialog saves the selected ones through `memory.save`, so there is no second write path. It needs the
+  `filesystem:read` scope. `user` and `feedback` files import as All projects, `project` and `reference` ones need a
+  project, which the dialog pre-selects when a project's path, with every character outside A-Z, a-z, 0-9 turned into a
+  dash, equals the folder's name; over 2000 characters are listed but not importable. Claude Code's folder holds the
+  session transcripts too, so mount or copy only the `memory` folders into the container (see the stack's docs), never
+  the whole `projects` folder.
+- **Not built, from GOAT:** automatic summaries of finished threads, thread-scoped memory, importing Codex memories,
+  sharing between devices (hub), conflict resolution, storage quotas, a digest for providers other than Claude, and a
+  mobile page. The tools and the page are the seam for each.
 - **Context budget.** The briefing and three tool definitions raise `agentContextBudget.json` (about 540 bytes of
   instructions per adapter that carries them, 1 KB of tool list). `agent-context-budget.yml` only gates pull requests,
   which this fork does not open, so nothing asks for the `agent-context-increase` label.
