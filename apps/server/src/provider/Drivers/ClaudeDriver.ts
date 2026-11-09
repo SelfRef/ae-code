@@ -46,6 +46,7 @@ import {
   type ProviderInstance,
 } from "@t3tools/provider-core/server/driver";
 import { withInstanceIdentity } from "@t3tools/provider-core/server/instanceIdentity";
+import { applyManagedNpmInstallStatus } from "@t3tools/provider-core/server/managedNpmInstall";
 import { enrichProviderSnapshotWithVersionAdvisory } from "@t3tools/provider-core/server/maintenanceResolver";
 import {
   haveProviderSnapshotSettingsChanged,
@@ -288,6 +289,9 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv, Path.
               : Effect.void,
           ),
           Effect.map(stampIdentity),
+          Effect.flatMap((provider) =>
+            applyManagedNpmInstallStatus(provider, effectiveConfig.binaryPath, processEnv),
+          ),
         ),
       ),
       // Disabled, failed version checks and interruption never reach the probe.
