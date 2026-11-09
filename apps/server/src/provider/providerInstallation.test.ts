@@ -16,6 +16,7 @@ import * as Stream from "effect/Stream";
 
 import * as ServerSettings from "../serverSettings.ts";
 import * as CodexInstallation from "./CodexInstallation.ts";
+import * as NpmPackageInstallation from "./NpmPackageInstallation.ts";
 import * as AntigravityInstallation from "./AntigravityInstallation.ts";
 import { ProviderDriverError } from "@t3tools/provider-core/server/errors";
 import type { ProviderInstance } from "@t3tools/provider-core/server/driver";
@@ -63,10 +64,12 @@ const makeHarness = Effect.fn("providerInstallation.test.makeHarness")(function*
   } = {},
 ) {
   const calls: string[] = [];
+  let npmOperations = 0;
   const refreshed = yield* Deferred.make<void>();
   const observed = yield* Deferred.make<void>();
   const listening = yield* Deferred.make<void>();
   const installationState = yield* SubscriptionRef.make(state);
+  const npmState = yield* SubscriptionRef.make(state);
   let protectedPaths: ReadonlyArray<string> = [];
   const configured = input.instance ?? instance();
   const dependencies = Layer.mergeAll(
@@ -100,6 +103,25 @@ const makeHarness = Effect.fn("providerInstallation.test.makeHarness")(function*
           protectedPaths = paths ?? [];
           calls.push("codex-remove");
         }),
+    }),
+    Layer.mock(NpmPackageInstallation.NpmPackageInstallation)({
+      start: (npmDriver) =>
+        Effect.sync(() => {
+          calls.push(`npm-start:${npmDriver}`);
+          return {
+            ...state,
+            driver: npmDriver,
+            operationId: `npm-${++npmOperations}`,
+            phase: "installing" as const,
+          };
+        }).pipe(Effect.tap((started) => SubscriptionRef.set(npmState, started))),
+      cancel: (npmDriver) =>
+        Effect.sync(() => {
+          calls.push(`npm-cancel:${npmDriver}`);
+          return state;
+        }),
+      state: () => SubscriptionRef.get(npmState),
+      changes: () => SubscriptionRef.changes(npmState),
     }),
     Layer.mock(AntigravityInstallation.AntigravityInstallation)({
       managedDirectory: "/unused-managed-runtime",
@@ -139,6 +161,7 @@ const makeHarness = Effect.fn("providerInstallation.test.makeHarness")(function*
     refreshed,
     observed,
     installationState,
+    npmState,
     protectedPaths: () => protectedPaths,
   };
 });
@@ -251,4 +274,68 @@ describe("provider installation routing", () => {
       assert.deepEqual(harness.calls, ["remove", "refresh"]);
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );
+
+  describe.each([
+    { name: "claudeAgent", binary: "claude" },
+    { name: "opencode", binary: "opencode" },
+  ])("npm-installed $name", ({ name, binary }) => {
+    const npmDriver = ProviderDriverKind.make(name);
+    const npmInstanceId = ProviderInstanceId.make(name);
+    const makeNpmHarness = (config?: Record<string, unknown>) =>
+      makeHarness({
+        instance: instance(npmDriver, npmInstanceId),
+        ...(config
+          ? { settings: { providerInstances: { [npmInstanceId]: { driver: npmDriver, config } } } }
+          : {}),
+      });
+
+    it.effect.each([
+      { label: "no settings", config: undefined },
+      { label: "empty settings", config: {} },
+      { label: "the default binary path", config: { binaryPath: binary } },
+    ] as const)("starts npm for $label and refreshes the driver once npm succeeds", ({ config }) =>
+      Effect.gen(function* () {
+        const harness = yield* makeNpmHarness(config);
+        const started = yield* harness.router.start({ instanceId: npmInstanceId });
+        assert.strictEqual(started.phase, "installing");
+        yield* SubscriptionRef.set(harness.npmState, { ...started, phase: "succeeded" as const });
+        yield* Deferred.await(harness.refreshed);
+        assert.deepEqual(harness.calls, [`npm-start:${name}`, "refresh"]);
+      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+    );
+
+    it.effect("cancels through npm and refreshes only for an install that succeeded", () =>
+      Effect.gen(function* () {
+        const harness = yield* makeNpmHarness();
+        const first = yield* harness.router.start({ instanceId: npmInstanceId });
+        yield* harness.router.cancel({ instanceId: npmInstanceId, operationId: "npm-1" });
+        yield* SubscriptionRef.set(harness.npmState, { ...first, phase: "failed" as const });
+        // The failed run is over; a refresh for it would land before this one's.
+        const second = yield* harness.router.start({ instanceId: npmInstanceId });
+        yield* SubscriptionRef.set(harness.npmState, { ...second, phase: "succeeded" as const });
+        yield* Deferred.await(harness.refreshed);
+        assert.deepEqual(harness.calls, [
+          `npm-start:${name}`,
+          `npm-cancel:${name}`,
+          `npm-start:${name}`,
+          "refresh",
+        ]);
+      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+    );
+
+    it.effect("keeps a custom executable and removal manual", () =>
+      Effect.gen(function* () {
+        const harness = yield* makeNpmHarness({ binaryPath: `/opt/${binary}` });
+        const start = yield* Effect.flip(harness.router.start({ instanceId: npmInstanceId }));
+        const remove = yield* Effect.flip(harness.router.remove({ instanceId: npmInstanceId }));
+        assert.include(start.detail, "custom executable");
+        assert.include(remove.detail, "custom executable");
+        const defaultRemove = yield* Effect.flip(
+          (yield* makeNpmHarness()).router.remove({ instanceId: npmInstanceId }),
+        );
+        assert.include(defaultRemove.detail, "not available");
+        assert.deepEqual(harness.calls, []);
+      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+    );
+  });
 });

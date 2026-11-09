@@ -152,6 +152,8 @@ export const ProviderInstallState = Schema.Struct({
     "downloading",
     "extracting",
     "verifying",
+    // A package manager run reports no byte progress.
+    "installing",
     "succeeded",
     "failed",
     "cancelled",

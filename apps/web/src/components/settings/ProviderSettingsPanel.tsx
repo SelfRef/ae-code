@@ -102,6 +102,8 @@ import { ProviderSetupSection, readAntigravityAuthMethod } from "./ProviderSetup
 import { ProviderAuthenticationSection } from "./ProviderAuthenticationSection";
 import { CodexSetupSection, CodexManagedRuntimeFields } from "./CodexSetupSection";
 import { readCodexSetupMode } from "./CodexSetupSection.logic";
+import { ManagedCliInstallSection } from "./ManagedCliInstallSection";
+import { canOfferManagedCliInstall } from "./ManagedCliInstallSection.logic";
 import { providerClients } from "./providerDriverMeta";
 import { searchableSetting } from "./settingsSearch";
 import { CompactIdleThreadsRow } from "./SettingsPanels";
@@ -1372,6 +1374,13 @@ function ProviderInstanceRow({
                 },
               })
             }
+          />
+        ) : mode === "editor" && !readOnly && canOfferManagedCliInstall(liveProvider) ? (
+          <ManagedCliInstallSection
+            key={`${environmentId}:${instanceId}`}
+            environmentId={environmentId}
+            instanceId={instanceId}
+            cliName={resetLabel}
           />
         ) : mode === "editor" &&
           !readOnly &&
