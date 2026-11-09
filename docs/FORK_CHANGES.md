@@ -676,10 +676,11 @@ CLI) is left with a dead row and a dead entry in the model pickers.
   (`ProviderInstanceConfig.hidden`, optional). Its other settings are kept.
 - The server leaves a `hidden` instance out of the registry (`deriveProviderInstanceConfigMap`), so it is not probed
   and not offered. Settings does not list it; threads that used it get the usual unavailable message.
-- **Restore** is a button under the provider list, one per removed provider: it clears `hidden` and turns the instance on.
+- **Getting it back** is Add provider, which still offers every driver: it creates a new instance (the default id
+  stays reserved for the removed one).
 - No data migration: the field is new and optional. An older server ignores it and shows the provider disabled.
 - **Rebase cost.** `providerInstance.ts` (one field), `ProviderInstanceRegistryHydration.ts` (three lines),
-  `ProviderSettingsPanel.tsx` (row filter, two callbacks, a footer button).
+  `ProviderSettingsPanel.tsx` (row filter, one callback, the delete button on default rows).
 
 ## Keeping the fork up to date with upstream
 

@@ -713,12 +713,8 @@ export function EnvironmentProviderSettings({
     ProviderDriverKind,
     Array<[ProviderInstanceId, ProviderInstanceConfig]>
   >();
-  const removedProviders: Array<[ProviderInstanceId, ProviderInstanceConfig]> = [];
   for (const [rawId, instance] of Object.entries(settings.providerInstances ?? {})) {
-    if (instance.hidden === true) {
-      removedProviders.push([rawId as ProviderInstanceId, instance]);
-      continue;
-    }
+    if (instance.hidden === true) continue;
     const driver = instance.driver;
     const list = instancesByDriver.get(driver) ?? [];
     list.push([rawId as ProviderInstanceId, instance]);
@@ -911,13 +907,6 @@ export function EnvironmentProviderSettings({
     updateInstance(instanceId, previous, { ...previous, enabled: false, hidden: true });
   });
 
-  const restoreProvider = useStableCallback(
-    (instanceId: ProviderInstanceId, instance: ProviderInstanceConfig) => {
-      const { hidden: _hidden, ...rest } = instance;
-      void persistInstance(instanceId, { ...rest, enabled: true });
-    },
-  );
-
   const writeProjectOverride = useStableCallback(
     (instanceId: ProviderInstanceId, next: boolean | undefined) => {
       updateSettings({
@@ -1074,19 +1063,6 @@ export function EnvironmentProviderSettings({
             >
               <div className="divide-y divide-border/50">
                 {rows.map((row) => renderProviderInstance(row, "list"))}
-                {canAddProvider
-                  ? removedProviders.map(([id, instance]) => (
-                      <button
-                        key={id}
-                        type="button"
-                        className="flex w-full cursor-pointer items-center gap-3 px-3 py-3 text-left text-sm text-muted-foreground transition-colors outline-none hover:bg-muted/25 hover:text-foreground focus-visible:bg-muted/25 focus-visible:text-foreground sm:px-4"
-                        onClick={() => restoreProvider(id, instance)}
-                      >
-                        <PlusIcon className="size-4 shrink-0" />
-                        Restore {providerInstanceName(instance)}
-                      </button>
-                    ))
-                  : null}
                 {canAddProvider ? (
                   <button
                     type="button"
