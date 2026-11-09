@@ -294,7 +294,8 @@ access to the environment and is not available on Windows.
 To choose what the thread details card shows, right-click the card or open
 **Settings → Appearance → Thread details**. Hidden rows keep their keyboard
 shortcuts, such as Open in editor and project scripts. **Reset to default** shows
-every row again.
+every row again, except Open in editor in a browser, which is shown only in the
+desktop app unless you turn it on.
 
 ## Side chats
 
