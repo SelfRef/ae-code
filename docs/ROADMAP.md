@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [21] | Setting to turn off the "Push to default ref?" confirmation (Settings → Source control, on by default)                                                                 | done    |
 | [20] | Install Claude Code and OpenCode from Settings → Providers with npm into `~/.local`, and update them there (not found in any fork)                                     | done    |
 | [19] | Sidebar shows running subagents: a thread whose turn ended but whose subagents still work reads "N subagents" instead of a stalled "Waiting"                           | done    |
 | [18] | Steer controls: "Stop it and send now" for a steer stuck behind a long command (Claude; take back not built; not found in any fork)                                    | done    |
@@ -51,6 +52,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 [18]: #steer-controls-change-18
 [19]: #sidebar-subagent-status-change-19
 [20]: #install-claude-code-and-opencode-from-settings-change-20
+[21]: #default-branch-push-confirmation-change-21
 
 `done` means it is a commit on `main`; the commit is found by subject (`git log --grep`), not by hash, because every
 rebase onto upstream changes the hashes. The history rules and the sync procedure are in the last section.
@@ -758,6 +760,17 @@ updated there but not installed. An image that ships without agent CLIs has nowh
 - **Rebase cost.** New files: `NpmPackageInstallation.ts`, `managedNpmInstall.ts` (provider-core), the web section.
   Small edits: `providerInstallation.ts`, `server.ts` (one layer), `providerSetup.ts` (one literal), `ClaudeHome.ts` and
   `ClaudeDriver.ts`, the OpenCode `driver.ts` and `adapter.ts`, `ProviderSettingsPanel.tsx` (one branch).
+
+## Default branch push confirmation (change 21)
+
+Pushing, or creating a pull request, from the default branch opens a "Push to default ref?" dialog (`GitActionsControl`).
+Upstream has no way to turn it off.
+
+- The client setting `confirmPushToDefaultBranch` (default `true`) is a switch in Settings → Source control, beside the
+  commit and pull request writing options. Off skips the dialog and runs the action on the current branch, as if
+  "Push to <branch>" had been chosen.
+- Device-local like other client settings. The dialog's own buttons are unchanged.
+- No data migration: a new key with a decoding default.
 
 ## Keeping the fork up to date with upstream
 

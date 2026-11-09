@@ -42,6 +42,7 @@ import {
   SettingsRow,
   SettingsSection,
 } from "./settingsLayout";
+import { useClientSettings, useUpdatePrimarySettings } from "~/hooks/useSettings";
 import { AdvancedSettings } from "./AdvancedSettings";
 import { searchableSetting } from "./settingsSearch";
 
@@ -66,6 +67,10 @@ const MODE_OPTIONS: Record<SourceControlWritingStyleMode, { label: string; descr
 export function SourceControlWritingSettingsSection() {
   const settings = useScopedSettings();
   const updateSettings = useUpdateScopedSettings();
+  const confirmPushToDefaultBranch = useClientSettings(
+    (clientSettings) => clientSettings.confirmPushToDefaultBranch,
+  );
+  const updateClientSettings = useUpdatePrimarySettings();
   const mixedReviewGuidesEnabled = useScopedSettingsMixed(["reviewGuidesEnabled"]);
   const navigate = useNavigate();
   const { environment, connectedEnvironments, targets, target } = useSettingsScope();
@@ -311,6 +316,28 @@ export function SourceControlWritingSettingsSection() {
           </div>
         ) : null}
       </SettingsRow>
+
+      <SettingsRow
+        {...searchableSetting("confirm-push-to-default-branch")}
+        description="Ask before pushing, or creating a pull request, from the default branch. Turn off to push straight away."
+        resetAction={
+          confirmPushToDefaultBranch ? null : (
+            <SettingResetButton
+              label="confirm pushes to the default branch"
+              onClick={() => updateClientSettings({ confirmPushToDefaultBranch: true })}
+            />
+          )
+        }
+        control={
+          <Switch
+            checked={confirmPushToDefaultBranch}
+            onCheckedChange={(checked) =>
+              updateClientSettings({ confirmPushToDefaultBranch: Boolean(checked) })
+            }
+            aria-label="Confirm pushes to the default branch"
+          />
+        }
+      />
 
       <SettingsRow
         serverScoped
