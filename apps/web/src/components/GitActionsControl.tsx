@@ -42,6 +42,7 @@ import { RadioGroup } from "~/components/ui/radio-group";
 import { Spinner } from "~/components/ui/spinner";
 import { Toggle, ToggleGroup } from "~/components/ui/toggle-group";
 import { cn } from "~/lib/utils";
+import { useClientSettings } from "~/hooks/useSettings";
 import {
   buildMenuItems,
   formatGitActionElapsed,
@@ -975,6 +976,9 @@ export default function GitActionsControl({
   const [inlineSuccess, setInlineSuccess] = useState<InlineGitActionSuccess | null>(null);
   const [pendingDefaultBranchAction, setPendingDefaultBranchAction] =
     useState<PendingDefaultBranchAction | null>(null);
+  const confirmPushToDefaultBranch = useClientSettings(
+    (settings) => settings.confirmPushToDefaultBranch,
+  );
   const sourceControlScope = { environmentId: activeEnvironmentId, cwd: gitCwd };
   const vcsActionState = useAtomValue(vcsActionManager.stateAtom(sourceControlScope));
   const inlineSuccessExpired = useDeadlinePassed(inlineSuccess?.expiresAtMs ?? null);
@@ -1178,6 +1182,7 @@ export default function GitActionsControl({
       (action === "commit" || !!actionStatus?.hasWorkingTreeChanges || featureBranch);
     if (
       !skipDefaultBranchPrompt &&
+      confirmPushToDefaultBranch &&
       requiresDefaultBranchConfirmation(action, actionIsDefaultBranch) &&
       actionBranch
     ) {
