@@ -8,6 +8,9 @@ Upstream: [pingdotgg/t3code](https://github.com/pingdotgg/t3code). This fork is 
 
 | #   | Change                                                                                                                                                                 | Status  |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| 12  | Edit the latest message in place: the prompt becomes an inline editor, saving rewinds the thread and resends (idea from MT Code)                                       | planned |
+| 11  | Inbox and board across projects, derived from thread state: what needs you, what runs, what awaits review (idea from T3 Kanban, not 1:1)                               | planned |
+| 10  | Self-hosted Android push: the server notifies through ntfy instead of the hosted relay                                                                                 | planned |
 | 9   | Android app: AE Code package id, built and signed by the release workflow                                                                                              | done    |
 | 8   | Docker image of the release server on GHCR                                                                                                                             | done    |
 | 7   | Date-versioned releases (`vYYYY.MM.DD`): the Linux x64 server archive                                                                                                  | done    |
@@ -324,6 +327,86 @@ image to add the ones you use.
 
 A package GitHub creates starts private: after the first push, make `ae-code` public in the package settings (Package
 settings, Change visibility). Checked locally by building it around an upstream archive and starting the server.
+
+## Self-hosted Android push (change 10)
+
+Problem: this fork gets no push notifications. Upstream's path is the server's `AgentAwarenessRelay`
+(`apps/server/src/relay/AgentAwarenessRelay.ts`), which projects each thread with `projectThreadAwarenessV2`
+(`packages/shared/src/agentAwareness.ts`; phases `starting`, `running`, `waiting_for_approval`, `waiting_for_input`,
+`completed`, `failed`, `stale`) and publishes signed activity to the hosted relay. The relay (`infra/relay`: Cloudflare
+Workers and queues, Postgres, Clerk sign-in) sends FCM data messages that the app's native module
+(`t3-agent-notifications`) renders as cards and Live Updates. It needs T3 Connect sign-in and a relay deployment, which
+the fork does not have (`docs/operations/android-notifications.md`; "Background delivery requires T3 Connect" in
+`docs/user/mobile-notifications.md`). The fork's package id also differs from the one the hosted relay and Firebase
+project know.
+
+Reusing ntfy: yes, as the transport. Two tiers, the first needs no app change:
+
+1. **Server notifier (do this first).** A server service publishes to a self-hosted ntfy topic: title is the thread
+   title, message the awareness headline, `Priority` high for `waiting_for_approval`, `waiting_for_input` and `failed`,
+   `Click` the thread's link (the `t3code` URL scheme the fork keeps, or the server's web URL). The phone uses the ntfy
+   app; no Firebase, no app rebuild, and it works for any client. It loses the in-app cards, Live Updates and
+   grouping.
+2. **UnifiedPush (only if tier 1 is not enough).** ntfy is a UnifiedPush distributor. The app would register for an
+   endpoint, the server would POST the card payload to it, and the existing native renderer would show it. This needs
+   native-module work and a registration endpoint on the server.
+
+Plan for tier 1:
+
+- New `apps/server/src/notifications/` service fed by the same projection as the relay. Reuse the relay's transition
+  selection (alert on entering approval, input or failure; one grouped alert for several; no repeat for an unchanged
+  state) if it can be imported; today it sits with the relay code, so check whether it can move to `packages/shared`
+  or must be copied. Settings in server settings (`packages/contracts`): ntfy URL, topic, which phases alert, and an
+  access token kept in the secret store. A section in Settings → Notifications.
+- Spike first: publish by hand with `curl` for a thread that fails, to check the link opens the thread on the phone
+  and what the tap does when the app is not installed.
+- `infra/relay/scripts/android-push-watch.ts` is the model for a notifier that needs no database: it follows one
+  environment's shell stream and sends through a client.
+
+Not decided: action buttons that approve from the notification (ntfy `http` actions would need a token with approval
+scope on the phone; skip until there is a need). Rebase cost: new files, one settings schema addition and a layer
+registration in `serverRuntimeStartup.ts`.
+
+## Inbox and board (change 11)
+
+Idea from `what1f/t3kanban`: a thread is a task with a business status (Todo, In Progress, In Review, Blocked, Done), a
+board and list across projects, an email-style Inbox of the latest result per task, and an MCP tool with which the
+agent reads and updates its own task. Not copied 1:1: a second, hand-set status drifts from what the agent is doing,
+and upstream already tracks the state a board needs. Threads are sectioned by active, settled and snoozed, with pins,
+auto-settle and wake rules (`docs/user/thread-sidebar.md`), and every thread has an awareness phase.
+
+Phases, each useful alone:
+
+1. **Inbox.** A page across projects and environments of threads that need you: waiting for approval or input, failed,
+   or finished and not seen. Approvals and questions are answered in place. Needs a per-thread "seen" marker; check
+   first whether upstream keeps one. Logic goes in `packages/client-runtime` so web and mobile share it.
+2. **Board view.** Columns derived from state, not stored: Needs you, Running, Review (finished, not settled, has a
+   diff or pull request), Parked (snoozed), Done (settled). Dragging a card is the existing action (snooze, settle,
+   wake), so it cannot disagree with the thread.
+3. **Manual status and agent tool (only if 1 and 2 fall short).** A status field on the thread and an MCP tool through
+   which the agent sets it with a one-line note. This changes the contract, so every surface follows.
+
+Check the surfaces list in `AGENTS.md` for each phase: web and desktop first, a read-only Inbox on mobile, and the MCP
+tool for agents. Every way in needs the way out and the way to see it (mark unread, un-settle). Rebase cost: new
+components and a new route; the sidebar and thread-shell projections are shared with upstream, so keep edits there to
+a minimum.
+
+## Edit the latest message in place (change 12)
+
+Idea from MT Code. Today **Edit from here** (`RevertUserMessageButton` in `TimelineUserMessageRow.tsx`, confirm dialog
+`RevertConfirmHost` in `ChatOverlayHosts.tsx`) rewinds the thread to before the message through `onRevertToTurnCount`
+and returns the prompt and its attachments to the composer, where you edit and send again. Documented in
+`docs/user/composer.md`.
+
+Plan: for the latest user message only, an inline editor replaces the message in the timeline (text prefilled,
+attachments kept). Save rewinds the thread to before the message, as the existing action does, and sends the edited
+text; Cancel changes nothing. The files choice stays: the confirm shows **Revert and keep changes** (default) or
+**Revert files too**, and the action is offered only when the provider supports rewind, like today's. If the rewind
+succeeds and the send fails, fall back to today's behavior and put the text in the composer, so no prompt is lost.
+
+Spike first: how `onRevertToTurnCount` and a send are sequenced, and whether one command can do both, to avoid a
+window in which the thread is rewound but nothing is sent. Web and desktop; mobile follows if it has the rewind
+action. Rebase cost: a new editor component and its logic file, plus a small edit in `TimelineUserMessageRow.tsx`.
 
 ## Keeping the fork up to date with upstream
 
