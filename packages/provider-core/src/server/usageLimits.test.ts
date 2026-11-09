@@ -60,6 +60,20 @@ describe("applyUsageLimitsUpdate", () => {
     ).toBe(published);
   });
 
+  it("lets a stream that carries limits fill an unsupported probe, and drops the marker", () => {
+    const unsupported = { checkedAt, windows: [], unavailable: { reason: "unsupported" as const } };
+    const next = applyUsageLimitsUpdate({
+      previous: unsupported,
+      checkedAt: "2026-09-03T12:00:05.000Z",
+      update: { windows: [weekly, session] },
+      streamFillsUnsupported: true,
+    });
+    expect(next).toEqual({
+      checkedAt: "2026-09-03T12:00:05.000Z",
+      windows: [session, weekly],
+    });
+  });
+
   it("marks a first sparse update as unavailable", () => {
     expect(
       applyUsageLimitsUpdate({ previous: undefined, checkedAt, update: { windows: [weekly] } }),
@@ -118,5 +132,24 @@ describe("resolveUsageLimitsAfterProbe", () => {
     expect(resolveUsageLimitsAfterProbe({ published, probed: failed })).toBe(published);
     expect(resolveUsageLimitsAfterProbe({ published, probed: unsupported })).toBe(unsupported);
     expect(resolveUsageLimitsAfterProbe({ published: undefined, probed: failed })).toBe(failed);
+  });
+
+  it("keeps stream windows through an unsupported probe only for a provider that streams them", () => {
+    const unsupported = { checkedAt, windows: [], unavailable: { reason: "unsupported" as const } };
+    expect(
+      resolveUsageLimitsAfterProbe({
+        published,
+        probed: unsupported,
+        streamFillsUnsupported: true,
+      }),
+    ).toBe(published);
+    // Nothing streamed yet: the probe's answer stands.
+    expect(
+      resolveUsageLimitsAfterProbe({
+        published: { checkedAt, windows: [] },
+        probed: unsupported,
+        streamFillsUnsupported: true,
+      }),
+    ).toBe(unsupported);
   });
 });

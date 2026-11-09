@@ -51,9 +51,12 @@ export function applyUsageLimitsUpdate(input: {
   readonly previous: ServerProviderUsageLimits | undefined;
   readonly update: ProviderUsageLimitsUpdate;
   readonly checkedAt: string;
+  /** For a provider whose stream carries limits its probe cannot read (a Claude setup-token). */
+  readonly streamFillsUnsupported?: boolean;
 }): ServerProviderUsageLimits | undefined {
   const { previous, update } = input;
-  if (update.windows.length === 0 || previous?.unavailable?.reason === "unsupported") {
+  const unsupported = previous?.unavailable?.reason === "unsupported";
+  if (update.windows.length === 0 || (unsupported && input.streamFillsUnsupported !== true)) {
     return previous;
   }
   const merged = new Map(previous?.windows.map((window) => [window.id, window] as const));
@@ -79,8 +82,13 @@ export function applyUsageLimitsUpdate(input: {
   if (!changed && previous !== undefined) {
     return previous;
   }
+  // Windows read from the stream make the limits available, whatever the probe said.
   const unavailable =
-    previous === undefined ? { reason: "probeFailed" as const } : previous.unavailable;
+    previous === undefined
+      ? { reason: "probeFailed" as const }
+      : unsupported
+        ? undefined
+        : previous.unavailable;
   return {
     ...makeUsageLimits({ checkedAt: input.checkedAt, windows: merged.values() }),
     ...(previous?.resetCredits !== undefined ? { resetCredits: previous.resetCredits } : {}),
@@ -102,9 +110,19 @@ function usageWindowEquals(a: ServerProviderUsageWindow, b: ServerProviderUsageW
 export function resolveUsageLimitsAfterProbe(input: {
   readonly published: ServerProviderUsageLimits | undefined;
   readonly probed: ServerProviderUsageLimits | undefined;
+  /** The stream fills limits the probe cannot read, so an unsupported probe keeps its windows. */
+  readonly streamFillsUnsupported?: boolean;
 }): ServerProviderUsageLimits | undefined {
   const { published, probed } = input;
-  if (probed?.unavailable?.reason === "probeFailed" && published && !published.unavailable) {
+  if (
+    (probed?.unavailable?.reason === "probeFailed" ||
+      (input.streamFillsUnsupported === true &&
+        probed?.unavailable?.reason === "unsupported" &&
+        published !== undefined &&
+        published.windows.length > 0)) &&
+    published &&
+    !published.unavailable
+  ) {
     return published;
   }
   if (
