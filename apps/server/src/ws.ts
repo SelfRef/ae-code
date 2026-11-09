@@ -119,6 +119,7 @@ import * as ProviderSessionManager from "./orchestration-v2/ProviderSessionManag
 import * as ThreadLaunchService from "./orchestration-v2/ThreadLaunchService.ts";
 import * as ThreadMessageIntake from "./orchestration-v2/ThreadMessageIntake.ts";
 import * as DocumentText from "./provider/DocumentText.ts";
+import { scanClaudeMemories } from "./memory/ClaudeMemoryScan.ts";
 import * as MemoryService from "./memory/MemoryService.ts";
 import * as ScheduledTasks from "./scheduledTasks/ScheduledTaskService.ts";
 import * as SecretRequests from "./secrets/SecretRequests.ts";
@@ -2218,6 +2219,7 @@ export const layerWsRpc = (
             .save({ ...input, source: "user" })
             .pipe(Effect.map((saved) => ({ memory: saved }))),
         [WS_METHODS.memoryDelete]: (input) => memory.remove(input.id),
+        [WS_METHODS.memoryImportScan]: (input) => scanClaudeMemories(input),
         [WS_METHODS.memorySetSettings]: (input) =>
           memory.setSettings(input).pipe(Effect.map((settings) => ({ settings }))),
         [WS_METHODS.scheduledTasksSubscribe]: (_input) =>

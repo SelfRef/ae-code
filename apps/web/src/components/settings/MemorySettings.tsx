@@ -12,7 +12,7 @@ import {
   type MemorySetSettingsInput,
   type ProjectId,
 } from "@t3tools/contracts";
-import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { DownloadIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
 import { requestConfirmDialog } from "../../confirmDialog";
@@ -22,6 +22,7 @@ import { useProjects } from "../../state/entities";
 import { useEnvironmentQuery } from "../../state/query";
 import { serverEnvironment } from "../../state/server";
 import { useAtomCommand } from "../../state/use-atom-command";
+import { MemoryImportDialog } from "./MemoryImportDialog";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -72,6 +73,7 @@ function EnvironmentMemory({ environmentId }: { readonly environmentId: Environm
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState<MemoryScopeFilter>("all");
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const save = useAtomCommand(serverEnvironment.saveMemory, { label: "memory save" });
   const remove = useAtomCommand(serverEnvironment.deleteMemory, { label: "memory delete" });
   const setSettings = useAtomCommand(serverEnvironment.setMemorySettings, {
@@ -104,10 +106,16 @@ function EnvironmentMemory({ environmentId }: { readonly environmentId: Environm
       {...searchableSetting("memory")}
       headerAction={
         canWrite && draft === null ? (
-          <Button size="xs" variant="outline" onClick={() => setDraft({ mode: "add" })}>
-            <PlusIcon className="size-3" aria-hidden />
-            Add memory
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="xs" variant="outline" onClick={() => setImportOpen(true)}>
+              <DownloadIcon className="size-3" aria-hidden />
+              Import from Claude
+            </Button>
+            <Button size="xs" variant="outline" onClick={() => setDraft({ mode: "add" })}>
+              <PlusIcon className="size-3" aria-hidden />
+              Add memory
+            </Button>
+          </div>
         ) : null
       }
     >
@@ -136,6 +144,13 @@ function EnvironmentMemory({ environmentId }: { readonly environmentId: Environm
             }
           />
         }
+      />
+      <MemoryImportDialog
+        environmentId={environmentId}
+        projects={projects}
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImported={() => list.refresh()}
       />
       {draft !== null ? (
         <MemoryEditor

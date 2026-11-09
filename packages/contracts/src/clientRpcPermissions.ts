@@ -3,6 +3,7 @@ import { GitPreparePullRequestThreadInput, GitRunStackedActionInput } from "./gi
 import {
   AuthAccessWriteScope,
   AuthEnvironmentMaintainScope,
+  AuthFilesystemReadScope,
   AuthOrchestrationOperateScope,
   AuthOrchestrationReadScope,
   AuthPreviewOperateScope,
@@ -67,6 +68,8 @@ export const CLIENT_GUARDED_RPC_SCOPES = {
   [WS_METHODS.memorySave]: AuthSettingsWriteScope,
   [WS_METHODS.memoryDelete]: AuthSettingsWriteScope,
   [WS_METHODS.memorySetSettings]: AuthSettingsWriteScope,
+  // Reads files from the server's disk, so it needs the same grant as browsing it.
+  [WS_METHODS.memoryImportScan]: AuthFilesystemReadScope,
   [WS_METHODS.scheduledTasksUpsert]: AuthOrchestrationOperateScope,
   [WS_METHODS.scheduledTasksSetEnabled]: AuthOrchestrationOperateScope,
   [WS_METHODS.scheduledTasksDelete]: AuthOrchestrationOperateScope,
