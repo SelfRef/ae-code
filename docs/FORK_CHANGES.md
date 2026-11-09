@@ -8,6 +8,7 @@ Upstream: [pingdotgg/t3code](https://github.com/pingdotgg/t3code). This fork is 
 
 | #   | Change                                                                                                                                                                 | Status  |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| 13  | Memory: saved preferences and decisions agents on any provider can recall and save, with a Settings page (modelled on GOAT's, cut down)                                | done    |
 | 12  | Edit the latest message in place: the prompt becomes an inline editor, saving rewinds the thread and resends (idea from MT Code)                                       | planned |
 | 11  | Inbox and board across projects, derived from thread state: what needs you, what runs, what awaits review (idea from T3 Kanban, not 1:1)                               | planned |
 | 10  | Self-hosted Android push: the server notifies through ntfy instead of the hosted relay                                                                                 | planned |
@@ -407,6 +408,43 @@ succeeds and the send fails, fall back to today's behavior and put the text in t
 Spike first: how `onRevertToTurnCount` and a send are sequenced, and whether one command can do both, to avoid a
 window in which the thread is rewound but nothing is sent. Web and desktop; mobile follows if it has the rewind
 action. Rebase cost: a new editor component and its logic file, plus a small edit in `TimelineUserMessageRow.tsx`.
+
+## Memory (change 13)
+
+Saved preferences, decisions and facts that every agent on every provider can recall and add to, with a Settings page
+to see and edit them. Modelled on GOAT's memory (a T3 Code fork with its own memory feature), cut down to what one
+person needs. User guide: `docs/user/memory.md`.
+
+- **Storage.** A `memories` table in the server's database (`id`, `scope` `user|project`, `project_id`, `text`,
+  `source` `user|agent`, `source_thread_id`, timestamps), capped at 2000 rows of 2000 characters. `MemoryService` creates
+  it with `CREATE TABLE IF NOT EXISTS` when the server starts, **not** through a numbered migration: upstream keeps adding
+  migrations, and a fork migration would collide with the next one it adds. It is a new table, not a rename, so there is
+  no migration step; delete the table to forget everything.
+- **Recall is term ranking, not FTS or vectors.** `memoryRanking.ts` scores terms by rarity, then recency and scope, over
+  at most 2000 rows read in one query. GOAT uses SQLite FTS5 with a tokenizer; at this size a full scan costs less than
+  keeping an index consistent, and the function is the one place to swap if the corpus ever outgrows it.
+- **Agents.** Three MCP tools in `mcp/toolkits/memory`: `t3_memory_recall`, `t3_memory_remember`, `t3_memory_forget`.
+  They act as the calling thread (a live thread caller is required, and a read-only client may recall only). `project`
+  scope means the caller's project. A short `<memory>` briefing in `runtimeInstructions.ts` rides with the pull-request
+  linking text, so every adapter that sends one carries it: Claude, Codex, ACP, Cursor, Muse, OpenCode and Antigravity.
+  Pi receives only the orchestration text and does not get it. The briefing says memory is reference data, never
+  instructions.
+- **Settings → Memory** (web and desktop, one environment at a time): list, search, scope filter, add, edit, forget.
+  Three RPCs (`memory.list`, `memory.save`, `memory.delete`); the two writes need the settings-write scope.
+- **Not built, from GOAT:** automatic summaries of finished threads, a memory block injected into every prompt,
+  thread-scoped memory, importing Claude/Codex native memories, sharing between devices (hub), conflict resolution,
+  storage quotas, and a mobile page. The tools and the page are the seam for each.
+- **Context budget.** The briefing and three tool definitions raise `agentContextBudget.json` (about 540 bytes of
+  instructions per adapter that carries them, 1 KB of tool list). `agent-context-budget.yml` only gates pull requests,
+  which this fork does not open, so nothing asks for the `agent-context-increase` label.
+- **Evals not run.** `evals/mcp-tool-use` covers tool text and was not run (it needs paid model keys); add the memory
+  toolkit to it and run it before changing the tool descriptions or the briefing.
+- **Rebase cost.** New files: `packages/contracts/src/memory.ts`, `apps/server/src/memory/*`,
+  `apps/server/src/mcp/toolkits/memory/*`, `MemorySettings.tsx` and its logic file, the route. Touch points of a few lines:
+  `rpc.ts` and `clientRpcPermissions.ts` (three methods), `RpcAuthorization.ts`, `RpcInstrumentation.ts`, `ws.ts`,
+  `server.ts` (one layer), `McpHttpServer.ts`, `t3McpToolPresentation.ts` with `t3ToolSummary.ts`, the Claude read-only
+  allowlist, `runtimeInstructions.ts` with the Antigravity append, client-runtime `state/server.ts`, the settings
+  navigation and search (`settingsSearch.ts`, `SettingsSidebarNav.tsx`, `_chat.settings.tsx`) and the generated route tree.
 
 ## Keeping the fork up to date with upstream
 

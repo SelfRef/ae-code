@@ -30,6 +30,7 @@ export type SettingsPath =
   | "/settings/browser"
   | "/settings/devices"
   | "/settings/scheduled-tasks"
+  | "/settings/memory"
   | "/settings/source-control"
   | "/settings/worktrees"
   | "/settings/connections"
@@ -105,6 +106,7 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/browser": "Browser",
   "/settings/devices": "Devices",
   "/settings/scheduled-tasks": "Scheduled tasks",
+  "/settings/memory": "Memory",
   "/settings/source-control": "Source control",
   "/settings/worktrees": "Worktrees",
   "/settings/connections": "Environments",
@@ -142,6 +144,7 @@ export const SETTINGS_NAV_GROUPS: ReadonlyArray<{
       "/settings/browser",
       "/settings/devices",
       "/settings/scheduled-tasks",
+      "/settings/memory",
     ],
   },
   {
@@ -1300,6 +1303,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     ],
   },
   {
+    id: "memory",
+    title: "Memory",
+    to: "/settings/memory",
+    searchTerms: ["remember recall preferences decisions facts agents saved forget"],
+  },
+  {
     id: "secret-providers",
     title: "Secret providers",
     to: "/settings/secrets",
@@ -1346,6 +1355,7 @@ const SETTINGS_CATEGORY_SCOPES: Readonly<Record<SettingsPath, SettingsSearchScop
   "/settings/access": "connections",
   "/settings/secrets": null,
   "/settings/scheduled-tasks": null,
+  "/settings/memory": null,
   "/settings/maintenance": null,
   "/settings/labs": null,
   "/settings/about": null,
