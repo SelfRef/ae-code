@@ -8,6 +8,7 @@ Upstream: [pingdotgg/t3code](https://github.com/pingdotgg/t3code). This fork is 
 
 | #   | Change                                                                                                                                                                 | Status  |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| 8   | Docker image of the release server on GHCR                                                                                                                             | done    |
 | 7   | Date-versioned releases (`vYYYY.MM.DD`): the Linux x64 server archive                                                                                                  | done    |
 | 6   | Daily sync: a workflow rebases the patch stack onto upstream and force-pushes `main`                                                                                   | done    |
 | 5   | Claude usage limits for a setup-token session: let `rate_limit_event` stream updates fill the bars when `get_usage` is unsupported                                     | planned |
@@ -296,6 +297,17 @@ disabled.
   Connect sign-in is absent, pairing with a server works as before), no npm launcher, no tests or checks. A broken
   `main` shows as a failed build.
 - **Not run yet.** The first run is by hand from the Actions tab; expect to fix what it finds.
+
+## Docker image (change 8)
+
+The `image` job of `ae-release.yml` wraps the release's Linux x64 server archive in `packaging/docker/Dockerfile` and
+pushes `ghcr.io/selfref/ae-code:<YYYY.MM.DD[.N]>` and `:latest`. Nothing is built from source in the image: it is Ubuntu
+24.04 (the archive is built on that glibc), `git`, `ssh` and the archive in `/opt/ae-code`, a non-root user (uid 1000),
+state in `/home/ae/.ae` (a volume), port 3773, started with `ae-code serve`. Agent CLIs are not included; derive an
+image to add the ones you use.
+
+A package GitHub creates starts private: after the first push, make `ae-code` public in the package settings (Package
+settings, Change visibility). Checked locally by building it around an upstream archive and starting the server.
 
 ## Keeping the fork up to date with upstream
 

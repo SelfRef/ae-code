@@ -172,6 +172,44 @@ jobs:
           compression-level: 0
           retention-days: 1
 
+  # The Linux x64 server archive in a lean image on GHCR. A new package starts
+  # private: make it public once in the package settings.
+  image:
+    name: Docker image
+    needs: [prepare, cli]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.ref }}
+          sparse-checkout: packaging/docker
+
+      - name: Download the CLI archive
+        uses: actions/download-artifact@v8
+        with:
+          name: cli-linux-x64
+          path: image-context
+
+      - name: Build and push
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker build -f packaging/docker/Dockerfile \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=${{ needs.prepare.outputs.ref }}" \
+            -t "$image:${TAG#v}" -t "$image:latest" image-context
+          docker push "$image:${TAG#v}"
+          docker push "$image:latest"
+
   release:
     name: Publish GitHub Release
     needs: [prepare, cli]
