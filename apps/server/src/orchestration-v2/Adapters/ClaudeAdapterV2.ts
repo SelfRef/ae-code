@@ -217,6 +217,7 @@ import {
   T3_CODE_DEVICE_TOOL_INSTRUCTIONS_WITH_TOOL_SEARCH,
   T3_CODE_ORCHESTRATION_INSTRUCTIONS,
 } from "@t3tools/provider-core/server/orchestrationInstructions";
+import { nativeMemoryDisabled } from "@t3tools/provider-core/server/memoryPolicy";
 import { buildRuntimeInstructions } from "@t3tools/provider-core/server/runtimeInstructions";
 import {
   mcpToolPresentation,
@@ -2198,7 +2199,7 @@ export function makeClaudeQueryOptions(input: {
             compiledSelection.pinnedAlias,
         };
   // A settings file path cannot take extra keys, so it goes through unchanged.
-  const effectiveQuerySettings =
+  const toolSearchQuerySettings =
     (input.toolSearchOverride === undefined &&
       aliasOverrideEnv === undefined &&
       autoCompactWindow === undefined) ||
@@ -2218,6 +2219,11 @@ export function makeClaudeQueryOptions(input: {
               : { ENABLE_TOOL_SEARCH: input.toolSearchOverride }),
           },
         } as ClaudeSdkSettings);
+  // Settings → Memory: Claude Code's own memory would keep a second store next to T3's.
+  const effectiveQuerySettings =
+    !nativeMemoryDisabled() || typeof toolSearchQuerySettings === "string"
+      ? toolSearchQuerySettings
+      : ({ ...toolSearchQuerySettings, autoMemoryEnabled: false } as ClaudeSdkSettings);
   const deviceInstructions = input.mcpServers !== undefined && input.deviceToolsAvailable === true;
   const options: ClaudeAgentSdkQueryOptions = {
     model: compiledSelection.apiModelId,

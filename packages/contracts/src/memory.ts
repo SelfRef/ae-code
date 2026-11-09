@@ -41,10 +41,30 @@ export const MemoryListInput = Schema.Struct({
 });
 export type MemoryListInput = typeof MemoryListInput.Type;
 
+export const MemorySettings = Schema.Struct({
+  /** Off: agents get no memory instructions and the memory tools refuse. Saved memories are kept. */
+  enabled: Schema.Boolean,
+  /** On while memory is on: new sessions of a provider with its own memory (Claude) run without it. */
+  disableNativeMemory: Schema.Boolean,
+});
+export type MemorySettings = typeof MemorySettings.Type;
+
+export const DEFAULT_MEMORY_SETTINGS: MemorySettings = { enabled: true, disableNativeMemory: true };
+
 export const MemoryListResult = Schema.Struct({
   memories: Schema.Array(Memory),
+  settings: MemorySettings,
 });
 export type MemoryListResult = typeof MemoryListResult.Type;
+
+export const MemorySetSettingsInput = Schema.Struct({
+  enabled: Schema.optional(Schema.Boolean),
+  disableNativeMemory: Schema.optional(Schema.Boolean),
+});
+export type MemorySetSettingsInput = typeof MemorySetSettingsInput.Type;
+
+export const MemorySetSettingsResult = Schema.Struct({ settings: MemorySettings });
+export type MemorySetSettingsResult = typeof MemorySetSettingsResult.Type;
 
 /** Without `id`, creates; with it, replaces the text of that memory and keeps its scope. */
 export const MemorySaveInput = Schema.Struct({
@@ -65,6 +85,6 @@ export const MemoryDeleteResult = Schema.Struct({ id: MemoryId });
 export type MemoryDeleteResult = typeof MemoryDeleteResult.Type;
 
 export class MemoryError extends Schema.TaggedError<MemoryError>()("MemoryError", {
-  code: Schema.Literals(["invalid", "not_found", "limit", "unavailable"]),
+  code: Schema.Literals(["invalid", "not_found", "limit", "unavailable", "disabled"]),
   message: Schema.String,
 }) {}

@@ -131,6 +131,10 @@
       "types": "./src/server/randomUuid.ts",
       "import": "./src/server/randomUuid.ts"
     },
+    "./server/memoryPolicy": {
+      "types": "./src/server/memoryPolicy.ts",
+      "import": "./src/server/memoryPolicy.ts"
+    },
     "./server/runtimeInstructions": {
       "types": "./src/server/runtimeInstructions.ts",
       "import": "./src/server/runtimeInstructions.ts"
