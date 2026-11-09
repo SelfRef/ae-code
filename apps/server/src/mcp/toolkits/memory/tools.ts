@@ -39,7 +39,9 @@ const MemoryRecallTool = Tool.make("t3_memory_recall", {
   success: Schema.Struct({ memories: Schema.Array(RecalledMemory) }),
 })
   .annotate(Tool.Readonly, true)
-  .annotate(Tool.Destructive, false);
+  .annotate(Tool.Destructive, false)
+  // Claude Code defers MCP tools behind ToolSearch; an agent that has to search for these first skips them.
+  .annotate(Tool.Meta, { "anthropic/alwaysLoad": true });
 
 const MemoryRememberTool = Tool.make("t3_memory_remember", {
   ...shared,
@@ -50,7 +52,9 @@ const MemoryRememberTool = Tool.make("t3_memory_remember", {
     memoryId: Schema.optional(MemoryId),
   }),
   success: Schema.Struct({ memory: RecalledMemory }),
-}).annotate(Tool.Destructive, false);
+})
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Meta, { "anthropic/alwaysLoad": true });
 
 const MemoryForgetTool = Tool.make("t3_memory_forget", {
   ...shared,
