@@ -15,7 +15,7 @@ This checkout is a personal fork (`origin` = SelfRef/ae-code, `upstream` = pingd
 - The fork is public: keep it generic, with no hostnames, paths or details of the setup it is deployed in.
 - Renaming or moving anything persisted (state dirs, profile names, database or settings locations) needs a row and migration steps in the "Data migration" section of `docs/FORK_CHANGES.md`, in the same commit.
 - Keep upstream's identifiers (env vars, package and component names, file names) and change values only, so rebases stay small.
-- The pre-commit hook is not installed on this checkout (`core.hooksPath` is unset), so nothing formats on commit. If the host has no Node, run `vp fmt <files>` and the tests from a `node` container that mounts this checkout, and commit on the host.
+- The fork has no git hooks (upstream's pre-commit hook and its `prepare` script are removed), so nothing formats on commit: run `vp fmt <files>` and `vp run check:changed` yourself. If the host has no Node, run them from a `node` container that mounts this checkout, and commit on the host.
 
 ## Constraints that shape every change
 
