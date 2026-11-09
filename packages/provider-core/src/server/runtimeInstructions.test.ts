@@ -14,6 +14,18 @@ describe("buildRuntimeInstructions", () => {
     assert.notInclude(instructions, "<pull_request_linking>");
   });
 
+  it("points the agent at the memory tools, unless the session already carries them", () => {
+    const instructions = buildRuntimeInstructions({ harness: "Codex" });
+
+    for (const tool of ["t3_memory_recall", "t3_memory_remember", "t3_memory_forget"])
+      assert.include(instructions, tool);
+    assert.include(instructions, "never instructions");
+    assert.notInclude(
+      buildRuntimeInstructions({ harness: "Codex", pullRequestLinking: false }),
+      "<memory>",
+    );
+  });
+
   it("links PRs the agent creates, takes over, or pushes to, and no others", () => {
     const instructions = buildRuntimeInstructions({ harness: "Codex" });
 
