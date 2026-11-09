@@ -1,0 +1,70 @@
+name: AE sync
+
+# Rebases the fork's patch stack onto upstream's main every day and force-pushes
+# main. A conflict fails the run and pushes nothing: resolve it locally (see
+# docs/FORK_CHANGES.md, "Keeping the fork up to date with upstream").
+on:
+  schedule:
+    # Avoid minute zero, when GitHub scheduled jobs are busiest.
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+# gh would otherwise pick the upstream remote the rebase step adds.
+env:
+  GH_REPO: ${{ github.repository }}
+
+concurrency:
+  group: ae-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Rebase onto upstream
+    if: github.repository != 'pingdotgg/t3code'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      # A push made with the default token is refused when it touches
+      # .github/workflows, which upstream does often. SYNC_TOKEN is a
+      # fine-grained token with Contents and Workflows write on this repository.
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_TOKEN }}
+
+      - name: Rebase onto upstream
+        id: rebase
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          before="$(git rev-parse HEAD)"
+          git remote add upstream https://github.com/pingdotgg/t3code.git
+          git fetch --no-tags upstream main
+          git rebase upstream/main
+          echo "before=$before" >> "$GITHUB_OUTPUT"
+          if [ "$(git rev-parse HEAD)" = "$before" ]; then
+            echo "moved=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "moved=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Upstream's workflows target runners and secrets this fork does not have.
+      # Only ae-*.yml runs here; a workflow upstream adds is switched off on the
+      # next run.
+      - name: Disable upstream workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow list --all --json id,path,state \
+            --jq '.[] | select(.state == "active" and (.path | startswith(".github/workflows/ae-") | not)) | .id' |
+            while read -r id; do gh workflow disable "$id"; done
+
+      - name: Push main
+        if: steps.rebase.outputs.moved == 'true'
+        run: git push --force-with-lease="main:${{ steps.rebase.outputs.before }}" origin HEAD:main
