@@ -234,7 +234,7 @@ jobs:
       # What changed since the previous release: a link to upstream's commits
       # between the two upstream bases, and the fork patches whose subjects the
       # previous release did not have (every rebase rewrites the hashes, so the
-      # subject is the identity). The whole patch list is docs/FORK_CHANGES.md.
+      # subject is the identity). The whole patch list is docs/ROADMAP.md.
       - name: Write release notes
         env:
           GH_TOKEN: ${{ github.token }}
@@ -310,7 +310,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           if [[ -z "$KEYSTORE_B64" || -z "$KEYSTORE_PASSWORD" ]]; then
-            echo "::error::Set the secrets ANDROID_KEYSTORE and ANDROID_KEYSTORE_PASSWORD (docs/FORK_CHANGES.md, Releases)."
+            echo "::error::Set the secrets ANDROID_KEYSTORE and ANDROID_KEYSTORE_PASSWORD (docs/ROADMAP.md, Releases)."
             exit 1
           fi
 
