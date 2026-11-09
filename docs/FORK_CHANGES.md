@@ -6,6 +6,8 @@ Upstream: [pingdotgg/t3code](https://github.com/pingdotgg/t3code). This fork is 
 **Policy: no PRs.** Changes are not offered upstream (its `CONTRIBUTING.md` turns away unsolicited features; its
 `AGENTS.md` says "a large number of our users run forks"). They live in this fork, kept easy to rebase on upstream.
 
+Other forks of upstream, what each offers and where an idea here came from: [FORK_REFERENCES.md](./FORK_REFERENCES.md).
+
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
 | [17] | No product analytics: the server sends no usage events unless `T3CODE_TELEMETRY_ENABLED=true` (idea from E4 Code)                                                      | done    |
@@ -250,12 +252,9 @@ breadcrumb's project name looks like a switcher but starts a new thread in that 
 
 Upstream: issue #27445 (the breadcrumb looks like a switcher) closed as not planned on 2026-11-01, as a duplicate of
 discussion #22991 (picker discoverability); discussion #31438 "Project and thread switchers in the chat breadcrumb"
-(2026-11-05, open) proposes the fix, and its author has it on `mollymillions-code/t3code` branch
-`feat/breadcrumb-switchers` (2 commits, web only, no contract or server change): both crumbs become searchable
-dropdowns; the project crumb lists projects in sidebar order and opens the picked one's newest thread (or a new
-one), with "New thread in <project>" as its first item so today's click stays one step away; the thread crumb lists
-the project's threads (pinned first, older ones paged in while open), "New thread" first, "Thread actions" last;
-right-click and double-click on the title keep working.
+(2026-11-05, open) proposes the fix, and its author has it on the `feat/breadcrumb-switchers` branch of
+`mollymillions-code/t3code` (2 commits, web only, no contract or server change; what it does is in
+[FORK_REFERENCES.md](./FORK_REFERENCES.md#other-notable-forks)).
 
 Plan: cherry-pick those two commits onto the fork's `main` (MIT, authorship kept). Checked 2026-11-09: they merge
 cleanly onto upstream `main` (`b7d33af938`). The diff is 5 files, +725/−71: three new files
@@ -377,9 +376,12 @@ Plan for tier 1:
 
 - New `apps/server/src/notifications/` service fed by the same projection as the relay. Reuse the relay's transition
   selection (alert on entering approval, input or failure; one grouped alert for several; no repeat for an unchanged
-  state) if it can be imported; today it sits with the relay code, so check whether it can move to `packages/shared`
-  or must be copied. Settings in server settings (`packages/contracts`): ntfy URL, topic, which phases alert, and an
-  access token kept in the secret store. A section in Settings → Notifications.
+  state). It is module-private today (`shouldPublishAgentAwarenessEvent`, `resolveAgentAwarenessRelayPublishSnapshot`
+  in `AgentAwarenessRelay.ts`; `makeAgentAwarenessPublishWorker` is exported). Prior art: t3dpcode's self-hosted push
+  exports those functions and imports them in its notifier, a few-line edit to an upstream file
+  ([FORK_REFERENCES.md](./FORK_REFERENCES.md#t3dpcode-ochen1t3dpcode)); it also keeps a table of registered devices,
+  which ntfy does not need. Settings in server settings (`packages/contracts`): ntfy URL, topic, which phases alert, and
+  an access token kept in the secret store. A section in Settings → Notifications.
 - Spike first: publish by hand with `curl` for a thread that fails, to check the link opens the thread on the phone
   and what the tap does when the app is not installed.
 - `infra/relay/scripts/android-push-watch.ts` is the model for a notifier that needs no database: it follows one
@@ -391,10 +393,10 @@ registration in `serverRuntimeStartup.ts`.
 
 ## Inbox and board (change 11)
 
-Idea from `what1f/t3kanban`: a thread is a task with a business status (Todo, In Progress, In Review, Blocked, Done), a
-board and list across projects, an email-style Inbox of the latest result per task, and an MCP tool with which the
-agent reads and updates its own task. Not copied 1:1: a second, hand-set status drifts from what the agent is doing,
-and upstream already tracks the state a board needs. Threads are sectioned by active, settled and snoozed, with pins,
+Idea from T3 Kanban (a thread is a task with a hand-set status, a board and list across projects, an Inbox of the latest
+result per task, and an MCP tool with which the agent updates its own task) and T3 Agents (a board across connected
+environments); both in [FORK_REFERENCES.md](./FORK_REFERENCES.md#t3-kanban-what1ft3kanban). Not copied 1:1: a second,
+hand-set status drifts from what the agent is doing, and upstream already tracks the state a board needs. Threads are sectioned by active, settled and snoozed, with pins,
 auto-settle and wake rules (`docs/user/thread-sidebar.md`), and every thread has an awareness phase.
 
 Phases, each useful alone:
@@ -415,7 +417,7 @@ a minimum.
 
 ## Edit the latest message in place (change 12)
 
-Idea from MT Code. Today **Edit from here** (`RevertUserMessageButton` in `TimelineUserMessageRow.tsx`, confirm dialog
+Idea from MT Code ([FORK_REFERENCES.md](./FORK_REFERENCES.md#mt-code-munimtechnologiesmtcode)). Today **Edit from here** (`RevertUserMessageButton` in `TimelineUserMessageRow.tsx`, confirm dialog
 `RevertConfirmHost` in `ChatOverlayHosts.tsx`) rewinds the thread to before the message through `onRevertToTurnCount`
 and returns the prompt and its attachments to the composer, where you edit and send again. Documented in
 `docs/user/composer.md`.
@@ -467,21 +469,9 @@ How each adapter hands `t3-code` to its provider, and where an extra server woul
   separate reads from writes; the hub is the guard. A per-server **trusted** switch (allow all its tools without asking)
   is therefore needed, and each provider has its own way to express it (above).
 
-Candidate: E4 Code (`stonith404/e4code`, MIT), commit `feat(settings): manage MCP servers for Claude and Codex`. A
-single commit of about 2,900 lines in about 35 files:
-
-- `packages/contracts/src/mcpServer.ts` (96 lines): the `mcpServers` setting, stdio or Streamable HTTP. Env, header and
-  client-secret values go to the secret store (`settingsSecrets.ts`); a patch needs the providers-manage scope, since a
-  stdio server is a host command.
-- `apps/server/src/mcpServers/McpServers.ts` (647) and `McpServersHttp.ts` (153): storage, merging across environments,
-  and OAuth for HTTP servers (metadata discovery, PKCE, refresh, a proxy at `/mcp-servers/<name>` that adds the token).
-- Adapters: about 35 lines each in `ClaudeAdapterV2.ts` and `CodexAdapterV2.ts` add the servers beside `t3-code`; `t3-code`
-  and `t3-code-direct` are reserved names.
-- Web: a Settings page (`McpServersSettings.tsx`, 938 lines, plus a logic file and tests), a route, a sidebar entry and
-  search terms; RPC and permission entries in `rpc.ts`, `ws.ts`, `clientRpcPermissions.ts`. No mobile screen.
-
-Claude and Codex only. It touches the files that conflict most on a rebase (both adapters, `ws.ts`, `rpc.ts`,
-`settings.ts`).
+Candidate: E4 Code's commit `feat(settings): manage MCP servers for Claude and Codex` (MIT; about 2,900 lines in 33
+files, with OAuth), described in [FORK_REFERENCES.md](./FORK_REFERENCES.md#e4-code-stonith404e4code). It covers Claude
+and Codex only and touches the files that conflict most on a rebase.
 
 ### Design
 
@@ -545,7 +535,7 @@ translation, the secret mapping, the contract, and a fake bearer-protected MCP s
 
 Upstream's server sends product usage events to its PostHog ingest unless `T3CODE_TELEMETRY_ENABLED=false`
 (`apps/server/src/telemetry/AnalyticsService.ts`). The fork flips the default: no events unless
-`T3CODE_TELEMETRY_ENABLED=true`. Same patch as E4 Code's, redone on this checkout.
+`T3CODE_TELEMETRY_ENABLED=true`. Same patch as E4 Code's ([FORK_REFERENCES.md](./FORK_REFERENCES.md#e4-code-stonith404e4code)), redone on this checkout.
 
 - The flag's default is `false` in both places `AnalyticsService` reads it (the config and the late desktop shell-consent
   lookup). The test that checked "disabled" now omits the flag, so it checks the default. Other tests set it explicitly.
@@ -562,7 +552,7 @@ Upstream's server sends product usage events to its PostHog ingest unless `T3COD
 ## Memory (change 13)
 
 Saved preferences, decisions and facts that every agent on every provider can recall and add to, with a Settings page
-to see and edit them. Modelled on GOAT's memory (a T3 Code fork with its own memory feature), cut down to what one
+to see and edit them. Modelled on GOAT's memory ([FORK_REFERENCES.md](./FORK_REFERENCES.md#goat-goat-sigoat)), cut down to what one
 person needs. User guide: `docs/user/memory.md`.
 
 - **Storage.** A `memories` table in the server's database (`id`, `scope` `user|project`, `project_id`, `text`,
