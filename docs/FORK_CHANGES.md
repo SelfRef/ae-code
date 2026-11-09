@@ -8,6 +8,7 @@ Upstream: [pingdotgg/t3code](https://github.com/pingdotgg/t3code). This fork is 
 
 | #   | Change                                                                                                                                                                 | Status  |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| 9   | Android app: AE Code package id, built and signed by the release workflow                                                                                              | done    |
 | 8   | Docker image of the release server on GHCR                                                                                                                             | done    |
 | 7   | Date-versioned releases (`vYYYY.MM.DD`): the Linux x64 server archive                                                                                                  | done    |
 | 6   | Daily sync: a workflow rebases the patch stack onto upstream and force-pushes `main`                                                                                   | done    |
@@ -43,7 +44,7 @@ Icons: `assets/prod` is the Aperte icon on a dark Nord tile; `nightly` and `dev`
 
 Caveats:
 
-- Only the Linux x64 server archive is released (`ae-release.yml`, see "Releases (change 7)"); no desktop installer (AppImage, deb, dmg, exe) is built or tested, so the desktop app's in-app updater finds nothing. The install scripts and `t3 update` read `SelfRef/ae-code` releases for upstream's `t3-<version>-<platform>` archives, which the fork does not publish; the release's `ae-code-linux-x64.tar.gz` is unpacked by hand. A server image does not need them: build the CLI archive from source (see the stack's Dockerfile, which follows `release-desktop.yml`'s "Build CLI archive" steps).
+- Only the Linux x64 server archive is released (`ae-release.yml`, see "Releases (changes 7 and 9)"); no desktop installer (AppImage, deb, dmg, exe) is built or tested, so the desktop app's in-app updater finds nothing. The install scripts and `t3 update` read `SelfRef/ae-code` releases for upstream's `t3-<version>-<platform>` archives, which the fork does not publish; the release's `ae-code-linux-x64.tar.gz` is unpacked by hand. A server image does not need them: build the CLI archive from source (see the stack's Dockerfile, which follows `release-desktop.yml`'s "Build CLI archive" steps).
 - Data written by upstream's T3 Code is not read: see the next section.
 
 ### Moving to the AperteDev org
@@ -271,7 +272,7 @@ Resolve it locally with the procedure in the next section and push.
 - GitHub pauses scheduled workflows after 60 days without repository activity; a daily push keeps them alive, and the run
   can be started by hand from the Actions tab.
 
-## Releases (change 7)
+## Releases (changes 7 and 9)
 
 `.github/workflows/ae-release.yml` is started by the daily sync (or by hand, with `force` to release an unchanged
 `main`). It publishes a GitHub release when `main` is not the commit of the latest release. Upstream's `release.yml` is
@@ -293,10 +294,25 @@ disabled.
   upstream's names and the fork's source is left alone. The file name has no version so that
   `releases/latest/download/ae-code-linux-x64.tar.gz` always points at the newest one. The executable still calls itself
   `t3` in its help text.
-- **Not built:** the desktop app (AppImage, `.deb`, macOS, Windows), arm64 server; no relay or Clerk configuration (T3
-  Connect sign-in is absent, pairing with a server works as before), no npm launcher, no tests or checks. A broken
+- **Android (change 9):** the `android` job runs after the release exists and attaches `ae-code-<tag>.apk` to it, so an
+  Android failure never withholds the rest. `expo prebuild` and `gradlew assembleRelease` with `APP_VARIANT=production`,
+  arm64 and x86_64 (phones and emulators; each ABI compiles the native modules again, so a cold build took about 40
+  minutes with both), Gradle's dependency cache kept between runs, Expo's cloud updates off, then the APK is re-signed
+  with the fork's key
+  (Expo's template signs release builds with the public debug key). The version name is `YYYY.MMDD.N`, the version code
+  `YYMMDDNN`. The production Android package is `dev.aperte.aecode` and the name AE Code (`apps/mobile/app.config.ts`),
+  so it installs beside upstream's app; the `t3code` URL scheme is kept. Not rebranded yet: the Android launcher icon,
+  splash and notification glyph are still the T3 mark, and thread links on `app.t3.codes` open a chooser because that
+  domain only lists upstream's package.
+- **Secrets for Android:** `ANDROID_KEYSTORE` (base64 of a PKCS12 keystore; its first key is used, whatever the alias)
+  and `ANDROID_KEYSTORE_PASSWORD` (store and key share it in PKCS12). Create the key once and keep it: an update must be
+  signed with the same key as the installed app.
+  `keytool -genkeypair -keystore ae-code.jks -alias ae-code -keyalg RSA -keysize 4096 -validity 36500`.
+- **Not built:** the desktop app (AppImage, `.deb`, macOS, Windows), iOS, arm64 server; no relay or Clerk configuration
+  (T3 Connect sign-in is absent, pairing with a server works as before), no npm launcher, no tests or checks. A broken
   `main` shows as a failed build.
-- **Not run yet.** The first run is by hand from the Actions tab; expect to fix what it finds.
+- **First run:** started by hand from the Actions tab. The Android build took about 40 minutes with a cold cache; that
+  is what to expect when Gradle's cache is evicted (GitHub drops caches unused for 7 days).
 
 ## Docker image (change 8)
 
