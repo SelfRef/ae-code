@@ -45,6 +45,8 @@ export const makeManagedServerProvider = Effect.fn("makeManagedServerProvider")(
   readonly initialSnapshot: (settings: Settings) => Effect.Effect<ServerProvider>;
   readonly checkProvider: Effect.Effect<ServerProvider, ServerSettingsError>;
   readonly checkUsageLimits?: Effect.Effect<ServerProvider["usageLimits"]>;
+  /** Stream updates fill limits the probe calls unsupported, and a later such probe keeps them. */
+  readonly streamFillsUnsupportedLimits?: boolean;
   readonly invalidateUsageCache?: Effect.Effect<void>;
   readonly enrichSnapshot?: (input: {
     readonly settings: Settings;
@@ -170,6 +172,7 @@ export const makeManagedServerProvider = Effect.fn("makeManagedServerProvider")(
           : resolveUsageLimitsAfterProbe({
               published: state.snapshot.usageLimits,
               probed: probedSnapshot.usageLimits,
+              streamFillsUnsupported: input.streamFillsUnsupportedLimits === true,
             });
         const workspaceId =
           usageLimits === probedSnapshot.usageLimits ? undefined : state.snapshot.auth.workspaceId;
@@ -201,6 +204,7 @@ export const makeManagedServerProvider = Effect.fn("makeManagedServerProvider")(
           previous: state.snapshot.usageLimits,
           update,
           checkedAt: update.checkedAt,
+          ...(input.streamFillsUnsupportedLimits === true ? { streamFillsUnsupported: true } : {}),
         });
         if (usageLimits === state.snapshot.usageLimits) {
           return [null, state] as const;
@@ -276,6 +280,7 @@ export const makeManagedServerProvider = Effect.fn("makeManagedServerProvider")(
       const usageLimits = resolveUsageLimitsAfterProbe({
         published: state.snapshot.usageLimits,
         probed,
+        streamFillsUnsupported: input.streamFillsUnsupportedLimits === true,
       });
       const snapshot = withUsageLimits(state.snapshot, usageLimits);
       return [snapshot, { ...state, snapshot }] as const;
