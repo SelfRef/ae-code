@@ -22,6 +22,7 @@ import {
 import { type EnvironmentThreadSearchMatch } from "@t3tools/client-runtime/state/thread-search";
 import {
   formatWorkingDurationLabel,
+  pendingSubagentTasks,
   resolveThreadProviderStack,
 } from "@t3tools/client-runtime/state/models";
 import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
@@ -37,6 +38,7 @@ import {
   AlarmClockIcon,
   AlarmClockOffIcon,
   ArrowRightLeftIcon,
+  BotIcon,
   CheckIcon,
   CircleAlertIcon,
   CircleCheckIcon,
@@ -265,16 +267,31 @@ function SidebarThreadTooltip({
     .filter((instanceId) => instanceId !== modelInstanceId)
     .map((instanceId) => providerEntryByInstanceId.get(instanceId)?.displayName ?? instanceId);
   const supportsMultiplePullRequests = useSupportsMultiplePullRequests(thread.environmentId);
+  const subagentTasks = pendingSubagentTasks(thread);
   return (
     <ThreadHoverCardPopup side="right" align="start" sideOffset={4}>
       <ThreadHoverCard
         title={thread.title}
         footer={
-          supportsMultiplePullRequests && thread.pullRequests.length > 0 ? (
-            <div className="border-t border-border/60 pt-2 pl-0.5 text-xs text-muted-foreground">
-              <ThreadPullRequestsMiniList pullRequests={thread.pullRequests} />
-            </div>
-          ) : null
+          <>
+            {subagentTasks.length > 0 ? (
+              <ul className="grid gap-1 border-t border-border/60 pt-2 pl-0.5 text-xs text-muted-foreground">
+                {subagentTasks.map((task) => (
+                  <li key={task.taskId} className="flex min-w-0 items-center gap-2">
+                    <BotIcon aria-hidden className="size-3 shrink-0 stroke-muted-foreground" />
+                    <div className="min-w-0 truncate text-foreground/75">
+                      {task.description ?? "Subagent"}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {supportsMultiplePullRequests && thread.pullRequests.length > 0 ? (
+              <div className="border-t border-border/60 pt-2 pl-0.5 text-xs text-muted-foreground">
+                <ThreadPullRequestsMiniList pullRequests={thread.pullRequests} />
+              </div>
+            ) : null}
+          </>
         }
       >
         {projectDisplayName ? (
@@ -727,15 +744,21 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
     isActive: props.isActive,
     isSelected,
   });
+  const subagentCount =
+    thread.runtime?.status === "running" ? 0 : pendingSubagentTasks(thread).length;
   const topStatus =
     status === "preparing" || status === "working"
       ? {
           label:
             status === "preparing"
               ? "Setting up"
-              : thread.goal?.status === "active"
-                ? "Goal"
-                : "Working",
+              : subagentCount > 0
+                ? subagentCount === 1
+                  ? "1 subagent"
+                  : `${subagentCount} subagents`
+                : thread.goal?.status === "active"
+                  ? "Goal"
+                  : "Working",
           icon: "working" as const,
           className: "text-info-foreground",
         }

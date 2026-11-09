@@ -948,6 +948,13 @@ describe("unseen completion with background work", () => {
       receded: true,
       pill: "Waiting",
     },
+    {
+      roster: "subagent",
+      task: { kind: "subagent" },
+      status: "working",
+      receded: true,
+      pill: "Subagents",
+    },
   ] as const)("presents a completed thread with a $roster roster", (expected) => {
     const thread = presentThreadShell(localEnvironmentId, {
       ...makeThreadFixture().source,

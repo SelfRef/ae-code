@@ -23,6 +23,7 @@ import type {
 import type { EnvironmentThreadSearchMatch } from "@t3tools/client-runtime/state/thread-search";
 import {
   formatWorkingDurationLabel,
+  pendingSubagentTasks,
   resolveThreadWorkingStartedAt,
 } from "@t3tools/client-runtime/state/models";
 import { AuthOrchestrationOperateScope, type EnvironmentMachineKind } from "@t3tools/contracts";
@@ -758,10 +759,17 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
   const isUnread = status === "ready" && threadHasUnseenCompletion(thread);
   const workingLabel = STATUS_LABEL_BY_STATUS[status];
   const showsWoke = status === "ready" && props.wokeAt !== null;
+  const subagentCount =
+    thread.runtime?.status === "running" ? 0 : pendingSubagentTasks(thread).length;
   const statusLabel =
-    (status === "working" && workingLabel !== undefined && thread.goal?.status === "active"
-      ? { ...workingLabel, label: "Goal" }
-      : workingLabel) ?? (isUnread ? DONE_STATUS_LABEL : undefined);
+    (status === "working" && workingLabel !== undefined && subagentCount > 0
+      ? {
+          ...workingLabel,
+          label: subagentCount === 1 ? "1 subagent" : `${subagentCount} subagents`,
+        }
+      : status === "working" && workingLabel !== undefined && thread.goal?.status === "active"
+        ? { ...workingLabel, label: "Goal" }
+        : workingLabel) ?? (isUnread ? DONE_STATUS_LABEL : undefined);
   const recede = shouldRecedeThreadRow({ status, selected });
   const isRegeneratingTitle = thread.titleRegeneration != null;
   const rowAccessibilityLabel = `${thread.title}${props.hasQueuedMessages ? ", messages queued to send" : ""}${isRegeneratingTitle ? ", regenerating title" : ""}`;
