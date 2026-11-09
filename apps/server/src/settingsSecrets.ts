@@ -247,6 +247,21 @@ function mapSecretFieldGroups(
       ) as SimlockDeviceHostConfig,
   );
 
+  // Header and env values keep their case-sensitive keys in the slot name.
+  const mapMcpValues = (prefix: string, values: Readonly<Record<string, string>>) =>
+    Object.fromEntries(
+      Object.entries(values).map(([key, value]) => [
+        key,
+        mapFields({ value }, ["value"], () => `${prefix}-${encode(key)}`).value as string,
+      ]),
+    );
+  const mcpServers = settings.mcpServers.map((server) => {
+    const prefix = `mcp-server-${encode(server.name)}`;
+    return server.transport === "stdio"
+      ? { ...server, env: mapMcpValues(`${prefix}-env`, server.env) }
+      : { ...server, headers: mapMcpValues(`${prefix}-header`, server.headers) };
+  });
+
   return {
     ...settings,
     cloudSpeechCredentials: mapFields(
@@ -260,6 +275,7 @@ function mapSecretFieldGroups(
     textGenerators,
     easDeviceHosts,
     simlockDeviceHosts,
+    mcpServers,
   };
 }
 

@@ -31,6 +31,7 @@ export type SettingsPath =
   | "/settings/devices"
   | "/settings/scheduled-tasks"
   | "/settings/memory"
+  | "/settings/mcp-servers"
   | "/settings/source-control"
   | "/settings/worktrees"
   | "/settings/connections"
@@ -107,6 +108,7 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/devices": "Devices",
   "/settings/scheduled-tasks": "Scheduled tasks",
   "/settings/memory": "Memory",
+  "/settings/mcp-servers": "MCP servers",
   "/settings/source-control": "Source control",
   "/settings/worktrees": "Worktrees",
   "/settings/connections": "Environments",
@@ -145,6 +147,7 @@ export const SETTINGS_NAV_GROUPS: ReadonlyArray<{
       "/settings/devices",
       "/settings/scheduled-tasks",
       "/settings/memory",
+      "/settings/mcp-servers",
     ],
   },
   {
@@ -1309,6 +1312,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["remember recall preferences decisions facts agents saved forget"],
   },
   {
+    id: "mcp-servers",
+    title: "MCP servers",
+    to: "/settings/mcp-servers",
+    searchTerms: ["mcp model context protocol tools hub bearer header stdio remote server trusted"],
+  },
+  {
     id: "secret-providers",
     title: "Secret providers",
     to: "/settings/secrets",
@@ -1356,6 +1365,7 @@ const SETTINGS_CATEGORY_SCOPES: Readonly<Record<SettingsPath, SettingsSearchScop
   "/settings/secrets": null,
   "/settings/scheduled-tasks": null,
   "/settings/memory": null,
+  "/settings/mcp-servers": null,
   "/settings/maintenance": null,
   "/settings/labs": null,
   "/settings/about": null,
