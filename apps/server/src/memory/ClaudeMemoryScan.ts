@@ -33,7 +33,7 @@ export const scanClaudeMemories = Effect.fn("ClaudeMemoryScan.scan")(function* (
       () =>
         new MemoryError({
           code: "invalid",
-          message: `Cannot read ${root}. Give the folder that holds Claude's project folders.`,
+          message: `Cannot read ${root} on this environment's disk. Give the folder that holds Claude's project folders there.`,
         }),
     ),
   );

@@ -30,7 +30,12 @@ import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../
 import { Switch } from "../ui/switch";
 import { Textarea } from "../ui/textarea";
 import { stackedThreadToast, toastManager } from "../ui/toast";
-import { filterMemories, memoryScopeLabel, type MemoryScopeFilter } from "./memorySettings.logic";
+import {
+  filterMemories,
+  memoryScopeLabel,
+  selectableProjects,
+  type MemoryScopeFilter,
+} from "./memorySettings.logic";
 import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsLayout";
 import { searchableSetting } from "./settingsSearch";
 import { useSettingsScope } from "./SettingsScopeContext";
@@ -66,9 +71,7 @@ export function MemorySettingsPanel() {
 function EnvironmentMemory({ environmentId }: { readonly environmentId: EnvironmentId }) {
   const list = useEnvironmentQuery(serverEnvironment.memoryList({ environmentId, input: {} }));
   const canWrite = useAtomValue(serverEnvironment.saveMemory.permissionAtom(environmentId));
-  const projects = useProjects().filter(
-    (project) => project.environmentId === environmentId && project.isScratch !== true,
-  );
+  const projects = selectableProjects(useProjects(), environmentId);
   const projectTitles = new Map(projects.map((project) => [project.id, project.title]));
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState<MemoryScopeFilter>("all");

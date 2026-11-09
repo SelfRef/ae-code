@@ -77,6 +77,7 @@ export function MemoryImportDialog({
 
   const runScan = async () => {
     setBusy(true);
+    setScanned(null);
     const result = await scan({
       environmentId,
       input: path.trim() === "" ? {} : { path: path.trim() },
