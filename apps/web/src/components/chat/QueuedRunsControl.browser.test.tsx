@@ -399,3 +399,21 @@ it("does not re-render while assistant text streams into the thread", async () =
   await act(() => registry.set(state.threadState, thread("Hello there", true)));
   expect(renders).toBeGreaterThan(settled);
 });
+
+it("says which command a steer waits behind, with no queued messages", async () => {
+  setup();
+  state.workflow = {
+    activeRun: { id: "run:active" },
+    canPromoteToSteer: true,
+    queuedRuns: [],
+    waitingSteer: { messageId: "message:steer", command: "timeout 580 gh run watch 42" },
+  };
+  await using _screen = await renderQueue();
+
+  await expect
+    .element(page.getByText("timeout 580 gh run watch 42", { exact: true }))
+    .toBeVisible();
+  await expect
+    .element(page.getByRole("button", { name: "Stop it and send now", exact: true }))
+    .toBeVisible();
+});
