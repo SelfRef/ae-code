@@ -13,7 +13,10 @@ import {
   type SnoozePreset,
 } from "@t3tools/client-runtime/state/thread-settled";
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell";
-import { resolveThreadProviderStack } from "@t3tools/client-runtime/state/models";
+import {
+  pendingSubagentTasks,
+  resolveThreadProviderStack,
+} from "@t3tools/client-runtime/state/models";
 import {
   threadSearchMatchKey,
   threadSearchSubject,
@@ -269,7 +272,8 @@ export function resolveThreadListV2Status(
     | "pendingGuestMessageCount"
     | "runtime"
     | "blockedOnThreadWait"
-  >,
+  > &
+    Partial<Pick<EnvironmentThreadShell, "pendingBackgroundTasks">>,
 ): ThreadListV2Status {
   if (thread.hasPendingApprovals || thread.pendingSubagentRequest === "approval") {
     return "approval";
@@ -290,11 +294,15 @@ export function resolveThreadListV2Status(
   ) {
     return "working";
   }
-  if (thread.runtime?.status === "idle") {
-    return "waiting";
-  }
   if (thread.runtime?.status === "failed") {
     return thread.runtime.lastErrorClass === "usage_limit" ? "limited" : "failed";
+  }
+  // The turn is over but a subagent still works: that is not a wait on the user's side.
+  if (pendingSubagentTasks(thread).length > 0) {
+    return "working";
+  }
+  if (thread.runtime?.status === "idle") {
+    return "waiting";
   }
   return "ready";
 }
