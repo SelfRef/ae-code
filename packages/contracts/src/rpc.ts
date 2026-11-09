@@ -367,6 +367,15 @@ import {
   TextGeneratorError,
 } from "./settings.ts";
 import {
+  MemoryDeleteInput,
+  MemoryDeleteResult,
+  MemoryError,
+  MemoryListInput,
+  MemoryListResult,
+  MemorySaveInput,
+  MemorySaveResult,
+} from "./memory.ts";
+import {
   ScheduledTaskDeleteInput,
   ScheduledTaskDeleteResult,
   ScheduledTaskError,
@@ -547,6 +556,10 @@ export const WS_METHODS = {
   serverReportClientActivity: "server.reportClientActivity",
   serverGetUsageSummary: "server.getUsageSummary",
   serverRefreshUsageRates: "server.refreshUsageRates",
+
+  memoryList: "memory.list",
+  memorySave: "memory.save",
+  memoryDelete: "memory.delete",
 
   scheduledTasksSubscribe: "scheduledTasks.subscribe",
   scheduledTasksUpsert: "scheduledTasks.upsert",
@@ -2045,6 +2058,24 @@ const WsScheduledTasksGetWebhookDeliveryRpc = Rpc.make(
   },
 );
 
+const WsMemoryListRpc = Rpc.make(WS_METHODS.memoryList, {
+  payload: MemoryListInput,
+  success: MemoryListResult,
+  error: Schema.Union([MemoryError, EnvironmentAuthorizationError]),
+});
+
+const WsMemorySaveRpc = Rpc.make(WS_METHODS.memorySave, {
+  payload: MemorySaveInput,
+  success: MemorySaveResult,
+  error: Schema.Union([MemoryError, EnvironmentAuthorizationError]),
+});
+
+const WsMemoryDeleteRpc = Rpc.make(WS_METHODS.memoryDelete, {
+  payload: MemoryDeleteInput,
+  success: MemoryDeleteResult,
+  error: Schema.Union([MemoryError, EnvironmentAuthorizationError]),
+});
+
 const WsSubscribeAuthAccessRpc = Rpc.make(WS_METHODS.subscribeAuthAccess, {
   payload: Schema.Struct({}),
   success: AuthAccessStreamEvent,
@@ -2124,6 +2155,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerGetUsageSummaryRpc,
   WsServerRefreshUsageRatesRpc,
   WsServerSignalProcessRpc,
+  WsMemoryListRpc,
+  WsMemorySaveRpc,
+  WsMemoryDeleteRpc,
   WsScheduledTasksSubscribeRpc,
   WsScheduledTasksUpsertRpc,
   WsScheduledTasksSetEnabledRpc,
