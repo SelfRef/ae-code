@@ -12,7 +12,8 @@ import {
   type MemorySetSettingsInput,
   type ProjectId,
 } from "@t3tools/contracts";
-import { DownloadIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
 import { requestConfirmDialog } from "../../confirmDialog";
@@ -22,7 +23,6 @@ import { useProjects } from "../../state/entities";
 import { useEnvironmentQuery } from "../../state/query";
 import { serverEnvironment } from "../../state/server";
 import { useAtomCommand } from "../../state/use-atom-command";
-import { MemoryImportDialog } from "./MemoryImportDialog";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -73,7 +73,6 @@ function EnvironmentMemory({ environmentId }: { readonly environmentId: Environm
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState<MemoryScopeFilter>("all");
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [importOpen, setImportOpen] = useState(false);
   const save = useAtomCommand(serverEnvironment.saveMemory, { label: "memory save" });
   const remove = useAtomCommand(serverEnvironment.deleteMemory, { label: "memory delete" });
   const setSettings = useAtomCommand(serverEnvironment.setMemorySettings, {
@@ -106,22 +105,25 @@ function EnvironmentMemory({ environmentId }: { readonly environmentId: Environm
       {...searchableSetting("memory")}
       headerAction={
         canWrite && draft === null ? (
-          <div className="flex items-center gap-2">
-            <Button size="xs" variant="outline" onClick={() => setImportOpen(true)}>
-              <DownloadIcon className="size-3" aria-hidden />
-              Import from Claude
-            </Button>
-            <Button size="xs" variant="outline" onClick={() => setDraft({ mode: "add" })}>
-              <PlusIcon className="size-3" aria-hidden />
-              Add memory
-            </Button>
-          </div>
+          <Button size="xs" variant="outline" onClick={() => setDraft({ mode: "add" })}>
+            <PlusIcon className="size-3" aria-hidden />
+            Add memory
+          </Button>
         ) : null
       }
     >
       <SettingsRow
         title="Agent memory"
-        description="Agents on every provider can recall these memories and save new ones. Off: agents are not told about memory and its tools refuse; saved memories are kept. Applies to new sessions."
+        description={
+          <>
+            Agents on every provider can recall and save memories. Off: agents are not told about it
+            and the tools refuse; saved memories stay. New sessions only. Claude's own memory:{" "}
+            <Link to="/settings/providers" className="underline">
+              Providers
+            </Link>
+            .
+          </>
+        }
         control={
           <Switch
             aria-label="Agent memory"
@@ -130,27 +132,6 @@ function EnvironmentMemory({ environmentId }: { readonly environmentId: Environm
             onCheckedChange={(checked) => void changeSettings({ enabled: Boolean(checked) })}
           />
         }
-      />
-      <SettingsRow
-        title="Turn off Claude's built-in memory"
-        description="While agent memory is on, new Claude sessions run without Claude Code's own memory, so there is one store. Other providers are not affected."
-        control={
-          <Switch
-            aria-label="Turn off Claude's built-in memory"
-            checked={settings.disableNativeMemory && settings.enabled}
-            disabled={!canWrite || !settings.enabled}
-            onCheckedChange={(checked) =>
-              void changeSettings({ disableNativeMemory: Boolean(checked) })
-            }
-          />
-        }
-      />
-      <MemoryImportDialog
-        environmentId={environmentId}
-        projects={projects}
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        onImported={() => list.refresh()}
       />
       {draft !== null ? (
         <MemoryEditor
