@@ -2,7 +2,7 @@
 
 AE Code is a personal fork of [T3 Code](https://github.com/pingdotgg/t3code), a minimal GUI that controls the coding agents on your machine (Claude Code, Codex, Cursor, Grok Build, OpenCode, Google Antigravity, Kiro and more) from a web app, a desktop app and a mobile app. It keeps upstream's architecture and providers and adds the features listed below.
 
-The fork is kept as a linear stack of patch commits on top of upstream's `main`, rebased daily. Everything not listed here behaves as in T3 Code. What the fork changes, and why, is in [docs/FORK_CHANGES.md](./docs/FORK_CHANGES.md); other forks of T3 Code and what they offer are in [docs/FORK_REFERENCES.md](./docs/FORK_REFERENCES.md).
+The fork is kept as a linear stack of patch commits on top of upstream's `main`, rebased daily. Everything not listed here behaves as in T3 Code. The [roadmap](./docs/ROADMAP.md) lists what is done and what is planned, with the reasoning behind each change; other forks of T3 Code and what they offer are in [docs/FORK_REFERENCES.md](./docs/FORK_REFERENCES.md).
 
 ## What the fork adds
 
@@ -28,7 +28,7 @@ The fork is kept as a linear stack of patch commits on top of upstream's `main`,
 
 ### Running and releasing
 
-- **Its own identity.** App id `dev.aperte.AECode`, state in `~/.ae`, Electron profile `ae-code`: it runs next to upstream's T3 Code without sharing data. Data written by T3 Code is not read; see "Data migration" in [FORK_CHANGES.md](./docs/FORK_CHANGES.md).
+- **Its own identity.** App id `dev.aperte.AECode`, state in `~/.ae`, Electron profile `ae-code`: it runs next to upstream's T3 Code without sharing data. Data written by T3 Code is not read; see "Data migration" in [ROADMAP.md](./docs/ROADMAP.md).
 - **Android app.** Package `dev.aperte.aecode`, built and signed by the release workflow and attached to each release as an APK.
 - **Docker image.** The release server on GHCR, `ghcr.io/selfref/ae-code`.
 - **Date-versioned releases.** `vYYYY.MM.DD` releases with the Linux x64 server archive, published when `main` has new changes.
