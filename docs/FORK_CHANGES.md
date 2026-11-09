@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [20] | Install Claude Code and OpenCode from Settings → Providers with npm into `~/.local`, and update them there (not found in any fork)                                     | done    |
 | [19] | Sidebar shows running subagents: a thread whose turn ended but whose subagents still work reads "N subagents" instead of a stalled "Waiting"                           | done    |
 | [18] | Steer controls: "Stop it and send now" for a steer stuck behind a long command (Claude; take back not built; not found in any fork)                                    | done    |
 | [17] | No product analytics: the server sends no usage events unless `T3CODE_TELEMETRY_ENABLED=true` (idea from E4 Code)                                                      | done    |
@@ -49,6 +50,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 [17]: #no-product-analytics-change-17
 [18]: #steer-controls-change-18
 [19]: #sidebar-subagent-status-change-19
+[20]: #install-claude-code-and-opencode-from-settings-change-20
 
 `done` means it is a commit on `main`; the commit is found by subject (`git log --grep`), not by hash, because every
 rebase onto upstream changes the hashes. The history rules and the sync procedure are in the last section.
@@ -727,6 +729,35 @@ CLI) is left with a dead row and a dead entry in the model pickers.
 - No data migration: the field is new and optional. An older server ignores it and shows the provider disabled.
 - **Rebase cost.** `providerInstance.ts` (one field), `ProviderInstanceRegistryHydration.ts` (three lines),
   `ProviderSettingsPanel.tsx` (row filter, one callback, the delete button on default rows).
+
+## Install Claude Code and OpenCode from Settings (change 20)
+
+Upstream installs only Antigravity's runtime and the managed Codex runtime from the app; Claude and OpenCode can be
+updated there but not installed. An image that ships without agent CLIs has nowhere to get them but a shell.
+
+- **Install** in the provider's Settings card (`ManagedCliInstallSection`) runs
+  `npm install -g --prefix <home>/.local --allow-scripts=<package> <package>` for `@anthropic-ai/claude-code` and
+  `@opencode/cli` (npm 11 skips the install script without the flag). `NpmPackageInstallation` keeps one operation per
+  driver, a 10-minute limit, a cancel that kills npm, and a redacted tail of npm's output for the failure message. The
+  state reuses `ProviderInstallState` with a new `installing` phase, since npm reports no bytes. Installs run one at a
+  time (both packages write to the same prefix). npm links the launcher before the package's postinstall runs, so a
+  cancelled, timed-out or failed install removes the launcher and package it created (never one that was already
+  there), and a launcher that exists but fails to start keeps `canInstall` true so the row stays.
+- `providerInstallation.ts` accepts the two drivers: an empty binary path or the default command counts as managed, a
+  custom path is refused. A finished install refreshes every instance of the driver. Remove is not offered.
+- The snapshot reports `setup.canInstall` while the CLI is missing, the instance is enabled and uses the default
+  command. Not on Windows, where npm lays a prefix out differently.
+- `<home>/.local/bin` is appended to the PATH the Claude and OpenCode processes get, after the existing entries, so a CLI
+  on PATH still wins and a fresh install works without a restart. When a managed copy is the one found, the provider
+  message says where.
+- Updates needed no change: the maintenance resolvers already read an npm prefix from the real path of the launcher, so
+  **Update now** runs `npm install -g --prefix <home>/.local <package>@latest`. Tests now cover this layout.
+- Mobile has no provider install flow at all (not for Codex or Antigravity either), so it is untouched. No MCP tool
+  triggers an install; the capability is a service method if one is wanted.
+- No data migration. Nothing is renamed; the only new state is npm's own files under `~/.local`.
+- **Rebase cost.** New files: `NpmPackageInstallation.ts`, `managedNpmInstall.ts` (provider-core), the web section.
+  Small edits: `providerInstallation.ts`, `server.ts` (one layer), `providerSetup.ts` (one literal), `ClaudeHome.ts` and
+  `ClaudeDriver.ts`, the OpenCode `driver.ts` and `adapter.ts`, `ProviderSettingsPanel.tsx` (one branch).
 
 ## Keeping the fork up to date with upstream
 

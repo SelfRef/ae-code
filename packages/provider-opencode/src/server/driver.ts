@@ -54,6 +54,10 @@ import {
 import { withInstanceIdentity } from "@t3tools/provider-core/server/instanceIdentity";
 import { mergeProviderInstanceEnvironment } from "@t3tools/provider-core/server/instanceEnvironment";
 import {
+  applyManagedNpmInstallStatus,
+  withManagedNpmBinDirectory,
+} from "@t3tools/provider-core/server/managedNpmInstall";
+import {
   enrichProviderSnapshotWithVersionAdvisory,
   makeCachedProviderMaintenanceResolution,
   makeManualOnlyProviderMaintenanceCapabilities,
@@ -206,7 +210,11 @@ export const OpenCodeDriver: ProviderDriver<
     const latestVersions = yield* ProviderLatestVersions.ProviderLatestVersions;
     const digest = yield* Digest.Digest;
     const host = yield* ProviderHost.ProviderHost;
-    const processEnv = yield* mergeProviderInstanceEnvironment(environment);
+    const processEnv = yield* mergeProviderInstanceEnvironment(environment).pipe(
+      Effect.flatMap((merged) =>
+        withManagedNpmBinDirectory(DRIVER_KIND, config.binaryPath, merged),
+      ),
+    );
     const continuationIdentity = defaultProviderContinuationIdentity({
       driverKind: DRIVER_KIND,
       instanceId,
@@ -380,6 +388,15 @@ export const OpenCodeDriver: ProviderDriver<
     ).pipe(
       Effect.map(({ provider, usageLimits }) => ({ ...provider, usageLimits })),
       Effect.map(stampIdentity),
+      // An external server has no local CLI to install or locate.
+      Effect.filterOrElse(
+        () => effectiveConfig.serverUrl.trim() !== "",
+        (provider) =>
+          applyManagedNpmInstallStatus(provider, effectiveConfig.binaryPath, processEnv).pipe(
+            Effect.provideService(FileSystem.FileSystem, fileSystem),
+            Effect.provideService(Path.Path, pathService),
+          ),
+      ),
       Effect.provideService(OpenCodeServerOwner.OpenCodeServerOwner, serverOwner),
       Effect.provideService(OpenCodeRuntime.OpenCodeRuntime, openCodeRuntime),
     );

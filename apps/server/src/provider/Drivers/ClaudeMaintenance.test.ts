@@ -288,6 +288,50 @@ it.layer(NodeServices.layer)("ClaudeMaintenance", (it) => {
       }).pipe(Effect.scoped),
   );
 
+  it.effect("updates the app's ~/.local npm prefix install through npm, not `claude update`", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const directory = yield* fs.realPath(yield* fs.makeTempDirectoryScoped());
+      const prefix = path.join(directory, ".local");
+      const entry = path.join(prefix, "lib/node_modules/@anthropic-ai/claude-code/cli.js");
+      yield* fs.makeDirectory(path.dirname(entry), { recursive: true });
+      yield* fs.writeFileString(entry, "#!/bin/sh\n");
+      yield* fs.chmod(entry, 0o755);
+      yield* fs.makeDirectory(path.join(prefix, "bin"), { recursive: true });
+      // npm links the launcher into `bin`, a path the native updater also claims.
+      const launcher = path.join(prefix, "bin", "claude");
+      yield* fs.symlink(entry, launcher);
+      const resolve = yield* makeClaudeMaintenanceResolution({
+        binaryPath: launcher,
+        env: { PATH: "" },
+      }).pipe(
+        Effect.provideService(
+          ChildProcessSpawner.ChildProcessSpawner,
+          ChildProcessSpawner.make(() => Effect.die("resolving an update must not spawn")),
+        ),
+        Effect.provideService(HostProcess.Platform, "linux"),
+        Effect.provideService(HostProcess.Environment, { PATH: "" }),
+        Effect.provideService(
+          HttpClient.HttpClient,
+          HttpClient.make(() => Effect.die("offline")),
+        ),
+      );
+      expect((yield* resolve()).update).toMatchObject({
+        executable: "npm",
+        args: [
+          "install",
+          "-g",
+          "--prefix",
+          prefix,
+          "--allow-scripts=@anthropic-ai/claude-code",
+          "@anthropic-ai/claude-code@latest",
+        ],
+        lockKey: `npm-global:${prefix.toLowerCase()}`,
+      });
+    }).pipe(Effect.scoped),
+  );
+
   it.effect("automatic refresh rereads the native channel while preserving both caches", () =>
     Effect.gen(function* () {
       const f = yield* fixture();

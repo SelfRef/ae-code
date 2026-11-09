@@ -553,7 +553,8 @@ it.effect.skipIf(HostProcess.Platform.defaultValue() === "win32")(
       const root = NodeFS.realpathSync(
         NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "t3-opencode-update-")),
       );
-      const v2Prefix = NodePath.join(root, "v2");
+      // The prefix the app installs OpenCode 2 into.
+      const v2Prefix = NodePath.join(root, "home", ".local");
       const v1Prefix = NodePath.join(root, "v1");
       const v2 = yield* resolveUpdate(
         "v2",

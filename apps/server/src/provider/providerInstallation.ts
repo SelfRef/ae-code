@@ -19,17 +19,22 @@ import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 
 import * as CodexInstallation from "./CodexInstallation.ts";
+import * as NpmPackageInstallation from "./NpmPackageInstallation.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import * as AntigravityInstallation from "./AntigravityInstallation.ts";
 import { deriveProviderInstanceConfigMap } from "./ProviderInstanceRegistryHydration.ts";
 import * as ProviderInstanceRegistry from "./ProviderInstanceRegistry.ts";
 import * as ProviderRegistry from "./ProviderRegistry.ts";
 import { mergeProviderInstanceEnvironment } from "@t3tools/provider-core/server/instanceEnvironment";
+import { findManagedNpmPackage } from "@t3tools/provider-core/server/managedNpmInstall";
 
 const ANTIGRAVITY = ProviderDriverKind.make("antigravity");
 const hasBinaryPath = Schema.is(Schema.Struct({ binaryPath: Schema.String }));
 const decodeCodexSettings = Schema.decodeUnknownEffect(CodexSettings);
 const decodeAntigravitySettings = Schema.decodeUnknownEffect(AntigravitySettings);
+const decodeBinaryPathSettings = Schema.decodeUnknownEffect(
+  Schema.Struct({ binaryPath: Schema.optional(Schema.String) }),
+);
 
 export class ProviderInstallation extends Context.Service<
   ProviderInstallation,
@@ -52,6 +57,7 @@ export class ProviderInstallation extends Context.Service<
 const make = Effect.fn("makeProviderInstallation")(function* () {
   const antigravityInstallation = yield* AntigravityInstallation.AntigravityInstallation;
   const codexInstallation = yield* CodexInstallation.CodexInstallation;
+  const npmInstallation = yield* NpmPackageInstallation.NpmPackageInstallation;
   const instances = yield* ProviderInstanceRegistry.ProviderInstanceRegistry;
   const providers = yield* ProviderRegistry.ProviderRegistry;
   const settings = yield* ServerSettings.ServerSettingsService;
@@ -77,6 +83,21 @@ const make = Effect.fn("makeProviderInstallation")(function* () {
     return deriveProviderInstanceConfigMap(current);
   });
 
+  // The driver is validated before a handle is built, so its lookups cannot fail.
+  const npmHandle = (driver: ProviderDriverKind) => ({
+    start: npmInstallation.start(driver),
+    cancel: (operationId: string) => npmInstallation.cancel(driver, operationId),
+    state: npmInstallation.state(driver).pipe(Effect.orDie),
+    changes: npmInstallation.changes(driver).pipe(Stream.orDie),
+    remove: (_protectedPaths?: ReadonlyArray<string>) =>
+      Effect.fail(
+        new NpmPackageInstallation.NpmPackageInstallationError({
+          operation: "remove",
+          detail: "Removing this provider's CLI is not available in T3 Code.",
+        }),
+      ),
+  });
+
   const requireInstance = Effect.fn("ProviderInstallation.requireInstance")(function* (
     instanceId: ProviderInstanceId,
     operation: string,
@@ -84,14 +105,19 @@ const make = Effect.fn("makeProviderInstallation")(function* () {
   ) {
     const instance = yield* instances.getInstance(instanceId);
     const isCodex = instance?.driverKind === ProviderDriverKind.make("codex");
-    if (instance?.driverKind !== ANTIGRAVITY && !isCodex) {
+    const npmPackage = instance ? findManagedNpmPackage(instance.driverKind) : undefined;
+    if (!instance || (instance.driverKind !== ANTIGRAVITY && !isCodex && !npmPackage)) {
       return yield* new ProviderSetupError({
         instanceId,
         operation,
         detail: "Managed installation is not available for this provider instance.",
       });
     }
-    const installation = isCodex ? codexInstallation : antigravityInstallation;
+    const installation = isCodex
+      ? codexInstallation
+      : npmPackage
+        ? npmHandle(instance.driverKind)
+        : antigravityInstallation;
     const entries = yield* readEntries(instanceId, operation);
     const invalidConfig = () =>
       new ProviderSetupError({
@@ -103,9 +129,13 @@ const make = Effect.fn("makeProviderInstallation")(function* () {
       ? yield* decodeCodexSettings(entries[instanceId]?.config ?? {}).pipe(
           Effect.mapError(invalidConfig),
         )
-      : yield* decodeAntigravitySettings(entries[instanceId]?.config ?? {}).pipe(
-          Effect.mapError(invalidConfig),
-        );
+      : npmPackage
+        ? yield* decodeBinaryPathSettings(entries[instanceId]?.config ?? {}).pipe(
+            Effect.mapError(invalidConfig),
+          )
+        : yield* decodeAntigravitySettings(entries[instanceId]?.config ?? {}).pipe(
+            Effect.mapError(invalidConfig),
+          );
     if (isCodex && (!("setupMode" in config) || config.setupMode !== "managed")) {
       return yield* new ProviderSetupError({
         instanceId,
@@ -113,7 +143,8 @@ const make = Effect.fn("makeProviderInstallation")(function* () {
         detail: "Choose managed setup to install Codex in T3 Code.",
       });
     }
-    if (managedOnly && config.binaryPath && (!isCodex || config.binaryPath !== "codex")) {
+    const defaultBinary = isCodex ? "codex" : npmPackage?.binary;
+    if (managedOnly && config.binaryPath && config.binaryPath.trim() !== defaultBinary) {
       return yield* new ProviderSetupError({
         instanceId,
         operation,
@@ -129,7 +160,8 @@ const make = Effect.fn("makeProviderInstallation")(function* () {
     (
       error:
         | AntigravityInstallation.AntigravityInstallationError
-        | CodexInstallation.CodexInstallationError,
+        | CodexInstallation.CodexInstallationError
+        | NpmPackageInstallation.NpmPackageInstallationError,
     ) =>
       new ProviderSetupError({ instanceId, operation: error.operation, detail: error.detail });
 
@@ -169,6 +201,40 @@ const make = Effect.fn("makeProviderInstallation")(function* () {
               return;
             yield* instance.refreshModels().pipe(Effect.ignore({ log: true }));
             yield* providers.refreshInstance(input.instanceId);
+          }),
+        ),
+        Effect.forkIn(scope),
+      );
+    }
+    if (
+      findManagedNpmPackage(driver) &&
+      started.operationId !== null &&
+      accountCheckOperations.get(input.instanceId) !== started.operationId
+    ) {
+      accountCheckOperations.set(input.instanceId, started.operationId);
+      yield* installation.changes.pipe(
+        Stream.filter(
+          (state) =>
+            state.operationId !== started.operationId ||
+            state.phase === "succeeded" ||
+            state.phase === "failed" ||
+            state.phase === "cancelled",
+        ),
+        Stream.runHead,
+        Effect.flatMap(
+          Effect.fnUntraced(function* (result) {
+            if (
+              Option.isNone(result) ||
+              result.value.operationId !== started.operationId ||
+              result.value.phase !== "succeeded"
+            )
+              return;
+            const installed = yield* instances.listInstances;
+            yield* Effect.forEach(
+              installed.filter((instance) => instance.driverKind === driver),
+              (instance) => providers.refreshInstance(instance.instanceId),
+              { discard: true },
+            );
           }),
         ),
         Effect.forkIn(scope),
