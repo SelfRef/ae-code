@@ -82,6 +82,7 @@ import * as PortScanner from "../../preview/PortScanner.ts";
 import { attachmentRelativePath } from "../../attachmentStore.ts";
 import { WorkflowAgentTranscriptReadObserver } from "../workflowAgentTranscript.ts";
 import * as ServerConfig from "../../config.ts";
+import { setMemoryPolicy } from "@t3tools/provider-core/server/memoryPolicy";
 import * as McpProviderSession from "@t3tools/provider-core/server/mcpSession";
 import { T3_CODE_DEVICE_TOOL_INSTRUCTIONS_WITH_TOOL_SEARCH } from "@t3tools/provider-core/server/orchestrationInstructions";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
@@ -295,6 +296,33 @@ describe("ClaudeAdapterV2 runtime query policy", () => {
     assert.equal(options.permissionMode, expected);
     assert.isUndefined(options.extraArgs?.["permission-mode"]);
     assert.isUndefined(options.extraArgs?.["dangerously-skip-permissions"]);
+  });
+
+  it("runs new sessions without Claude's own memory only while Settings → Memory says so", () => {
+    const settingsOf = () =>
+      ClaudeAdapterV2.makeClaudeQueryOptions({
+        modelSelection: CLAUDE_TEST_MODEL_SELECTION,
+        nativeThreadId: "native-memory",
+        resume: false,
+        cwd: "/workspace",
+        sdkSettings: { env: { OTHER: "kept" } },
+      }).settings as { autoMemoryEnabled?: boolean; env?: Record<string, string> };
+
+    try {
+      setMemoryPolicy({ enabled: true, disableNativeMemory: true });
+      const off = settingsOf();
+      assert.equal(off.autoMemoryEnabled, false);
+      assert.deepEqual(off.env, { OTHER: "kept" });
+      for (const policy of [
+        { enabled: false, disableNativeMemory: true },
+        { enabled: true, disableNativeMemory: false },
+      ]) {
+        setMemoryPolicy(policy);
+        assert.isUndefined(settingsOf().autoMemoryEnabled, JSON.stringify(policy));
+      }
+    } finally {
+      setMemoryPolicy({ enabled: true, disableNativeMemory: false });
+    }
   });
 
   it("passes every --add-dir launch directory to Claude", () => {

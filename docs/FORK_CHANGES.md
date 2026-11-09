@@ -430,8 +430,20 @@ person needs. User guide: `docs/user/memory.md`.
   linking text, so every adapter that sends one carries it: Claude, Codex, ACP, Cursor, Muse, OpenCode and Antigravity.
   Pi receives only the orchestration text and does not get it. The briefing says memory is reference data, never
   instructions.
-- **Settings → Memory** (web and desktop, one environment at a time): list, search, scope filter, add, edit, forget.
-  Three RPCs (`memory.list`, `memory.save`, `memory.delete`); the two writes need the settings-write scope.
+- **Settings → Memory** (web and desktop, one environment at a time): list, search, scope filter, add, edit, forget,
+  and two switches. Four RPCs (`memory.list`, `memory.save`, `memory.delete`, `memory.setSettings`); the three writes
+  need the settings-write scope.
+- **Switches** (`memory_settings`, one row in the same self-created tables, not `ServerSettings`, so upstream's settings
+  schema is untouched). _Agent memory_ (default on): off removes the briefing from new sessions and makes the three
+  tools refuse (`disabled`); saved memories stay, and the page still lists, edits and forgets them. _Turn off Claude's
+  built-in memory_ (default on, effective only while memory is on): new Claude sessions get
+  `autoMemoryEnabled: false` in their flag settings (`makeClaudeQueryOptions`), so Claude Code writes no memory files of
+  its own. Only Claude has such a switch so far; other providers' own memory is untouched. Both apply to new
+  sessions, not running ones. `packages/provider-core/src/server/memoryPolicy.ts` holds the current values as a
+  process-wide variable that `MemoryService` publishes at start and on every change, because eight adapters build their
+  instructions synchronously and threading a setting through each would touch all of them. Its default (nothing
+  published) leaves a provider's own memory alone, which keeps the recorded Claude replay fixtures valid. The tools stay
+  in the tool list while memory is off (registration is static), so the tool-list part of the context budget stays.
 - **Not built, from GOAT:** automatic summaries of finished threads, a memory block injected into every prompt,
   thread-scoped memory, importing Claude/Codex native memories, sharing between devices (hub), conflict resolution,
   storage quotas, and a mobile page. The tools and the page are the seam for each.
