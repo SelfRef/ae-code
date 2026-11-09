@@ -8,6 +8,7 @@ Upstream: [pingdotgg/t3code](https://github.com/pingdotgg/t3code). This fork is 
 
 | #   | Change                                                                                                                                                                 | Status  |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| 17  | No product analytics: the server sends no usage events unless `T3CODE_TELEMETRY_ENABLED=true` (idea from E4 Code)                                                      | done    |
 | 16  | Manage MCP servers from Settings: extra stdio and HTTP servers added to every provider session (port of E4 Code's patch or a smaller own version)                      | planned |
 | 15  | Remove a built-in provider (Codex, Claude, ...) from Settings and the registry, with Restore                                                                           | done    |
 | 14  | No git hooks: upstream's pre-commit hook, its `prepare` script and the `staged` config in `vite.config.ts` are removed (they need Node on the committing host)         | done    |
@@ -452,6 +453,24 @@ Spike first: confirm whether Claude and Codex sessions started by T3 already loa
 gap is only the shared list and the UI), and read E4's adapter hunks and secret handling before copying them. New
 servers apply to new sessions, like change 13's switches. Agents: an MCP tool that lists the configured servers is
 optional; the tools of the servers themselves reach the agent directly.
+
+## No product analytics (change 17)
+
+Upstream's server sends product usage events to its PostHog ingest unless `T3CODE_TELEMETRY_ENABLED=false`
+(`apps/server/src/telemetry/AnalyticsService.ts`). The fork flips the default: no events unless
+`T3CODE_TELEMETRY_ENABLED=true`. Same patch as E4 Code's, redone on this checkout.
+
+- The flag's default is `false` in both places `AnalyticsService` reads it (the config and the late desktop shell-consent
+  lookup). The test that checked "disabled" now omits the flag, so it checks the default. Other tests set it explicitly.
+- Copy: the welcome page notice, the About → Legal description, `docs/user/telemetry.md` and `docs/user/faq.md` say the
+  fork sends no usage data.
+- Left as upstream, on purpose: relay tracing (`isRelayTracingEnabled` in `packages/shared/src/otelEnvironment.ts` counts
+  an unset flag as enabled) and the mobile app's own crash reports and traces. The fork's builds carry no relay, trace
+  or crash-report endpoint configuration (`ae-release.yml` sets none; the mobile `observe` endpoint is `.invalid`
+  without `T3CODE_RELAY_URL`), so nothing is sent. Changing them would touch the desktop IPC, the server config and their
+  tests for no gain; revisit if the fork ever builds with relay configuration.
+- Not covered: **Publish agent activity** (needs a T3 Connect link, which the fork does not have) and the provider CLIs'
+  own telemetry, which T3 does not control.
 
 ## Memory (change 13)
 
