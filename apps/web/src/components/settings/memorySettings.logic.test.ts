@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import { MemoryId, ProjectId, type Memory } from "@t3tools/contracts";
 
-import { filterMemories, memoryScopeLabel } from "./memorySettings.logic";
+import { filterMemories, memoryScopeLabel, selectableProjects } from "./memorySettings.logic";
 
 const projectA = ProjectId.make("project:a");
 
@@ -29,6 +29,28 @@ describe("filterMemories", () => {
     expect(filterMemories(all, "", projectA).map((entry) => entry.id)).toEqual(["b"]);
     expect(filterMemories(all, "PNPM npm", "all").map((entry) => entry.id)).toEqual(["a"]);
     expect(filterMemories(all, "pnpm nomad", "all")).toEqual([]);
+  });
+});
+
+describe("selectableProjects", () => {
+  const project = (environmentId: string, workspaceRoot: string, isScratch?: true) => ({
+    environmentId,
+    workspaceRoot,
+    ...(isScratch === undefined ? {} : { isScratch }),
+  });
+
+  it("keeps this environment's real projects, and drops its scratch project even after a state-folder move", () => {
+    const projects = [
+      project("env:a", "/home/me/Projects/app"),
+      project("env:a", "/home/node/.ae/scratch", true),
+      project("env:a", "/home/node/.t3/scratch"),
+      project("env:a", "/home/me/Projects/scratch"),
+      project("env:b", "/home/me/Projects/other"),
+    ];
+    expect(selectableProjects(projects, "env:a").map((entry) => entry.workspaceRoot)).toEqual([
+      "/home/me/Projects/app",
+      "/home/me/Projects/scratch",
+    ]);
   });
 });
 

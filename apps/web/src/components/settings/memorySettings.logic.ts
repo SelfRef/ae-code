@@ -1,5 +1,25 @@
 import type { Memory, ProjectId } from "@t3tools/contracts";
 
+// A state folder moved from `.t3` to `.ae` keeps its old scratch project at the old path, which the
+// server no longer recognizes as the scratch project, so `isScratch` is not set on it.
+const LEGACY_SCRATCH_ROOT = /[\\/]\.(?:t3|ae)[\\/]scratch$/;
+
+/** The projects a memory can belong to: the environment's own, without its scratch project. */
+export function selectableProjects<
+  T extends {
+    readonly environmentId: string;
+    readonly workspaceRoot: string;
+    readonly isScratch?: true | undefined;
+  },
+>(projects: ReadonlyArray<T>, environmentId: string): ReadonlyArray<T> {
+  return projects.filter(
+    (project) =>
+      project.environmentId === environmentId &&
+      project.isScratch !== true &&
+      !LEGACY_SCRATCH_ROOT.test(project.workspaceRoot),
+  );
+}
+
 /** `all`, `user`, or a project id; a plain string so a picker's value type stays simple. */
 export type MemoryScopeFilter = string;
 
