@@ -15,7 +15,7 @@ import {
   type ProjectId,
   type ThreadId,
 } from "@t3tools/contracts";
-import { setMemoryPolicy } from "@t3tools/provider-core/server/memoryPolicy";
+import { setMemoryDigestSource, setMemoryPolicy } from "@t3tools/provider-core/server/memoryPolicy";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -24,6 +24,7 @@ import * as Schema from "effect/Schema";
 import * as SecureRandom from "effect/crypto/SecureRandom";
 import * as SqlClient from "effect/sql/SqlClient";
 
+import { renderMemoryDigest } from "./memoryDigest.ts";
 import { rankMemories } from "./memoryRanking.ts";
 
 export interface MemorySaveRequest extends MemorySaveInput {
@@ -203,7 +204,7 @@ const make = Effect.gen(function* () {
     return rankMemories(visible, input.query, yield* nowMillis).slice(0, input.limit);
   });
 
-  const save = Effect.fn("MemoryService.save")(function* (input: MemorySaveRequest) {
+  const saveMemory = Effect.fn("MemoryService.save")(function* (input: MemorySaveRequest) {
     const text = input.text.trim();
     if (text === "") return yield* invalid("A memory needs text.");
     if (Array.from(text).length > MEMORY_TEXT_MAX_CHARS)
@@ -270,10 +271,25 @@ const make = Effect.gen(function* () {
     return created;
   });
 
-  const remove = Effect.fn("MemoryService.remove")(function* (id: MemoryId) {
+  const removeMemory = Effect.fn("MemoryService.remove")(function* (id: MemoryId) {
     yield* sql`DELETE FROM memories WHERE id = ${id}`.pipe(Effect.mapError(unavailable));
     return { id };
   });
+
+  // Adapters read the digest synchronously, so a session starts from a cache refreshed on every write.
+  let cached: ReadonlyArray<Memory> = [];
+  const refreshCache = readAll.pipe(
+    Effect.tap((all) =>
+      Effect.sync(() => {
+        cached = all;
+      }),
+    ),
+    Effect.ignore,
+  );
+  setMemoryDigestSource((projectId) => renderMemoryDigest(cached, projectId));
+  yield* refreshCache;
+  const save = (input: MemorySaveRequest) => saveMemory(input).pipe(Effect.tap(() => refreshCache));
+  const remove = (id: MemoryId) => removeMemory(id).pipe(Effect.tap(() => refreshCache));
 
   return MemoryService.of({ list, recall, save, remove, setSettings, requireEnabled });
 });

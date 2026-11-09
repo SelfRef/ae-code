@@ -17,5 +17,20 @@ export const setMemoryPolicy = (policy: MemoryPolicy): void => {
   current = policy;
 };
 
+let digestSource: (projectId: string | undefined) => string = () => "";
+
+/** MemoryService publishes the digest of saved memories, read synchronously from its cache. */
+export const setMemoryDigestSource = (source: (projectId: string | undefined) => string): void => {
+  digestSource = source;
+};
+
+/**
+ * The saved memories a new session starts with: the user's, and the thread's project's. For a
+ * channel that is sent once per session, not for one that repeats every turn. Empty while memory
+ * is off or nothing is saved.
+ */
+export const memoryDigest = (projectId: string | undefined): string =>
+  current.enabled ? digestSource(projectId) : "";
+
 /** True when a new session should switch off the provider's own memory. */
 export const nativeMemoryDisabled = (): boolean => current.enabled && current.disableNativeMemory;
