@@ -1,4 +1,5 @@
 import { EasDeviceHostConfigs, SimlockDeviceHostConfigs, SshDeviceHostConfigs } from "./device.ts";
+import { McpServerConfigs } from "./mcpServer.ts";
 import {
   AuthOrchestrationOperateScope,
   AuthSettingsWriteScope,
@@ -1419,6 +1420,8 @@ export const ServerSettings = Schema.Struct({
   simlockDeviceHosts: SimlockDeviceHostConfigs.pipe(Schema.withDecodingDefault(Effect.succeed([]))),
   /** Alpha: Simlock device hosts. Off, the server ignores `simlockDeviceHosts`. */
   simlockDeviceHostsEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+  /** MCP servers added to every provider session, beside T3 Code's own. */
+  mcpServers: McpServerConfigs.pipe(Schema.withDecodingDefault(Effect.succeed([]))),
   sidebarAutoSettleAfterDays: Schema.NullOr(SidebarAutoSettleAfterDays).pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_SIDEBAR_AUTO_SETTLE_AFTER_DAYS)),
   ),
@@ -1857,6 +1860,7 @@ export const ServerSettingsPatch = Schema.Struct({
   easDeviceHosts: Schema.optionalKey(EasDeviceHostConfigs),
   simlockDeviceHosts: Schema.optionalKey(SimlockDeviceHostConfigs),
   simlockDeviceHostsEnabled: Schema.optionalKey(Schema.Boolean),
+  mcpServers: Schema.optionalKey(McpServerConfigs),
   sidebarAutoSettleAfterDays: Schema.optionalKey(Schema.NullOr(SidebarAutoSettleAfterDays)),
   compactIdleThreads: Schema.optionalKey(LegacyCompactIdleThreads),
   idleCompaction: Schema.optionalKey(IdleCompactionMode),
@@ -1950,7 +1954,9 @@ export function requiredScopesForServerSettingsPatch(
       key === "providerInstances" ||
       key === "usageLimitSources" ||
       key === "textGenerators" ||
-      key === "secretProviders"
+      key === "secretProviders" ||
+      // A stdio server is a command the providers run on this host.
+      key === "mcpServers"
     ) {
       changesProviders = true;
     } else {

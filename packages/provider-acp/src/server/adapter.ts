@@ -842,6 +842,54 @@ function acpMcpContext(
   if (session === undefined) {
     return { servers: [], acpServers: [], httpServers: [] };
   }
+  // The user's own servers. Stdio is mandatory in ACP, so a stdio server goes in every list. A remote
+  // one goes as HTTP where the flavor takes it; elsewhere the stdio bridge fronts it, which only
+  // carries one `Authorization` header.
+  const extras = session.extraServers ?? [];
+  const toPairs = (values: Readonly<Record<string, string>>) =>
+    Object.entries(values).map(([name, value]) => ({ name, value }));
+  const stdioExtras: Array<EffectAcpSchema.McpServer> = extras.flatMap((server) =>
+    server.transport === "stdio"
+      ? [
+          {
+            name: server.name,
+            command: server.command,
+            args: [...server.args],
+            env: toPairs(server.env),
+          },
+        ]
+      : [],
+  );
+  const httpExtras: Array<EffectAcpSchema.McpServer> = extras.flatMap((server) =>
+    server.transport === "http"
+      ? [
+          {
+            type: "http" as const,
+            name: server.name,
+            url: server.url,
+            headers: toPairs(server.headers),
+          },
+        ]
+      : [],
+  );
+  const bridgedExtras: Array<EffectAcpSchema.McpServer> = extras.flatMap((server) => {
+    if (server.transport !== "http") return [];
+    const headers = Object.entries(server.headers);
+    const [header] = headers;
+    if (headers.length !== 1 || header?.[0].toLowerCase() !== "authorization") return [];
+    return [
+      {
+        name: server.name,
+        command: self.command,
+        args: [...selfInvocationArgs(self, ["acp-mcp-bridge"])],
+        env: [
+          { name: "ELECTRON_RUN_AS_NODE", value: "1" },
+          { name: "T3_ACP_MCP_ENDPOINT", value: server.url },
+          { name: "T3_ACP_MCP_AUTHORIZATION", value: header[1] },
+        ],
+      },
+    ];
+  });
   // codex-acp 1.2.0 and pi-acp drop injected HTTP servers, so HTTP is opt-in per flavor.
   return {
     servers: [
@@ -855,8 +903,14 @@ function acpMcpContext(
           { name: "T3_ACP_MCP_AUTHORIZATION", value: session.authorizationHeader },
         ],
       },
+      ...stdioExtras,
+      ...bridgedExtras,
     ],
-    acpServers: [{ type: "acp", name: "t3-code", serverId: "t3-code" }],
+    acpServers: [
+      { type: "acp", name: "t3-code", serverId: "t3-code" },
+      ...stdioExtras,
+      ...(mcpOverHttp === true ? httpExtras : bridgedExtras),
+    ],
     httpServers:
       mcpOverHttp === true
         ? [
@@ -866,6 +920,8 @@ function acpMcpContext(
               url: session.endpoint,
               headers: [{ name: "Authorization", value: session.authorizationHeader }],
             },
+            ...stdioExtras,
+            ...httpExtras,
           ]
         : [],
     endpoint: session.endpoint,
