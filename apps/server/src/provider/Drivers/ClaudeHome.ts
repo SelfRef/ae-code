@@ -5,6 +5,7 @@ import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 
 import { mergeProviderInstanceEnvironment } from "@t3tools/provider-core/server/instanceEnvironment";
+import { withManagedNpmBinDirectory } from "@t3tools/provider-core/server/managedNpmInstall";
 import { expandHomePath } from "@t3tools/provider-core/server/pathExpansion";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 
@@ -67,7 +68,7 @@ const CLAUDE_HOST_SESSION_VARIABLES = [
  * Claude Code reads its entrypoint from the process env, not its settings `env`, so T3 Code applies that override itself.
  */
 export const mergeClaudeProcessEnvironment = Effect.fn("mergeClaudeProcessEnvironment")(function* (
-  config: Pick<ClaudeSettings, "homePath">,
+  config: Pick<ClaudeSettings, "homePath"> & Partial<Pick<ClaudeSettings, "binaryPath">>,
   instanceEnvironment: ProviderInstanceEnvironment | undefined,
   hostEnvironment: NodeJS.ProcessEnv,
 ) {
@@ -82,9 +83,12 @@ export const mergeClaudeProcessEnvironment = Effect.fn("mergeClaudeProcessEnviro
   const environment = yield* mergeProviderInstanceEnvironment(instanceEnvironment, baseEnvironment);
   const settingsEntrypoint = (yield* readClaudeSettingsEnv(config, undefined, environment))
     .CLAUDE_CODE_ENTRYPOINT;
-  return settingsEntrypoint
+  const merged = settingsEntrypoint
     ? { ...environment, CLAUDE_CODE_ENTRYPOINT: settingsEntrypoint }
     : environment;
+  return config.binaryPath === undefined
+    ? merged
+    : yield* withManagedNpmBinDirectory("claudeAgent", config.binaryPath, merged);
 });
 
 /** managed-mcp.json excludes other MCP config and forbids --strict-mcp-config; omit the flag when present. */
