@@ -18,6 +18,7 @@ import { useAtomCommand } from "../../state/use-atom-command";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
 import { stackedThreadToast, toastManager } from "../ui/toast";
+import { selectableProjects } from "./memorySettings.logic";
 import { MemoryImportDialog } from "./MemoryImportDialog";
 import { SettingsRow, SettingsSection } from "./settingsLayout";
 
@@ -31,9 +32,7 @@ export function ClaudeMemorySettings({ environmentId }: { readonly environmentId
   const canSave = useAtomValue(serverEnvironment.saveMemory.permissionAtom(environmentId));
   const canScan = useAtomValue(serverEnvironment.scanClaudeMemories.permissionAtom(environmentId));
   const canImport = canSave && canScan;
-  const projects = useProjects().filter(
-    (project) => project.environmentId === environmentId && project.isScratch !== true,
-  );
+  const projects = selectableProjects(useProjects(), environmentId);
   const setSettings = useAtomCommand(serverEnvironment.setMemorySettings, {
     label: "memory settings",
   });
