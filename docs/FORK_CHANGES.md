@@ -465,9 +465,9 @@ current means rebasing that stack onto the newest upstream `main`, never merging
   `done`, plan text trimmed to what the code does not show).
 - **No fork commit hashes in docs.** Rebases change them; name a commit by its subject. (Upstream's hashes are stable,
   as in the "Findings in the source" notes.)
-- Rewriting commits that are already pushed means a force-push, which only the owner does
-  (`git push --force-with-lease origin main`). Agents rewrite unpushed commits freely and ask before touching pushed
-  ones.
+- Rewriting commits that are already pushed means a force-push (`git push --force-with-lease origin main`). Agents
+  force-push after a verified rebase onto upstream, rewrite unpushed commits freely, and ask before rewriting other
+  pushed ones. A regular push is the owner's.
 
 **Sync procedure** (done daily by `ae-sync.yml`, see "Daily sync (change 6)"; by hand after a conflict)
 
@@ -476,7 +476,7 @@ current means rebasing that stack onto the newest upstream `main`, never merging
    every later rebase. Resolve in the commit it appears in (`git rebase --continue`), not in a trailing fix commit.
 3. Verify what the stack touches: `vp run check:changed` and the tests next to the patches, plus a dev-client pass for
    anything visible. A patch that upstream now covers is dropped from the stack and its row here is removed.
-4. The owner force-pushes `origin main`.
+4. Force-push `origin main` with `--force-with-lease` pinned to the `origin/main` the rebase started from.
 
 **Keeping conflicts small**
 
