@@ -20,6 +20,8 @@
       ${If} $1 == "T3 Code (Alpha)"
       ${OrIf} $1 == "T3 Code (Beta)"
       ${OrIf} $1 == "T3 Code (Nightly)"
+      ${OrIf} $1 == "AE Code"
+      ${OrIf} $1 == "AE Code (Nightly)"
         ${T3StrRep} $appRunningMessage $appRunningMessage "${PRODUCT_NAME}" $1
         ${T3StrRep} $appClosingMessage $appClosingMessage "${PRODUCT_NAME}" $1
         ${T3StrRep} $appCannotBeClosedMessage $appCannotBeClosedMessage "${PRODUCT_NAME}" $1

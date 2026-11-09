@@ -1,7 +1,7 @@
 # Fork changes
 
-Upstream: [pingdotgg/t3code](https://github.com/pingdotgg/t3code). This fork is [SelfRef/t3code](https://github.com/SelfRef/t3code)
-(`origin` = the fork, `upstream` = pingdotgg).
+Upstream: [pingdotgg/t3code](https://github.com/pingdotgg/t3code). This fork is AE Code,
+[SelfRef/ae-code](https://github.com/SelfRef/ae-code) (`origin` = the fork, `upstream` = pingdotgg).
 
 **Policy: no PRs.** Changes are not offered upstream (its `CONTRIBUTING.md` turns away unsolicited features; its
 `AGENTS.md` says "a large number of our users run forks"). They live in this fork, kept easy to rebase on upstream.
@@ -12,6 +12,50 @@ Upstream: [pingdotgg/t3code](https://github.com/pingdotgg/t3code). This fork is 
 | 3   | Claude reply text streams while it is written (upstream's `ClaudeAdapterV2` drops `text_delta`, issue #17270; port of the closed PR #22165 onto the 2026-11-08 `main`) | `main` (`7ace0751ef`), one commit, tests pass  | done locally |
 | 2   | GitHub Issues panel: list, read, comment, edit, label, close/reopen issues per project                                                                                 | branch `issues` (not started)                  | planned      |
 | 1   | Linux desktop as a Device-panel device (headless Mutter/GNOME Shell + capture + input)                                                                                 | branch `desktop` (not started)                 | planned      |
+| 0   | Rebrand as AE Code: own app id and state dir, Aperte icon                                                                                                              | `main`, a few commits (below)                  | done locally |
+
+## Identity (change 0)
+
+The fork can run beside upstream's T3 Code on one machine, so it has its own names:
+
+| What                               | Upstream                                   | Here                                             |
+| ---------------------------------- | ------------------------------------------ | ------------------------------------------------ |
+| Display name                       | T3 Code (Beta)                             | AE Code                                          |
+| State dir (server, CLI, installer) | `~/.t3`                                    | `~/.ae` (also on SSH and WSL hosts)              |
+| App id, Linux desktop entry        | `com.t3tools.t3code`, `com.t3tools.T3Code` | `dev.aperte.AECode`, `dev.aperte.AECode.desktop` |
+| Android app id, name               | `com.t3tools.t3code`, T3 Code              | `dev.aperte.aecode`, AE Code                     |
+| Electron profile, Linux executable | `t3code-v2`, `t3code`                      | `ae-code`                                        |
+| Release and update source          | `pingdotgg/t3code`                         | `SelfRef/ae-code`                                |
+| Mark                               | T3                                         | The Aperte glyph on its Nord-palette tile        |
+
+The app id follows the Aperte apps (`dev.aperte.Todav`, `dev.aperte.Notav`). The text name is ASCII ("AE Code"): a non-ASCII name would end up in the Electron User-Agent and in installer and file names.
+
+Not renamed, to keep rebases small: `T3CODE_*` env vars, `@t3tools/*` packages, the `t3` command, the `t3code` URL scheme, `T3Wordmark`, file names such as `com.t3tools.t3code.metainfo.xml` (only its contents changed), the model manifest URL (still read from upstream), and the user docs under `docs/user`, which still say `~/.t3`. The worktree dev state dir stays `.t3`.
+
+Icons: `assets/prod` is the Aperte icon on a dark Nord tile; `nightly` and `dev` use the same glyph on warmer and bluer variants of that palette. All rasters (`assets/*/*.png`, `.ico`, `apps/web/public`) are rendered straight from SVG, because Icon Composer (macOS only) is not available here, so they approximate its glass effect and `icons:check` will not pass until they are re-exported there. The Icon Composer projects only had their `text.svg` glyph swapped (and the prod fill), so a later export puts the glyph on the old dev and nightly backgrounds.
+
+Caveats:
+
+- The desktop installers (AppImage, deb, dmg, exe) are not built or tested. The release workflow only runs in upstream's repository, so `SelfRef/ae-code` has no releases yet; the install scripts and the in-app updater point at releases that do not exist until the fork publishes some. A server image does not need them: build the CLI archive from source (see the stack's Dockerfile, which follows `release-desktop.yml`'s "Build CLI archive" steps).
+- Data written by upstream's T3 Code is not read: see the next section.
+
+### Moving to the AperteDev org
+
+The app id is already `dev.aperte.*`. The repository is still referenced as `SelfRef/ae-code` in the update, install and star-prompt code, the Linux metainfo and these docs. After transferring the repository, `git grep -l 'SelfRef/ae-code'` lists every place to change (and the `AGENTS.md` line above).
+
+## Data migration
+
+Anything that moves or renames persisted data gets a row here, with how to carry the data over. Run migrations with the server stopped.
+
+| Moved from → to                                                | What lives there                                                                                                                         | Migration                                                                                                                                                                                                                                                                                                                                                      |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `~/.t3` → `~/.ae` (server, CLI, installer, service)            | The T3 home: `userdata` (database, settings, keybindings, logs), `secrets`, `service.env`, `runtime`, `worktrees`, `projects`, `scratch` | Stop both servers, then `cp -a ~/.t3 ~/.ae`. Or keep the old directory by setting `T3CODE_HOME=~/.t3`; nothing moves. Worktrees and project folders created under the old home keep their old paths (the database stores them), so keep `~/.t3` until they are archived. Do not start the fork against upstream's live directory while upstream's server runs. |
+| `~/.t3/{runtime,ssh-launch,device}` → `~/.ae/...` on SSH hosts | The server runtime T3 installs on a remote machine, and its launch state                                                                 | None. The next connection bootstraps the new location; delete the old `~/.t3` on the host when no upstream T3 uses it.                                                                                                                                                                                                                                         |
+| `~/.t3/wsl-runtime` → `~/.ae/wsl-runtime` in WSL               | The server runtime for the desktop app's WSL environment                                                                                 | None, it is re-installed. Remove the old directory by hand.                                                                                                                                                                                                                                                                                                    |
+| Electron profile `t3code-v2` → `ae-code`                       | Desktop app profile: window state, safeStorage keys, desktop-local storage                                                               | Not migrated, except that Windows copies its credential keys from the legacy profile names. Sign in again, or copy the profile folder while the app is closed.                                                                                                                                                                                                 |
+| Android app `com.t3tools.t3code` → `dev.aperte.aecode`         | The app's local data: the paired servers, its settings                                                                                   | None. It installs beside upstream's app as a new app with its own data; pair the servers again. Its APKs are signed with the fork's own key (see Releases).                                                                                                                                                                                                    |
+
+The `~/.t3` `T3CODE_HOME` default is also what a pre-existing upstream `t3 service` and a Docker volume home point at, so check both before switching a running install.
 
 ## Linux desktop in the Device panel (change 1)
 
