@@ -206,7 +206,7 @@ import {
   T3_CODE_DEVICE_TOOL_INSTRUCTIONS_WITH_TOOL_SEARCH,
   T3_CODE_ORCHESTRATION_INSTRUCTIONS,
 } from "@t3tools/provider-core/server/orchestrationInstructions";
-import { nativeMemoryDisabled } from "@t3tools/provider-core/server/memoryPolicy";
+import { memoryDigest, nativeMemoryDisabled } from "@t3tools/provider-core/server/memoryPolicy";
 import { buildRuntimeInstructions } from "@t3tools/provider-core/server/runtimeInstructions";
 import {
   mcpToolPresentation,
@@ -1779,6 +1779,8 @@ export function makeClaudeQueryOptions(input: {
   readonly appendSystemPromptFileText?: string;
   // Flag settings, because a user's settings.json env beats the process env in Claude Code.
   readonly toolSearchOverride?: "true";
+  /** Saved memories for this thread, from `memoryDigest`; the session carries them once. */
+  readonly memoryDigest?: string;
 }): ClaudeAgentSdkQueryOptions {
   const compiledSelection = compileClaudeModelSelection(input.modelSelection, input.modelCatalog);
   const {
@@ -1894,6 +1896,9 @@ export function makeClaudeQueryOptions(input: {
       preset: "claude_code" as const,
       append: [
         buildRuntimeInstructions({ harness: "Claude Code" }) +
+          (input.memoryDigest === undefined || input.memoryDigest === ""
+            ? ""
+            : `\n\n${input.memoryDigest}`) +
           (input.mcpServers === undefined
             ? ""
             : T3_CODE_ORCHESTRATION_INSTRUCTIONS +
@@ -11111,6 +11116,7 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
             modelCatalog,
             nativeThreadId,
             title: turnInput.appThread.title,
+            memoryDigest: memoryDigest(turnInput.appThread.projectId),
             resume: shouldResume,
             ...(resumeSessionAt === undefined ? {} : { resumeSessionAt }),
             cwd: turnInput.runtimePolicy.cwd,

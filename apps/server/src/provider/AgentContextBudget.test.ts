@@ -116,14 +116,22 @@ const layerAdvertisedTools = McpHttpServer.layerTools.pipe(
 );
 
 // Claude Code loads these tools up front instead of behind ToolSearch, outside this budget.
-it.effect("only request_secret asks Claude Code to load it up front", () =>
-  Effect.gen(function* () {
-    const mcp = yield* McpServer.McpServer;
-    const alwaysLoad = mcp.tools
-      .filter(({ tool }) => tool._meta?.["anthropic/alwaysLoad"] !== undefined)
-      .map(({ tool }) => [tool.name, tool._meta]);
-    expect(alwaysLoad).toEqual([["request_secret", { "anthropic/alwaysLoad": true }]]);
-  }).pipe(Effect.provide(layerAdvertisedTools)),
+it.effect(
+  "only request_secret and the two memory tools ask Claude Code to load them up front",
+  () =>
+    Effect.gen(function* () {
+      const mcp = yield* McpServer.McpServer;
+      const alwaysLoad = mcp.tools
+        .filter(({ tool }) => tool._meta?.["anthropic/alwaysLoad"] !== undefined)
+        .map(({ tool }) => [tool.name, tool._meta])
+        .toSorted(([a], [b]) => String(a).localeCompare(String(b)));
+      const loaded = { "anthropic/alwaysLoad": true };
+      expect(alwaysLoad).toEqual([
+        ["request_secret", loaded],
+        ["t3_memory_recall", loaded],
+        ["t3_memory_remember", loaded],
+      ]);
+    }).pipe(Effect.provide(layerAdvertisedTools)),
 );
 
 // CI rejects a PR that raises any value above main's agentContextBudget.json, so growth
