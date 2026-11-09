@@ -6,14 +6,17 @@ Upstream: [pingdotgg/t3code](https://github.com/pingdotgg/t3code). This fork is 
 **Policy: no PRs.** Changes are not offered upstream (its `CONTRIBUTING.md` turns away unsolicited features; its
 `AGENTS.md` says "a large number of our users run forks"). They live in this fork, kept easy to rebase on upstream.
 
-| #   | Change                                                                                                                                                                 | Where                                          | Status       |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------ |
-| 5   | Claude usage limits for a setup-token session: let `rate_limit_event` stream updates fill the bars when `get_usage` is unsupported                                     | `main`                                         | planned      |
-| 4   | Project and thread switchers in the chat breadcrumb                                                                                                                    | `main`, ported from a community branch (below) | planned      |
-| 3   | Claude reply text streams while it is written (upstream's `ClaudeAdapterV2` drops `text_delta`, issue #17270; port of the closed PR #22165 onto the 2026-11-08 `main`) | `main` (`7ace0751ef`), one commit, tests pass  | done locally |
-| 2   | GitHub Issues panel: list, read, comment, edit, label, close/reopen issues per project                                                                                 | branch `issues` (not started)                  | planned      |
-| 1   | Linux desktop as a Device-panel device (headless Mutter/GNOME Shell + capture + input)                                                                                 | branch `desktop` (not started)                 | planned      |
-| 0   | Rebrand as AE Code: own app id and state dir, Aperte icon                                                                                                              | `main`, a few commits (below)                  | done locally |
+| #   | Change                                                                                                                                                                 | Status  |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| 5   | Claude usage limits for a setup-token session: let `rate_limit_event` stream updates fill the bars when `get_usage` is unsupported                                     | planned |
+| 4   | Project and thread switchers in the chat breadcrumb (ported from a community branch, below)                                                                            | planned |
+| 3   | Claude reply text streams while it is written (upstream's `ClaudeAdapterV2` drops `text_delta`, issue #17270; port of the closed PR #22165 onto the 2026-11-08 `main`) | done    |
+| 2   | GitHub Issues panel: list, read, comment, edit, label, close/reopen issues per project                                                                                 | planned |
+| 1   | Linux desktop as a Device-panel device (headless Mutter/GNOME Shell + capture + input)                                                                                 | planned |
+| 0   | Rebrand as AE Code: own app id and state dir, Aperte icon                                                                                                              | done    |
+
+`done` means it is a commit on `main`; the commit is found by subject (`git log --grep`), not by hash, because every
+rebase onto upstream changes the hashes. The history rules and the sync procedure are in the last section.
 
 ## Identity (change 0)
 
@@ -249,17 +252,42 @@ Unverified (spike first): whether this CLI version puts `utilization` in `rate_l
 
 Rebase cost: three small edits to existing files (two in `usageLimits.ts`, one client condition) and tests beside them. Drop the change if upstream stops discarding stream updates for `unsupported` providers.
 
-## Keeping the fork easy to rebase
+## Keeping the fork up to date with upstream
 
-- **Branch model:** the fork's `main` mirrors upstream; the work lives in feature branches (`desktop`, `issues`),
-  rebased onto upstream `main` or a release tag, never merged. `git config rerere.enabled true`.
-- **Additive over edited:** new code in new files (`apps/server/src/device/DesktopDeviceHost.ts`, the backend
-  package, tests next to them). Edits to existing files stay at the touch points above, a few lines each, no
-  reformatting, no renames, no drive-by fixes. Target diff: under ~15 changed existing lines plus new files.
-- **One commit per concern** (contract enum, host, proxy allowlist, client, tools), so a conflict names the
-  concern; Conventional Commits, one line.
-- **Off by default:** nothing changes unless the desktop host is configured, so a missed rebase fails soft.
-- **Track upstream:** rebase on the newest release, run the device tests (`apps/server/src/device/*.test.ts`) and the
-  type check; a conflict is resolved once, in the fork.
+`main` is a linear stack of patch commits on top of upstream's `main`: no merge commits, no feature branches. Staying
+current means rebasing that stack onto the newest upstream `main`, never merging upstream into it.
+
+**History rules**
+
+- **One commit per concern** (contract enum, host, proxy allowlist, client, tools), so a conflict names the concern.
+  Conventional Commits, one line.
+- **A fix or follow-up goes into the commit it fixes** (`git commit --fixup=<commit>`, then
+  `GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash <base>`), not into a new `fix:` commit. A stack that grows
+  follow-ups gets longer to rebase and conflicts once per follow-up.
+- **A patch's docs travel with it.** The change's section in this file (the `#` row, status, design notes) is edited in
+  the commit that lands the change, never in a later `docs:` commit. Exception: a plan for a change that has not
+  landed may be its own `docs:` commit; the commit that lands the change rewrites that section in place (status
+  `done`, plan text trimmed to what the code does not show).
+- **No fork commit hashes in docs.** Rebases change them; name a commit by its subject. (Upstream's hashes are stable,
+  as in the "Findings in the source" notes.)
+- Rewriting commits that are already pushed means a force-push, which only the owner does
+  (`git push --force-with-lease origin main`). Agents rewrite unpushed commits freely and ask before touching pushed
+  ones.
+
+**Sync procedure** (by hand; there is no automation yet)
+
+1. `git fetch upstream`, then `git log --oneline HEAD..upstream/main` to see what is coming.
+2. `git rebase upstream/main`. `git config rerere.enabled true` is set, so a conflict is resolved once and replayed on
+   every later rebase. Resolve in the commit it appears in (`git rebase --continue`), not in a trailing fix commit.
+3. Verify what the stack touches: `vp run check:changed` and the tests next to the patches, plus a dev-client pass for
+   anything visible. A patch that upstream now covers is dropped from the stack and its row here is removed.
+4. The owner force-pushes `origin main`.
+
+**Keeping conflicts small**
+
+- **Additive over edited:** new code in new files with tests next to them. Edits to existing files stay at the touch
+  points described in each change, a few lines each: no reformatting, no renames, no drive-by fixes.
+- **Upstream identifiers stay** (env vars, package and file names); only values change (see the Identity section).
+- **Off by default:** a feature nothing enables fails soft when a rebase drops a piece of it.
 - **Upstream stays an option:** if the maintainers ever ask for it, the additive layout makes a branch a clean PR;
   until then nothing is offered.
