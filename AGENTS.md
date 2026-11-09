@@ -8,7 +8,10 @@ This checkout is a personal fork (`origin` = SelfRef/ae-code, `upstream` = pingd
 
 - Commit straight to `main`; no feature branches unless asked. Never push; the owner pushes.
 - Commit messages: Conventional Commits, one line, no body, no `Co-Authored-By` or other AI attribution in commits or files.
-- Keep the fork easy to rebase onto `upstream/main`: one logical change per commit, small diffs to upstream files, new code in new files where it fits.
+- `main` is a linear stack of patch commits on top of `upstream/main`. Stay current by rebasing onto it (`git fetch upstream && git rebase upstream/main`, `rerere` is on), never by merging; no merge commits. The owner force-pushes (`--force-with-lease`) after a rebase. Procedure and history rules: "Keeping the fork up to date with upstream" in `docs/FORK_CHANGES.md`.
+- Keep the fork easy to rebase: one logical change per commit, small diffs to upstream files, new code in new files where it fits.
+- A fix or follow-up goes into the commit it fixes (`git commit --fixup=<commit>`, then `GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash <base>`), not into a separate `fix:` commit. Rewrite unpushed commits freely; ask before rewriting pushed ones, since that needs the owner's force-push.
+- A change's entry in `docs/FORK_CHANGES.md` is edited in the commit that lands the change, not in a later `docs:` commit. Don't put the fork's own commit hashes in docs (rebases change them; upstream's are stable).
 - The fork is public: keep it generic, with no hostnames, paths or details of the setup it is deployed in.
 - Renaming or moving anything persisted (state dirs, profile names, database or settings locations) needs a row and migration steps in the "Data migration" section of `docs/FORK_CHANGES.md`, in the same commit.
 - Keep upstream's identifiers (env vars, package and component names, file names) and change values only, so rebases stay small.
