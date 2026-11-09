@@ -70,6 +70,24 @@ describe("deriveProviderInstanceConfigMap", () => {
     });
   });
 
+  it("leaves out a removed built-in provider, its default instance included", () => {
+    const codex = ProviderDriverKind.make("codex");
+    const codexDefault = ProviderInstanceId.make("codex");
+    const claudeDefault = ProviderInstanceId.make("claudeAgent");
+    const settings = settingsWith({
+      providerInstances: {
+        [codexDefault]: { driver: codex, enabled: false, hidden: true },
+        [instanceId]: { driver: codex },
+      },
+    });
+
+    const merged = deriveProviderInstanceConfigMap(settings);
+
+    expect(merged[codexDefault]).toBeUndefined();
+    expect(merged[instanceId]).toEqual({ driver: codex });
+    expect(merged[claudeDefault]).toEqual({ driver: ProviderDriverKind.make("claudeAgent") });
+  });
+
   it("does not revive an instance a project override references but settings no longer configure", () => {
     const settings = settingsWith({
       providerInstances: {},
