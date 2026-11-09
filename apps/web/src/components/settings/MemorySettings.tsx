@@ -4,10 +4,12 @@ import {
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
 import {
+  DEFAULT_MEMORY_SETTINGS,
   MEMORY_TEXT_MAX_CHARS,
   type EnvironmentId,
   type Memory,
   type MemoryScope,
+  type MemorySetSettingsInput,
   type ProjectId,
 } from "@t3tools/contracts";
 import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
@@ -24,6 +26,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
+import { Switch } from "../ui/switch";
 import { Textarea } from "../ui/textarea";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { filterMemories, memoryScopeLabel, type MemoryScopeFilter } from "./memorySettings.logic";
@@ -71,6 +74,9 @@ function EnvironmentMemory({ environmentId }: { readonly environmentId: Environm
   const [draft, setDraft] = useState<Draft | null>(null);
   const save = useAtomCommand(serverEnvironment.saveMemory, { label: "memory save" });
   const remove = useAtomCommand(serverEnvironment.deleteMemory, { label: "memory delete" });
+  const setSettings = useAtomCommand(serverEnvironment.setMemorySettings, {
+    label: "memory settings",
+  });
 
   const fail = (title: string, result: Parameters<typeof squashAtomCommandFailure>[0]) =>
     toastManager.add(
@@ -82,7 +88,16 @@ function EnvironmentMemory({ environmentId }: { readonly environmentId: Environm
     );
 
   const memories = list.data?.memories ?? [];
+  const settings = list.data?.settings ?? DEFAULT_MEMORY_SETTINGS;
   const shown = filterMemories(memories, query, scope);
+  const changeSettings = async (input: MemorySetSettingsInput) => {
+    const result = await setSettings({ environmentId, input });
+    if (result._tag === "Failure") {
+      if (!isAtomCommandInterrupted(result)) fail("Could not change memory settings", result);
+      return;
+    }
+    list.refresh();
+  };
 
   return (
     <SettingsSection
@@ -96,10 +111,32 @@ function EnvironmentMemory({ environmentId }: { readonly environmentId: Environm
         ) : null
       }
     >
-      <p className="px-4 pt-3 text-xs text-muted-foreground">
-        Agents on every provider can recall these and save new ones. Nothing here is sent to a model
-        until an agent asks for it.
-      </p>
+      <SettingsRow
+        title="Agent memory"
+        description="Agents on every provider can recall these memories and save new ones. Off: agents are not told about memory and its tools refuse; saved memories are kept. Applies to new sessions."
+        control={
+          <Switch
+            aria-label="Agent memory"
+            checked={settings.enabled}
+            disabled={!canWrite}
+            onCheckedChange={(checked) => void changeSettings({ enabled: Boolean(checked) })}
+          />
+        }
+      />
+      <SettingsRow
+        title="Turn off Claude's built-in memory"
+        description="While agent memory is on, new Claude sessions run without Claude Code's own memory, so there is one store. Other providers are not affected."
+        control={
+          <Switch
+            aria-label="Turn off Claude's built-in memory"
+            checked={settings.disableNativeMemory && settings.enabled}
+            disabled={!canWrite || !settings.enabled}
+            onCheckedChange={(checked) =>
+              void changeSettings({ disableNativeMemory: Boolean(checked) })
+            }
+          />
+        }
+      />
       {draft !== null ? (
         <MemoryEditor
           key={draft.mode === "edit" ? draft.memory.id : "new"}

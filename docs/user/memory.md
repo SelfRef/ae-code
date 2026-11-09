@@ -12,7 +12,18 @@ Memory** to see, search and change what is saved.
 - An agent can correct a memory or forget one.
 
 Memory is background, not orders. Agents are told to treat it as reference data and to check anything that may have
-changed. Nothing is added to a prompt until the agent asks for it.
+changed. A short note about memory goes into each new session, but the memories themselves are sent to a model only when
+an agent asks for them.
+
+## Switches
+
+Both are at the top of **Settings → Memory** and apply to new sessions, not ones already running.
+
+- **Agent memory** (on by default). Off: agents are not told about memory, and its tools answer that memory is turned
+  off. Your saved memories stay, and you can still read, edit and forget them on the page.
+- **Turn off Claude's built-in memory** (on by default, and only while agent memory is on). New Claude sessions then run
+  without Claude Code's own memory files, so there is one store instead of two. Other providers' own memory is not
+  affected.
 
 ## Scopes
 

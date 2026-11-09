@@ -1,4 +1,5 @@
 import {
+  DEFAULT_MEMORY_SETTINGS,
   MEMORY_MAX_COUNT,
   MEMORY_TEXT_MAX_CHARS,
   Memory,
@@ -8,10 +9,13 @@ import {
   type MemoryListInput,
   type MemoryListResult,
   type MemorySaveInput,
+  type MemorySetSettingsInput,
+  type MemorySettings,
   type MemorySource,
   type ProjectId,
   type ThreadId,
 } from "@t3tools/contracts";
+import { setMemoryPolicy } from "@t3tools/provider-core/server/memoryPolicy";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -43,6 +47,11 @@ export class MemoryService extends Context.Service<
     ) => Effect.Effect<ReadonlyArray<Memory>, MemoryError>;
     readonly save: (input: MemorySaveRequest) => Effect.Effect<Memory, MemoryError>;
     readonly remove: (id: MemoryId) => Effect.Effect<MemoryDeleteResult, MemoryError>;
+    readonly setSettings: (
+      patch: MemorySetSettingsInput,
+    ) => Effect.Effect<MemorySettings, MemoryError>;
+    /** What the MCP tools check first: fails with `disabled` while memory is turned off. */
+    readonly requireEnabled: Effect.Effect<void, MemoryError>;
   }
 >()("t3/memory/MemoryService") {}
 
@@ -97,6 +106,26 @@ const make = Effect.gen(function* () {
   yield* sql`
     CREATE INDEX IF NOT EXISTS memories_by_scope ON memories (scope, project_id, updated_at DESC)
   `;
+  yield* sql`
+    CREATE TABLE IF NOT EXISTS memory_settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      enabled INTEGER NOT NULL,
+      disable_native INTEGER NOT NULL
+    )
+  `;
+
+  const readSettings = sql<{ readonly enabled: number; readonly disable_native: number }>`
+    SELECT enabled, disable_native FROM memory_settings WHERE id = 1
+  `.pipe(
+    Effect.map((rows): MemorySettings =>
+      rows[0] === undefined
+        ? DEFAULT_MEMORY_SETTINGS
+        : { enabled: rows[0].enabled === 1, disableNativeMemory: rows[0].disable_native === 1 },
+    ),
+    Effect.mapError(unavailable),
+  );
+  const publishPolicy = (settings: MemorySettings) => Effect.sync(() => setMemoryPolicy(settings));
+  yield* readSettings.pipe(Effect.flatMap(publishPolicy), Effect.ignore);
 
   const readAll = sql<MemoryRow>`
     SELECT id, scope, project_id, text, source, source_thread_id, created_at, updated_at
@@ -128,8 +157,41 @@ const make = Effect.gen(function* () {
         (input.projectId === undefined || memory.projectId === input.projectId),
     );
     const query = input.query?.trim() ?? "";
-    return { memories: query === "" ? visible : rankMemories(visible, query, yield* nowMillis) };
+    return {
+      memories: query === "" ? visible : rankMemories(visible, query, yield* nowMillis),
+      settings: yield* readSettings,
+    };
   });
+
+  const setSettings = Effect.fn("MemoryService.setSettings")(function* (
+    patch: MemorySetSettingsInput,
+  ) {
+    const current = yield* readSettings;
+    const next: MemorySettings = {
+      enabled: patch.enabled ?? current.enabled,
+      disableNativeMemory: patch.disableNativeMemory ?? current.disableNativeMemory,
+    };
+    yield* sql`
+      INSERT INTO memory_settings (id, enabled, disable_native)
+      VALUES (1, ${next.enabled ? 1 : 0}, ${next.disableNativeMemory ? 1 : 0})
+      ON CONFLICT (id) DO UPDATE SET enabled = excluded.enabled, disable_native = excluded.disable_native
+    `.pipe(Effect.mapError(unavailable));
+    yield* publishPolicy(next);
+    return next;
+  });
+
+  const requireEnabled = readSettings.pipe(
+    Effect.flatMap((settings) =>
+      settings.enabled
+        ? Effect.void
+        : Effect.fail(
+            new MemoryError({
+              code: "disabled",
+              message: "Memory is turned off in Settings → Memory.",
+            }),
+          ),
+    ),
+  );
 
   const recall = Effect.fn("MemoryService.recall")(function* (input: MemoryRecallRequest) {
     const all = yield* readAll;
@@ -213,7 +275,7 @@ const make = Effect.gen(function* () {
     return { id };
   });
 
-  return MemoryService.of({ list, recall, save, remove });
+  return MemoryService.of({ list, recall, save, remove, setSettings, requireEnabled });
 });
 
 export const layer = Layer.effect(MemoryService, make);

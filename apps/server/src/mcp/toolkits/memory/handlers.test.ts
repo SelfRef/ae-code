@@ -1,5 +1,5 @@
 import { expect, it } from "@effect/vitest";
-import { EnvironmentId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
+import { EnvironmentId, MemoryError, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Stream from "effect/Stream";
@@ -18,54 +18,86 @@ const shell = liveThreadShell(threadId);
 const saved: Array<Parameters<MemoryService.MemoryService["Service"]["save"]>[0]> = [];
 const recalled: Array<Parameters<MemoryService.MemoryService["Service"]["recall"]>[0]> = [];
 
-const layer = McpToolAccess.HandlersLayer.layer(MemoryHandlers.layer).pipe(
-  Layer.provideMerge(
-    Layer.mergeAll(
-      Layer.succeed(McpInvocationContext.McpInvocationContext, {
-        environmentId: EnvironmentId.make("environment:memory"),
-        requestNamespace: "provider:memory",
-        thread: {
-          threadId,
-          providerSessionId: "provider:memory",
-          providerInstanceId: ProviderInstanceId.make("codex"),
-        },
-        client: undefined,
-        capabilities: new Set(["orchestration" as const]),
-        issuedAt: 0,
-      }),
-      Layer.mock(ThreadManagement.ThreadManagementService)({
-        getThreadShell: () => Effect.succeed(shell),
-      }),
-      Layer.mock(MemoryService.MemoryService)({
-        recall: (input) => Effect.sync(() => void recalled.push(input)).pipe(Effect.as([])),
-        save: (input) =>
-          Effect.sync(() => void saved.push(input)).pipe(
-            Effect.as({
-              id: "mem_1" as never,
-              scope: input.scope,
-              projectId: input.projectId ?? null,
-              text: input.text,
-              source: input.source,
-              sourceThreadId: null,
-              createdAt: "2026-11-09T00:00:00.000Z",
-              updatedAt: "2026-11-09T00:00:00.000Z",
-            }),
-          ),
-      }),
+const makeLayer = (requireEnabled: Effect.Effect<void, MemoryError>) =>
+  McpToolAccess.HandlersLayer.layer(MemoryHandlers.layer).pipe(
+    Layer.provideMerge(
+      Layer.mergeAll(
+        Layer.succeed(McpInvocationContext.McpInvocationContext, {
+          environmentId: EnvironmentId.make("environment:memory"),
+          requestNamespace: "provider:memory",
+          thread: {
+            threadId,
+            providerSessionId: "provider:memory",
+            providerInstanceId: ProviderInstanceId.make("codex"),
+          },
+          client: undefined,
+          capabilities: new Set(["orchestration" as const]),
+          issuedAt: 0,
+        }),
+        Layer.mock(ThreadManagement.ThreadManagementService)({
+          getThreadShell: () => Effect.succeed(shell),
+        }),
+        Layer.mock(MemoryService.MemoryService)({
+          requireEnabled,
+          recall: (input) => Effect.sync(() => void recalled.push(input)).pipe(Effect.as([])),
+          save: (input) =>
+            Effect.sync(() => void saved.push(input)).pipe(
+              Effect.as({
+                id: "mem_1" as never,
+                scope: input.scope,
+                projectId: input.projectId ?? null,
+                text: input.text,
+                source: input.source,
+                sourceThreadId: null,
+                createdAt: "2026-11-09T00:00:00.000Z",
+                updatedAt: "2026-11-09T00:00:00.000Z",
+              }),
+            ),
+        }),
+      ),
+    ),
+  );
+
+const layer = makeLayer(Effect.void);
+
+const run = (
+  name: "t3_memory_recall" | "t3_memory_remember" | "t3_memory_forget",
+  params: object,
+) =>
+  Effect.gen(function* () {
+    const toolkit = yield* MemoryToolkit;
+    return yield* toolkit.handle(name, params as never).pipe(
+      Stream.unwrap,
+      Stream.runCollect,
+      Effect.map((results) => results.at(-1)?.result),
+    );
+  });
+
+it.effect("refuses every tool while memory is turned off, without touching the store", () =>
+  Effect.gen(function* () {
+    const before = saved.length + recalled.length;
+    const results = [
+      yield* run("t3_memory_recall", { query: "formatter" }),
+      yield* run("t3_memory_remember", { text: "Use oxfmt", scope: "user" }),
+      yield* run("t3_memory_forget", { memoryId: "mem_1" }),
+    ];
+    for (const result of results)
+      expect(result).toMatchObject({
+        code: "invalid_request",
+        message: expect.stringContaining("turned off"),
+      });
+    expect(saved.length + recalled.length).toBe(before);
+  }).pipe(
+    Effect.provide(
+      makeLayer(
+        Effect.fail(new MemoryError({ code: "disabled", message: "Memory is turned off." })),
+      ),
     ),
   ),
 );
 
 it.effect("saves and recalls inside the calling thread's project, as the agent", () =>
   Effect.gen(function* () {
-    const toolkit = yield* MemoryToolkit;
-    const run = (name: "t3_memory_recall" | "t3_memory_remember", params: object) =>
-      toolkit.handle(name, params as never).pipe(
-        Stream.unwrap,
-        Stream.runCollect,
-        Effect.map((results) => results.at(-1)?.result),
-      );
-
     yield* run("t3_memory_remember", { text: "Use oxfmt", scope: "project" });
     yield* run("t3_memory_remember", { text: "Reply in Polish", scope: "user" });
     yield* run("t3_memory_recall", { query: "formatter" });
