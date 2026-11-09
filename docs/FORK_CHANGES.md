@@ -9,7 +9,7 @@ Upstream: [pingdotgg/t3code](https://github.com/pingdotgg/t3code). This fork is 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
 | [17] | No product analytics: the server sends no usage events unless `T3CODE_TELEMETRY_ENABLED=true` (idea from E4 Code)                                                      | done    |
-| [16] | Manage MCP servers from Settings: extra stdio and HTTP servers added to every provider session (port of E4 Code's patch or a smaller own version)                      | planned |
+| [16] | MCP servers from Settings: one list of stdio and HTTP servers for Claude, OpenCode, Antigravity and Codex sessions (smaller version of E4 Code's patch)                | planned |
 | [15] | Remove a built-in provider (Codex, Claude, ...) from Settings and the registry, with Restore                                                                           | done    |
 | 14   | No git hooks: upstream's pre-commit hook, its `prepare` script and the `staged` config in `vite.config.ts` are removed (they need Node on the committing host)         | done    |
 | [13] | Memory: saved preferences and decisions agents on any provider can recall and save, with a Settings page (modelled on GOAT's, cut down)                                | done    |
@@ -432,10 +432,40 @@ action. Rebase cost: a new editor component and its logic file, plus a small edi
 
 ## MCP servers from Settings (change 16)
 
-Problem: T3 gives every session one MCP server of its own (`t3-code`; Codex also gets the direct-only `t3-code-direct`,
-`CodexAdapterV2.ts`; Claude's tools are `mcp__t3-code__*`, `ClaudeAdapterV2.ts`) and has no place to add others. Servers can be added in each provider's own config (Claude's
-`.mcp.json` and user settings, Codex's `config.toml`) if T3's sessions load it (see the spike), per provider and per
-machine. The wish is one list, edited in Settings, applied to every session.
+Goal: one list of MCP servers, added and removed in one place (Settings), applied to new sessions of Claude, OpenCode and
+Antigravity, and of Codex if that costs little. The hard requirement is a remote MCP hub: an HTTP server behind a fixed
+`Authorization: Bearer` header, such as an MCPHub group (`/mcp/<group>`, or `/mcp/$smart/<group>` under Smart Routing,
+where the hub advertises only `search_tools` and `call_tool`). It must work the same on all of them. A catalog
+("marketplace") comes later, so the data model must not stand in its way.
+
+Problem: T3 gives every session one MCP server of its own (`t3-code`) and has no place to add others. Each provider's
+own config (Claude's `.mcp.json` and user settings, Codex's `config.toml`, OpenCode's `opencode.json`) still works, but
+per provider and per machine, and the providers do not share one.
+
+### Findings in the source
+
+How each adapter hands `t3-code` to its provider, and where an extra server would go:
+
+| Provider                       | Today                                                                                                                                                                                                                                                                                                             | An extra server                                                                                                                                                                                                                                                                                                 |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Claude (`ClaudeAdapterV2.ts`)  | `claudeMcpQueryOverrides` builds the SDK `mcpServers` record (`t3-code`: `type: "http"`, `url`, `headers`) and `allowedTools` gets `mcp__t3-code__*`; it is applied with `setMcpServers` once the query runs. Some queries also load the user, project and local settings (`settingSources`).                     | One more record entry: `{ type: "http", url, headers }` or stdio. Trusted servers add `mcp__<name>__*` to `allowedTools`. Easy.                                                                                                                                                                                 |
+| Codex (`CodexAdapterV2.ts`)    | `codexThreadRuntimeParams` returns a per-thread `config` map for the app-server: `mcp_servers.t3-code` (`url`, `http_headers`, `tool_timeout_sec`) and a second direct-only entry. Its comment says servers from launch arguments survive, so Codex's own `config.toml` servers keep working.                     | One more `mcp_servers.<name>` key: `url` plus `http_headers`, or `command`, `args`, `env`. Easy; check the key names against the installed Codex version.                                                                                                                                                       |
+| OpenCode (`provider-opencode`) | `prepareTurn` calls `client.mcp.add({ server, location: { directory }, config: Mcp.RemoteConfig { type: "remote", url, headers, oauth: false } })` each turn and `removeMcp` when the credential or directory changes. The schema also has `LocalConfig` (`command[]`, `environment`) and a `timeout` per server. | The same call per extra server, with a set of names to remove (`state.mcp` holds one today). `mcpRules` allows only `<t3 name>_*`, so trusted servers need a rule too. Against an external OpenCode 1.x server T3's own server is skipped; extra HTTP servers could still be added, stdio ones would run there. |
+| Antigravity (ACP runtime)      | `acpMcpContext` builds `mcpServers` for `session/new`. `sessionMcpServers` (`AcpSessionRuntime.ts`) returns **one** list: the `acp`-typed one if the agent advertises `mcpCapabilities.acp`, else the `http` one if it advertises `http`, else the stdio list. The Antigravity flavor sets `mcpOverHttp: true`.   | Extras must be added to **all three** lists, or they vanish when the agent supports the ACP type. If the agent lacks HTTP, the stdio `acp-mcp-bridge` (`AcpMcpStdioBridge.ts`, endpoint and `Authorization` taken from the environment) can front any bearer-token HTTP server.                                 |
+
+- The same seam covers every ACP-based provider (Grok, Kiro, Muse, fx, registry agents), which differ in HTTP support
+  (`codex-acp` and `pi-acp` drop injected HTTP servers). Cursor and Pi inject through their own code
+  (`provider-cursor`, `provider-pi/mcpInjection.ts`); they are "not supported yet".
+- One place feeds every adapter: `McpProviderSessionConfig` (`packages/provider-core/src/server/mcpSession.ts`) is
+  issued per thread by `ProviderSessionManager.prepareMcpSession` and read by each adapter's start code. Putting the
+  resolved extras there means the setting and its secrets are read once, in the server, and each adapter only
+  translates them. The credential is reused across workspace handoffs, so a changed list reaches new sessions, not
+  running ones (the same rule as change 13's switches).
+- Tool names differ per provider (`mcp__<name>__tool`, `<name>.tool`, `<name>_tool`), so a server name is limited to
+  letters, digits, `_` and `-`, and `t3-code`, `t3-code-direct` and OpenCode's hashed T3 names are reserved.
+- Approvals: under Smart Routing every call is `call_tool` with the real tool as an argument, so no client-side rule can
+  separate reads from writes; the hub is the guard. A per-server **trusted** switch (allow all its tools without asking)
+  is therefore needed, and each provider has its own way to express it (above).
 
 Candidate: E4 Code (`stonith404/e4code`, MIT), commit `feat(settings): manage MCP servers for Claude and Codex`. A
 single commit of about 2,900 lines in about 35 files:
@@ -453,23 +483,63 @@ single commit of about 2,900 lines in about 35 files:
 Claude and Codex only. It touches the files that conflict most on a rebase (both adapters, `ws.ts`, `rpc.ts`,
 `settings.ts`).
 
-Plan: build a smaller version on the same shape, taking E4's contract and its settings UI logic and leaving OAuth out of
-the first cut:
+### Design
 
-1. Contract and storage as above (stdio and HTTP, secrets in the secret store, providers-manage scope), stored like change
-   13's tables or in `ServerSettings`; prefer a self-created table if the settings schema would need edits.
-2. One seam that injects the enabled servers next to `t3-code` in the Claude and Codex adapters. Check the ACP adapters
-   too: `AcpMcpStdioBridge.ts` already hands servers to ACP agents, so one list could also cover ACP, OpenCode and Cursor;
-   decide per adapter, "not supported" is allowed.
-3. Settings → MCP servers (web and desktop), per-server enable switch and per-provider-instance selection. Servers for
-   which a fixed header token is enough work without OAuth, including a gateway such as an MCP hub exposed over HTTP.
-4. OAuth for HTTP servers as a second phase, ported from E4's `McpServers.ts` and `McpServersHttp.ts`, once the list
-   exists.
+Build a smaller version on E4's shape and leave OAuth out of the first cut (about 800 of its lines).
 
-Spike first: confirm whether Claude and Codex sessions started by T3 already load the user's own MCP config (then the
-gap is only the shared list and the UI), and read E4's adapter hunks and secret handling before copying them. New
-servers apply to new sessions, like change 13's switches. Agents: an MCP tool that lists the configured servers is
-optional; the tools of the servers themselves reach the agent directly.
+- **Contract** (`packages/contracts`, from E4's `mcpServer.ts`): `name`, `enabled`, `transport` `stdio` or `http`; HTTP
+  has `url` and `headers`, stdio has `command`, `args` and `env`; `providerInstanceIds` (the instances whose sessions
+  get it; none selected means all); a `trusted` flag; an optional tool timeout. Header and env values are secrets kept
+  in the secret store through `settingsSecrets.ts` (its `environment` kind already maps a name-to-value record). A write
+  needs the providers-manage scope, because a stdio server is a command run on the host.
+- **Storage:** a self-created table like change 13's, or `ServerSettings` if the schema edit stays small; decide in the
+  spike by how much of `settings.ts` it would touch. The table keeps upstream's settings schema unchanged.
+- **Seam:** `extraServers` on `McpProviderSessionConfig`, resolved (secrets decoded, filtered to the provider instance)
+  in `prepareMcpSession`. One small edit per adapter turns it into that provider's native shape.
+- **Secrets from the environment (open question):** a header or env value written as a reference to a server
+  environment variable, so a hub key can stay in the server's environment instead of being pasted into Settings.
+- **Settings → MCP servers** (web and desktop, one environment at a time like Memory): a list with an enable switch, the
+  provider instances it applies to and a trusted switch; an add dialog for HTTP (URL, headers) or stdio (command, args,
+  env); **Paste `mcpServers` JSON** import (the `.mcp.json` shape most tools share); a **Test** button that connects once
+  and shows the tool count or the error, which also proves a hub URL and key before a session depends on them; a
+  preset for a bearer-token hub. No mobile screen; the mobile app keeps working with whatever the server applies.
+- **Agents:** nothing new. The servers' own tools reach the agent directly, and the generic `mcp:<server>` tool
+  presentation (`mcpToolPresentation.ts`) already renders them; check how `call_tool` looks.
+
+### Phases
+
+1. **List and three providers.** Contract, storage, secrets, RPC and permission, the seam, and the adapter edits for
+   Claude, OpenCode and Antigravity (including the three-list merge in `AcpSessionRuntime.ts`), then Codex, whose edit
+   is about 25 lines once the seam exists. Settings page with add, remove, enable, import and Test. HTTP with a bearer
+   header, and stdio.
+2. **Trusted servers.** Per-provider auto-allow: Claude `allowedTools`, OpenCode permission rules, Codex's approval
+   setting for a server (verify the key), ACP through T3's approval policy. Until then each provider's normal approval
+   prompt shows in T3, which is safe but noisy for a hub.
+3. **Catalog.** Entries are templates the add dialog fills in. Candidates: the official MCP Registry (an open API whose
+   `remotes` and `packages` map to HTTP and stdio) and a small curated JSON in the repo. The contract above already
+   fits a template, so nothing is built for it before phase 1 has been used.
+4. **OAuth** for HTTP servers, ported from E4's `McpServers.ts` and `McpServersHttp.ts`. A bearer-token hub does not
+   need it.
+5. **Import from the providers' own config** (Claude, Codex, OpenCode) to migrate what is already set up.
+
+### Spike first
+
+1. **Antigravity:** run its ACP `initialize` and read `agentCapabilities.mcpCapabilities`: does it advertise `http`, and
+   does a session show an extra HTTP server's tools? The result decides whether the bridge is needed for it.
+2. **OpenCode:** `client.mcp.add` with a `$` in the URL and a bearer header; keep the server across an idle eviction
+   (the adapter already re-adds each turn); a long `timeout` for hub calls.
+3. **Codex:** the key names for HTTP headers, stdio and tool approval in the installed version.
+4. **Claude:** which entry wins when the user's own config names the same server; `setMcpServers` with several entries;
+   whether the session query loads the user's own MCP config.
+5. **The hub:** the group URL, including `/mcp/$smart/<group>`, answers each provider's HTTP client with the bearer
+   header, and is reachable from the machine the server runs on.
+6. Read E4's adapter hunks, `McpServers.ts` and secret handling before copying anything from them.
+
+Rebase cost: new files (contract, table and service, Settings page, route) plus small edits to `mcpSession.ts`,
+`ProviderSessionManager.ts`, the Claude, Codex, OpenCode and ACP adapters, `AcpSessionRuntime.ts`, `settingsSecrets.ts`,
+`rpc.ts`, `ws.ts`, `clientRpcPermissions.ts`, the settings sidebar and the route tree. E4's commit touched most of
+the same files, so its diff shows where the conflicts come from. Tests: the adapters' existing fixtures for each
+translation, the secret mapping, the contract, and a fake bearer-protected MCP server as the Test button's target.
 
 ## No product analytics (change 17)
 
