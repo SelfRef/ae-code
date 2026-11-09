@@ -60,6 +60,9 @@ export const deriveProviderInstanceConfigMap = (
     if (instanceId in merged) continue;
     merged[instanceId] = { driver: driver.driverKind };
   }
+  for (const [instanceId, instance] of Object.entries(merged)) {
+    if (instance.hidden === true) delete merged[instanceId];
+  }
 
   // Probe project-enabled instances even if disabled machine-wide; project threads can still route to them.
   for (const overrides of Object.values(settings.projectSettingsOverrides)) {
