@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+**/dist-electron
+**/target
+.git
+.repos
+.t3
+.turbo
