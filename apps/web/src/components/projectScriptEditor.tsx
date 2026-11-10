@@ -39,6 +39,7 @@ import {
   AlertDialogTitle,
 } from "./ui/alert-dialog";
 import { Button } from "./ui/button";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "./ui/collapsible";
 import {
   Dialog,
   DialogDescription,
@@ -487,6 +488,30 @@ function ProjectScriptEditorForm({
                 value={command}
                 onChange={(event) => setCommand(event.target.value)}
               />
+              <Collapsible>
+                <CollapsibleTrigger className="text-xs text-muted-foreground hover:text-foreground">
+                  Available variables
+                </CollapsibleTrigger>
+                <CollapsiblePanel>
+                  <dl className="space-y-1 pt-1.5 text-xs text-muted-foreground">
+                    <div>
+                      <dt>
+                        <code>$T3CODE_PROJECT_ROOT</code>
+                      </dt>
+                      <dd>The project's directory.</dd>
+                    </div>
+                    <div>
+                      <dt>
+                        <code>$T3CODE_WORKTREE_PATH</code>
+                      </dt>
+                      <dd>
+                        The thread's worktree. Only set when the action runs in a worktree, which is
+                        also its working directory.
+                      </dd>
+                    </div>
+                  </dl>
+                </CollapsiblePanel>
+              </Collapsible>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="script-preview-url">Preview URL (optional)</Label>
