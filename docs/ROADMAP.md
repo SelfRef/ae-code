@@ -364,10 +364,12 @@ disabled.
   upstream's names and the fork's source is left alone. The file name has no version so that
   `releases/latest/download/ae-code-linux-x64.tar.gz` always points at the newest one. The executable still calls itself
   `t3` in its help text.
-- **Android (change 9):** the `android` job runs after the release exists and attaches `ae-code-<tag>.apk` to it, so an
-  Android failure never withholds the rest. `expo prebuild` and `gradlew assembleRelease` with `APP_VARIANT=production`,
-  arm64 and x86_64 (phones and emulators; each ABI compiles the native modules again, so a cold build took about 40
-  minutes with both), Gradle's dependency cache kept between runs, Expo's cloud updates off, then the APK is re-signed
+- **Android (change 9):** the `android` job runs after the release exists and attaches `ae-code-<tag>-arm64-v8a.apk` (phones) and
+  `ae-code-<tag>-x86_64.apk` (emulators) to it, so an Android failure never withholds the rest. The two are matrix
+  jobs, built independently and in parallel (a cold build of both together took about 40 minutes), and one failing
+  leaves the other attached. Each runs `expo prebuild` and `gradlew assembleRelease` with `APP_VARIANT=production` for
+  its one ABI, with Gradle's dependency cache kept between runs and Expo's cloud updates off. Native libraries are
+  stored deflated (`useLegacyPackaging`): the download shrinks, the install is extracted. Then the APK is re-signed
   with the fork's key
   (Expo's template signs release builds with the public debug key). The version name is `YYYY.MMDD.N`, the version code
   `YYMMDDNN`. The production Android package is `dev.aperte.aecode` and the name AE Code (`apps/mobile/app.config.ts`),
