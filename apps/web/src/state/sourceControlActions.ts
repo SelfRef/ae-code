@@ -37,6 +37,7 @@ import { suggestAppAccessForRemote } from "../components/sourceControlAppAccessT
 export type SourceControlActionKind =
   | "init"
   | "pull"
+  | "forcePush"
   | "publishRepository"
   | "runStackedAction"
   | "preparePullRequestThread";
@@ -67,6 +68,7 @@ interface SourceControlActionState<
 const ACTION_OPERATION = {
   init: "init",
   pull: "pull",
+  forcePush: "force_push",
   publishRepository: "publish_repository",
   runStackedAction: "run_change_request",
   preparePullRequestThread: "prepare_pull_request_thread",
@@ -213,6 +215,62 @@ export function useVcsPullAction(scope: SourceControlActionScope) {
   return useAction({
     kind: "pull",
     label: "Pulling latest changes...",
+    scope,
+    action,
+    onSuccess: status.refresh,
+  });
+}
+
+export function useVcsForcePushPreviewAction(scope: SourceControlActionScope) {
+  const preview = useAtomCommand(vcsEnvironment.forcePushPreview, { reportFailure: false });
+  return async () => {
+    const target = resolveScope(scope);
+    if (target === null) {
+      return AsyncResult.failure<never, VcsActionUnavailableError>(
+        Cause.fail(
+          new VcsActionUnavailableError({
+            operation: "force_push",
+            environmentId: scope.environmentId,
+            cwd: scope.cwd,
+          }),
+        ),
+      );
+    }
+    return preview({ environmentId: target.environmentId, input: { cwd: target.cwd } });
+  };
+}
+
+export function useVcsForcePushAction(scope: SourceControlActionScope) {
+  const forcePush = useAtomCommand(vcsEnvironment.forcePush, { reportFailure: false });
+  const status = useEnvironmentQuery(
+    scope.environmentId !== null && scope.cwd !== null
+      ? vcsEnvironment.status({
+          environmentId: scope.environmentId,
+          input: { cwd: scope.cwd },
+        })
+      : null,
+  );
+  const action = async (expectedUpstreamSha: string) => {
+    const target = resolveScope(scope);
+    if (target === null) {
+      return AsyncResult.failure<never, VcsActionUnavailableError>(
+        Cause.fail(
+          new VcsActionUnavailableError({
+            operation: "force_push",
+            environmentId: scope.environmentId,
+            cwd: scope.cwd,
+          }),
+        ),
+      );
+    }
+    return forcePush({
+      environmentId: target.environmentId,
+      input: { cwd: target.cwd, expectedUpstreamSha },
+    });
+  };
+  return useAction({
+    kind: "forcePush",
+    label: "Force pushing...",
     scope,
     action,
     onSuccess: status.refresh,

@@ -334,6 +334,18 @@ export function createVcsEnvironmentAtoms<R, E>(
       concurrency: vcsCommandConcurrency,
       onSettled: invalidateRefs,
     }),
+    // Uncached: the preview names what the push will delete, so it must match the repository now.
+    forcePushPreview: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:vcs:force-push-preview",
+      tag: WS_METHODS.vcsForcePushPreview,
+    }),
+    forcePush: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:vcs:force-push",
+      tag: WS_METHODS.vcsForcePush,
+      scheduler: vcsCommandScheduler,
+      concurrency: vcsCommandConcurrency,
+      onSettled: invalidateRefs,
+    }),
     refreshStatus: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:vcs:refresh-status",
       tag: WS_METHODS.vcsRefreshStatus,

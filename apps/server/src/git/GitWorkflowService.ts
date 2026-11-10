@@ -18,6 +18,8 @@ import {
   type GitPreparePullRequestThreadInput,
   type GitPreparePullRequestThreadResult,
   type GitPullRequestRefInput,
+  type VcsForcePushPreview,
+  type VcsForcePushResult,
   type VcsPullResult,
   type VcsRemoveWorktreeInput,
   type GitResolvePullRequestResult,
@@ -61,6 +63,11 @@ export class GitWorkflowService extends Context.Service<
     readonly invalidateRemoteStatus: (cwd: string) => Effect.Effect<void, never>;
     readonly invalidateStatus: (cwd: string) => Effect.Effect<void, never>;
     readonly pullCurrentBranch: (cwd: string) => Effect.Effect<VcsPullResult, GitCommandError>;
+    readonly forcePushPreview: (cwd: string) => Effect.Effect<VcsForcePushPreview, GitCommandError>;
+    readonly forcePushCurrentBranch: (
+      cwd: string,
+      expectedUpstreamSha: string,
+    ) => Effect.Effect<VcsForcePushResult, GitCommandError>;
     readonly runStackedAction: (
       input: GitRunStackedActionInput,
       options?: GitManager.GitRunStackedActionOptions,
@@ -375,6 +382,18 @@ export const make = Effect.gen(function* () {
         Effect.andThen(git.pullCurrentBranch(cwd)),
       );
     }),
+    forcePushPreview: Effect.fn("GitWorkflowService.forcePushPreview")(function (cwd) {
+      return ensureGitCommand("GitWorkflowService.forcePushPreview", cwd).pipe(
+        Effect.andThen(git.forcePushPreview(cwd)),
+      );
+    }),
+    forcePushCurrentBranch: Effect.fn("GitWorkflowService.forcePushCurrentBranch")(
+      function (cwd, expectedUpstreamSha) {
+        return ensureGitCommand("GitWorkflowService.forcePushCurrentBranch", cwd).pipe(
+          Effect.andThen(git.forcePushCurrentBranch(cwd, expectedUpstreamSha)),
+        );
+      },
+    ),
     runStackedAction: Effect.fn("GitWorkflowService.runStackedAction")(function (input, options) {
       return ensureGit("GitWorkflowService.runStackedAction", input.cwd).pipe(
         Effect.flatMap((handle) =>

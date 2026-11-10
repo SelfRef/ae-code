@@ -138,6 +138,10 @@ import {
   GitManagerServiceError,
   GitPreparePullRequestThreadInput,
   GitPreparePullRequestThreadResult,
+  VcsForcePushInput,
+  VcsForcePushPreview,
+  VcsForcePushPreviewInput,
+  VcsForcePushResult,
   VcsPullInput,
   GitPullRequestRefInput,
   VcsPullResult,
@@ -472,6 +476,8 @@ export const WS_METHODS = {
   providerInstallRemove: "provider.install.remove",
 
   vcsPull: "vcs.pull",
+  vcsForcePushPreview: "vcs.forcePushPreview",
+  vcsForcePush: "vcs.forcePush",
   vcsRefreshStatus: "vcs.refreshStatus",
   vcsListRefs: "vcs.listRefs",
   vcsCreateWorktree: "vcs.createWorktree",
@@ -1525,6 +1531,18 @@ const WsVcsPullRpc = Rpc.make(WS_METHODS.vcsPull, {
   error: Schema.Union([GitCommandError, EnvironmentAuthorizationError]),
 });
 
+const WsVcsForcePushPreviewRpc = Rpc.make(WS_METHODS.vcsForcePushPreview, {
+  payload: VcsForcePushPreviewInput,
+  success: VcsForcePushPreview,
+  error: Schema.Union([GitCommandError, EnvironmentAuthorizationError]),
+});
+
+const WsVcsForcePushRpc = Rpc.make(WS_METHODS.vcsForcePush, {
+  payload: VcsForcePushInput,
+  success: VcsForcePushResult,
+  error: Schema.Union([GitCommandError, EnvironmentAuthorizationError]),
+});
+
 const WsVcsRefreshStatusRpc = Rpc.make(WS_METHODS.vcsRefreshStatus, {
   payload: Schema.Struct({
     ...VcsStatusInput.fields,
@@ -2274,6 +2292,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsSubscribeWorktreeSetupRpc,
   WsWorktreeSetupCancelRpc,
   WsVcsPullRpc,
+  WsVcsForcePushPreviewRpc,
+  WsVcsForcePushRpc,
   WsVcsRefreshStatusRpc,
   WsGitRunStackedActionRpc,
   WsGitResolvePullRequestRpc,

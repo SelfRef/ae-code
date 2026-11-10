@@ -51,6 +51,35 @@ describe("when: ref is clean, ahead, and has an open PR", () => {
   });
 });
 
+describe("when: ref has diverged from its upstream", () => {
+  const diverged = status({ aheadCount: 2, behindCount: 1 });
+
+  it("offers force push beside a disabled Push", () => {
+    const items = buildMenuItems(diverged, false);
+    assert.equal(items.find((item) => item.id === "push")?.disabled, true);
+    assert.deepInclude(
+      items.find((item) => item.id === "force_push"),
+      {
+        disabled: false,
+        dialogAction: "force_push",
+      },
+    );
+    assert.equal(buildMenuItems(diverged, true).find((i) => i.id === "force_push")?.disabled, true);
+  });
+
+  it("does not offer force push when only ahead, only behind, or without an upstream", () => {
+    for (const overrides of [
+      { aheadCount: 2, behindCount: 0 },
+      { aheadCount: 0, behindCount: 2 },
+      { aheadCount: 2, behindCount: 1, hasUpstream: false },
+    ]) {
+      assert.isUndefined(
+        buildMenuItems(status(overrides), false).find((item) => item.id === "force_push"),
+      );
+    }
+  });
+});
+
 describe("when: ref is clean, up to date, and has no open PR", () => {
   it("enables create PR when synced with upstream but ahead of default, even with local changes", () => {
     const syncedFeature = status({

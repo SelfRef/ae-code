@@ -430,6 +430,20 @@ function deriveLocalBranchNameFromRemoteRef(branchName: string): string | null {
   return localBranch.length > 0 ? localBranch : null;
 }
 
+const FORCE_PUSH_COMMIT_LIMIT = 50;
+const FORCE_PUSH_STALE_DETAIL =
+  "The remote branch changed after the details were shown, so nothing was overwritten. Review the details again.";
+
+function parseForcePushCommits(stdout: string) {
+  return stdout
+    .split("\n")
+    .filter((line) => line.length > 0)
+    .map((line) => {
+      const [sha = "", author = "", committedAt = "", ...subject] = line.split("\x1f");
+      return { sha, author, committedAt, subject: subject.join("\x1f") };
+    });
+}
+
 function gitCommandContext(
   input: Pick<GitVcsDriver.ExecuteGitInput, "operation" | "cwd" | "args">,
 ) {
@@ -2957,6 +2971,128 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     };
   });
 
+  const forcePushError = (cwd: string, args: ReadonlyArray<string>, detail: string) =>
+    new GitCommandError({
+      ...gitCommandContext({ operation: "GitVcsDriver.forcePush", cwd, args }),
+      detail,
+    });
+
+  // Only a diverged branch tracking its own remote branch qualifies; anything else has a safer path.
+  const resolveForcePushTarget = Effect.fn("resolveForcePushTarget")(function* (cwd: string) {
+    const args = ["push", "--force-with-lease"];
+    const details = yield* readStatusDetailsLocal(cwd);
+    const refName = details.branch;
+    if (!refName) {
+      return yield* forcePushError(cwd, args, "Cannot force push from detached HEAD.");
+    }
+    const upstream = details.hasUpstream ? yield* resolveCurrentUpstream(cwd) : null;
+    if (!upstream) {
+      return yield* forcePushError(cwd, args, "Current branch has no upstream configured.");
+    }
+    if (upstream.branchName !== refName) {
+      return yield* forcePushError(
+        cwd,
+        args,
+        "Force push is only available for a branch that tracks the remote branch of the same name.",
+      );
+    }
+    if (details.aheadCount === 0 || details.behindCount === 0) {
+      return yield* forcePushError(
+        cwd,
+        args,
+        "The branch has not diverged from its upstream. Use Push or Pull instead.",
+      );
+    }
+    const upstreamSha = (yield* runGitStdout("GitVcsDriver.forcePush.upstreamSha", cwd, [
+      "rev-parse",
+      "--verify",
+      `refs/remotes/${upstream.upstreamRef}`,
+    ])).trim();
+    return { details, refName, upstream, upstreamSha };
+  });
+
+  const forcePushPreview: GitVcsDriver.GitVcsDriver["Service"]["forcePushPreview"] = Effect.fn(
+    "forcePushPreview",
+  )(function* (cwd) {
+    const { details, refName, upstream, upstreamSha } = yield* resolveForcePushTarget(cwd);
+    const listCommits = (range: string) =>
+      runGitStdout("GitVcsDriver.forcePush.log", cwd, [
+        "log",
+        "--no-color",
+        "--no-show-signature",
+        `--max-count=${FORCE_PUSH_COMMIT_LIMIT}`,
+        "--format=%H%x1f%an%x1f%aI%x1f%s",
+        range,
+        "--",
+      ]).pipe(Effect.map(parseForcePushCommits));
+    const [localSha, localCommits, upstreamCommits] = yield* Effect.all([
+      runGitStdout("GitVcsDriver.forcePush.localSha", cwd, ["rev-parse", "HEAD"]).pipe(
+        Effect.map((stdout) => stdout.trim()),
+      ),
+      listCommits(`${upstreamSha}..HEAD`),
+      listCommits(`HEAD..${upstreamSha}`),
+    ]);
+    return {
+      refName,
+      remoteName: upstream.remoteName,
+      upstreamRef: upstream.upstreamRef,
+      upstreamSha,
+      localSha,
+      localCommits,
+      localCommitCount: details.aheadCount,
+      upstreamCommits,
+      upstreamCommitCount: details.behindCount,
+    };
+  });
+
+  const forcePushCurrentBranch: GitVcsDriver.GitVcsDriver["Service"]["forcePushCurrentBranch"] =
+    Effect.fn("forcePushCurrentBranch")(function* (cwd, expectedUpstreamSha) {
+      const { refName, upstream, upstreamSha } = yield* resolveForcePushTarget(cwd);
+      const args = [
+        "push",
+        // Naming the expected commit makes the remote refuse if anyone pushed after the review.
+        `--force-with-lease=refs/heads/${refName}:${expectedUpstreamSha}`,
+        "--",
+        upstream.remoteName,
+        `HEAD:refs/heads/${refName}`,
+      ];
+      if (upstreamSha !== expectedUpstreamSha) {
+        return yield* forcePushError(cwd, args, FORCE_PUSH_STALE_DETAIL);
+      }
+      const newSha = (yield* runGitStdout("GitVcsDriver.forcePush.localSha", cwd, [
+        "rev-parse",
+        "HEAD",
+      ])).trim();
+      const result = yield* executeGitWithStableDiagnostics(
+        "GitVcsDriver.forcePush.push",
+        cwd,
+        args,
+        {
+          timeoutMs: null,
+          allowNonZeroExit: true,
+        },
+      );
+      if (result.exitCode !== 0) {
+        const reason = classifyGitFailure(result.stderr);
+        return yield* new GitCommandError({
+          ...gitCommandContext({ operation: "GitVcsDriver.forcePush.push", cwd, args }),
+          ...(reason === null ? {} : { reason }),
+          detail: /\(stale info\)/.test(result.stderr)
+            ? FORCE_PUSH_STALE_DETAIL
+            : (fetchFailureDetail(result.stderr) ?? gitFailureDetail(reason)),
+          ...(result.exitCode === null ? {} : { exitCode: result.exitCode }),
+          stdoutLength: result.stdout.length,
+          stderrLength: result.stderr.length,
+        });
+      }
+      return {
+        refName,
+        upstreamRef: upstream.upstreamRef,
+        previousSha: expectedUpstreamSha,
+        newSha,
+      };
+    });
+
   const readRangeContext: GitVcsDriver.GitVcsDriver["Service"]["readRangeContext"] = Effect.fn(
     "readRangeContext",
   )(function* (cwd, baseRef) {
@@ -5109,6 +5245,10 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     }),
     pullCurrentBranch: Effect.fnUntraced(function* (cwd) {
       return yield* withListRefsInvalidation(cwd, pullCurrentBranch(cwd));
+    }),
+    forcePushPreview,
+    forcePushCurrentBranch: Effect.fnUntraced(function* (cwd, expectedUpstreamSha) {
+      return yield* withListRefsInvalidation(cwd, forcePushCurrentBranch(cwd, expectedUpstreamSha));
     }),
     readRangeContext,
     getReviewBranchCommits,

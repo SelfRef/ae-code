@@ -928,6 +928,92 @@ it.effect("invalidates cached metadata after interrupted worktree creation", () 
   ).pipe(Effect.provide(layerTest)),
 );
 
+describe("forcePush", () => {
+  const divergedClone = Effect.gen(function* () {
+    const cwd = yield* makeTmpDir();
+    const remote = yield* makeTmpDir("git-vcs-driver-remote-");
+    const updater = yield* makeTmpDir("git-vcs-driver-updater-");
+    const { initialBranch } = yield* initRepoWithCommit(cwd);
+    yield* git(remote, ["init", "--bare"]);
+    yield* git(cwd, ["remote", "add", "origin", remote]);
+    yield* git(cwd, ["push", "-u", "origin", initialBranch]);
+    yield* git(updater, ["clone", remote, "."]);
+    yield* git(updater, ["config", "user.email", "test@test.com"]);
+    yield* git(updater, ["config", "user.name", "Test"]);
+    yield* writeTextFile(updater, "remote.txt", "remote\n");
+    yield* git(updater, ["add", "remote.txt"]);
+    yield* git(updater, ["commit", "-m", "remote only"]);
+    yield* git(updater, ["push", "origin", initialBranch]);
+    yield* writeTextFile(cwd, "local.txt", "local\n");
+    yield* git(cwd, ["add", "local.txt"]);
+    yield* git(cwd, ["commit", "-m", "local only"]);
+    yield* git(cwd, ["fetch", "origin"]);
+    return { cwd, remote, updater, initialBranch };
+  });
+
+  it.effect("lists what the push deletes and sends, then replaces the remote branch", () =>
+    Effect.gen(function* () {
+      const driver = yield* GitVcsDriver.GitVcsDriver;
+      const { cwd, remote, initialBranch } = yield* divergedClone;
+
+      const preview = yield* driver.forcePushPreview(cwd);
+
+      assert.equal(preview.upstreamRef, `origin/${initialBranch}`);
+      assert.deepEqual(
+        preview.upstreamCommits.map((commit) => commit.subject),
+        ["remote only"],
+      );
+      assert.deepEqual(
+        preview.localCommits.map((commit) => commit.subject),
+        ["local only"],
+      );
+      assert.equal(preview.upstreamCommitCount, 1);
+      assert.equal(preview.localCommitCount, 1);
+
+      const result = yield* driver.forcePushCurrentBranch(cwd, preview.upstreamSha);
+
+      assert.equal(result.newSha, preview.localSha);
+      assert.equal(
+        yield* git(remote, ["--git-dir", remote, "rev-parse", initialBranch]),
+        preview.localSha,
+      );
+    }).pipe(Effect.provide(layerTest)),
+  );
+
+  it.effect("refuses, and overwrites nothing, when the remote moved after the preview", () =>
+    Effect.gen(function* () {
+      const driver = yield* GitVcsDriver.GitVcsDriver;
+      const { cwd, remote, updater, initialBranch } = yield* divergedClone;
+      const preview = yield* driver.forcePushPreview(cwd);
+      yield* writeTextFile(updater, "later.txt", "later\n");
+      yield* git(updater, ["add", "later.txt"]);
+      yield* git(updater, ["commit", "-m", "pushed meanwhile"]);
+      yield* git(updater, ["push", "origin", initialBranch]);
+      const remoteHead = yield* git(remote, ["--git-dir", remote, "rev-parse", initialBranch]);
+
+      const error = yield* Effect.flip(driver.forcePushCurrentBranch(cwd, preview.upstreamSha));
+
+      assert.include(error.detail, "changed after the details were shown");
+      assert.equal(
+        yield* git(remote, ["--git-dir", remote, "rev-parse", initialBranch]),
+        remoteHead,
+      );
+    }).pipe(Effect.provide(layerTest)),
+  );
+
+  it.effect("refuses a branch that has not diverged", () =>
+    Effect.gen(function* () {
+      const driver = yield* GitVcsDriver.GitVcsDriver;
+      const { cwd, initialBranch } = yield* divergedClone;
+      yield* git(cwd, ["reset", "--hard", `origin/${initialBranch}`]);
+
+      const error = yield* Effect.flip(driver.forcePushPreview(cwd));
+
+      assert.include(error.detail, "has not diverged");
+    }).pipe(Effect.provide(layerTest)),
+  );
+});
+
 describe("pullCurrentBranch", () => {
   // A fast-forward that prints over 1 MB takes thousands of files, so the real pull's output is
   // padded past the cap instead.

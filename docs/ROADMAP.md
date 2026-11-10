@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [23] | Force push for a diverged branch (Git menu → "Force push..."), with a modal listing the commits it deletes and sends                                                   | done    |
 | [22] | Git panel and Diff panel start on uncommitted changes; "Not pushed" is the old branch diff; Push shows how many commits it sends                                       | done    |
 | [21] | Setting to turn off the "Push to default ref?" confirmation (Settings → Source control, on by default)                                                                 | done    |
 | [20] | Install Claude Code and OpenCode from Settings → Providers with npm into `~/.local`, and update them there (not found in any fork)                                     | done    |
@@ -55,6 +56,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 [20]: #install-claude-code-and-opencode-from-settings-change-20
 [21]: #default-branch-push-confirmation-change-21
 [22]: #uncommitted-changes-first-change-22
+[23]: #force-push-change-23
 
 `done` means it is a commit on `main`; the commit is found by subject (`git log --grep`), not by hash, because every
 rebase onto upstream changes the hashes. The history rules and the sync procedure are in the last section.
@@ -786,6 +788,24 @@ Upstream (#15005) made the Diff panel open on all branch changes against the bas
 - The Push quick action reads "Push N commits" (ahead of the upstream, or of the base ref when there is no upstream).
   A click marks the action running at once, since the server's first progress event arrives late.
 - Existing per-thread selections in `t3code:diff-panel-state:v1` are kept; only the default and the reset on open changed.
+
+## Force push (change 23)
+
+When a branch has commits the upstream lacks and the upstream has commits the branch lacks (after an amend, rebase or
+autosquash), Push and Pull both refuse and the quick action reads "Sync ref". Upstream's only advice is "Rebase/merge
+first", which is wrong after a deliberate rewrite.
+
+- The Git menu gets "Force push..." while the branch is both ahead and behind its upstream. Choosing it asks the server
+  for a preview (`vcs.forcePushPreview`) and opens a modal with the commits only the remote has (deleted by the push),
+  the commits only this checkout has (published), and the remote commit the push will replace. Both lists are capped
+  at 50; the counts are the real totals.
+- Confirming sends `vcs.forcePush` with that remote commit. The server runs `git push --force-with-lease=<ref>:<sha>`
+  against it, so a push by anyone since the preview makes the remote refuse and nothing is overwritten.
+- Only a branch tracking the remote branch of the same name qualifies: a feature branch whose upstream is another
+  branch (a base) is refused rather than force-pushed to it. A branch that is only ahead or only behind keeps Push and
+  Pull, and the server rechecks that too.
+- Needs the source control write scope, like Pull. Web only: mobile's Git actions don't list it.
+- No data migration: two new RPCs and one new action operation.
 
 ## Keeping the fork up to date with upstream
 
