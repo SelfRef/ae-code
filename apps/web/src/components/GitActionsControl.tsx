@@ -45,6 +45,7 @@ import { cn } from "~/lib/utils";
 import { useClientSettings } from "~/hooks/useSettings";
 import {
   buildMenuItems,
+  formatQuickActionLabel,
   formatGitActionElapsed,
   GIT_ACTION_SUCCESS_VISIBLE_MS,
   hasUsableGitMenuContent,
@@ -54,7 +55,6 @@ import {
   type GitQuickAction,
   type DefaultBranchConfirmableAction,
   requiresDefaultBranchConfirmation,
-  resolveChangesTotals,
   resolveDefaultBranchActionDialogCopy,
   resolveFeatureBranchUnavailableReason,
   resolveGitActionProgressPresentation,
@@ -97,15 +97,6 @@ import { useQuietThreadProjection, useQuietThreadShell } from "~/state/entities"
 import { useProjectClone } from "~/state/projectClones";
 import { readEnvironmentScope, useEnvironmentScope } from "~/state/session";
 import { useEnvironmentQuery } from "~/state/query";
-import { useFilesystemReadAccess } from "~/state/filesystem";
-import { reviewEnvironment } from "~/state/review";
-import { revisionedQuery } from "~/state/revisionedQuery";
-import {
-  selectThreadBranchBaseRef,
-  useDiffPanelSessionStore,
-  useDiffPanelStore,
-} from "~/diffPanelStore";
-import { useClientSettings } from "~/hooks/useSettings";
 import { serverEnvironment } from "~/state/server";
 import { sourceControlEnvironment } from "~/state/sourceControl";
 import { threadEnvironment } from "~/state/threads";
@@ -139,7 +130,6 @@ interface GitActionsControlProps {
   showActions?: boolean;
   showChanges?: boolean;
   onOpenChanges?: () => void;
-  workspaceMutationId?: string | null;
 }
 
 interface PendingDefaultBranchAction {
@@ -922,7 +912,6 @@ export default function GitActionsControl({
   showActions = true,
   showChanges = true,
   onOpenChanges,
-  workspaceMutationId = null,
 }: GitActionsControlProps) {
   const progressLabelId = useId();
   const panelAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -1044,59 +1033,7 @@ export default function GitActionsControl({
   const isRepo = gitStatus?.isRepo ?? true;
   const hasPrimaryRemote = gitStatus?.hasPrimaryRemote ?? false;
   const gitStatusForActions = gitStatus;
-  const changesBaseRef = useDiffPanelStore((state) =>
-    selectThreadBranchBaseRef(state, activeThreadRef),
-  );
-  const ignoreWhitespaceSetting = useClientSettings((settings) => settings.diffIgnoreWhitespace);
-  const ignoreWhitespace =
-    useDiffPanelSessionStore((state) => state.ignoreWhitespace) ?? ignoreWhitespaceSetting;
-  const { canReadFiles } = useFilesystemReadAccess(activeEnvironmentId);
-  // Same input as the Diff panel's branch query, so both read one cached result. Status
-  // totals join the revision because edits, pulls and resets outside a turn leave the mutation
-  // id as is.
-  const changesRevision = gitStatusForActions
-    ? JSON.stringify([
-        workspaceMutationId,
-        gitStatusForActions.refName,
-        gitStatusForActions.workingTree.insertions,
-        gitStatusForActions.workingTree.deletions,
-        gitStatusForActions.branchChanges?.baseRef,
-        gitStatusForActions.branchChanges?.insertions,
-        gitStatusForActions.branchChanges?.deletions,
-      ])
-    : null;
-  const changesPreview = useEnvironmentQuery(
-    showChanges &&
-      isRepo &&
-      canReadFiles &&
-      changesRevision !== null &&
-      activeEnvironmentId !== null &&
-      gitCwd !== null
-      ? revisionedQuery(
-          reviewEnvironment.diffPreview({
-            environmentId: activeEnvironmentId,
-            input: {
-              cwd: gitCwd,
-              ...(changesBaseRef ? { baseRef: changesBaseRef } : {}),
-              ignoreWhitespace,
-              metadataOnly: true,
-              sourceKind: "branch-range",
-            },
-          }),
-          changesRevision,
-        )
-      : null,
-  );
-  const resolvedChangesTotals = resolveChangesTotals(
-    gitStatusForActions,
-    changesPreview.data?.sources.find((source) => source.kind === "branch-range"),
-  );
-  const changesTotals = resolvedChangesTotals ?? { insertions: 0, deletions: 0 };
-  const changesBaseLabel = resolvedChangesTotals
-    ? resolvedChangesTotals.baseRef === null
-      ? "Uncommitted"
-      : `vs ${resolvedChangesTotals.baseRef}`
-    : null;
+  const changesTotals = gitStatusForActions?.workingTree ?? { insertions: 0, deletions: 0 };
 
   const allFiles = gitStatusForActions?.workingTree.files ?? [];
   // Changed-file paths are repository-relative, so they must resolve against
@@ -1163,6 +1100,7 @@ export default function GitActionsControl({
     isDefaultRef,
     hasPrimaryRemote,
   );
+  const quickActionLabel = formatQuickActionLabel(quickAction, gitStatusForActions);
   const quickActionDisabledReason = !canWriteSourceControl
     ? "This connection cannot change source control."
     : quickAction.disabled
@@ -1627,7 +1565,7 @@ export default function GitActionsControl({
                     cn("not-sr-only ml-0 truncate", THREAD_DETAILS_PANEL_LABEL_CLASS),
                   )}
                 >
-                  {quickAction.label}
+                  {quickActionLabel}
                 </span>
               </PopoverTrigger>
               <PopoverPopup tooltipStyle side="bottom" align="start">
@@ -1660,10 +1598,10 @@ export default function GitActionsControl({
                     cn("not-sr-only ml-0 truncate", THREAD_DETAILS_PANEL_LABEL_CLASS),
                   )}
                 >
-                  {quickAction.label}
+                  {quickActionLabel}
                 </span>
               </TooltipTrigger>
-              <TooltipPopup side="top">{quickAction.label}</TooltipPopup>
+              <TooltipPopup side="top">{quickActionLabel}</TooltipPopup>
             </Tooltip>
           )}
           {!gitActionProgress ? (
@@ -1721,41 +1659,33 @@ export default function GitActionsControl({
         >
           <FileDiffIcon className={THREAD_DETAILS_PANEL_ICON_CLASS} aria-hidden />
           <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
-            <span className="shrink-0">Changes</span>
-            {changesBaseLabel ? (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <span className="pointer-events-auto min-w-0 truncate font-normal text-muted-foreground" />
+            <span className="shrink-0">Uncommitted</span>
+            {changesTotals.insertions || changesTotals.deletions ? (
+              <span className="ml-auto flex shrink-0 items-baseline gap-2 ps-2 font-mono tabular-nums">
+                <span
+                  className={
+                    changesTotals.insertions
+                      ? "text-diff-addition-foreground"
+                      : "text-muted-foreground"
                   }
                 >
-                  {changesBaseLabel}
-                </TooltipTrigger>
-                <TooltipPopup side="top" className="max-w-96 break-words">
-                  {changesBaseLabel}
-                </TooltipPopup>
-              </Tooltip>
-            ) : null}
-            <span className="ml-auto flex shrink-0 items-baseline gap-2 ps-2 font-mono tabular-nums">
-              <span
-                className={
-                  changesTotals.insertions
-                    ? "text-diff-addition-foreground"
-                    : "text-muted-foreground"
-                }
-              >
-                +{formatDiffCount(changesTotals.insertions)}
+                  +{formatDiffCount(changesTotals.insertions)}
+                </span>
+                <span
+                  className={
+                    changesTotals.deletions
+                      ? "text-diff-deletion-foreground"
+                      : "text-muted-foreground"
+                  }
+                >
+                  -{formatDiffCount(changesTotals.deletions)}
+                </span>
               </span>
-              <span
-                className={
-                  changesTotals.deletions
-                    ? "text-diff-deletion-foreground"
-                    : "text-muted-foreground"
-                }
-              >
-                -{formatDiffCount(changesTotals.deletions)}
+            ) : (
+              <span className="ml-auto shrink-0 ps-2 font-normal text-muted-foreground">
+                No changes
               </span>
-            </span>
+            )}
           </span>
         </ThreadDetailsControl>
       ) : null}

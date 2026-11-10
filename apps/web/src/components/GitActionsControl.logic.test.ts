@@ -5,9 +5,9 @@ import { assert, describe, it } from "vite-plus/test";
 import {
   buildMenuItems,
   type DefaultBranchConfirmableAction,
+  formatQuickActionLabel,
   hasUsableGitMenuContent,
   requiresDefaultBranchConfirmation,
-  resolveChangesTotals,
   resolveDefaultBranchActionDialogCopy,
   resolveFeatureBranchUnavailableReason,
   resolveLiveThreadBranchUpdate,
@@ -297,83 +297,28 @@ describe("resolveAutoFeatureBranchName", () => {
   });
 });
 
-describe("resolveChangesTotals", () => {
-  it("does not let an empty branchChanges hide a dirty working tree", () => {
-    assert.deepInclude(
-      resolveChangesTotals(
-        status({
-          hasWorkingTreeChanges: true,
-          branchChanges: { baseRef: "main", insertions: 0, deletions: 0 },
-          workingTree: {
-            files: [{ path: "a.ts", insertions: 5, deletions: 1 }],
-            insertions: 5,
-            deletions: 1,
-          },
-        }),
-      ),
-      { insertions: 5, deletions: 1 },
+describe("formatQuickActionLabel", () => {
+  it("names the commits a Push action sends", () => {
+    const ahead = status({ refName: "feature/x", hasUpstream: true, aheadCount: 3 });
+    assert.equal(
+      formatQuickActionLabel(resolveQuickAction(ahead, false, false, true), ahead),
+      "Push 3 commits & create PR",
+    );
+    const one = status({ refName: "main", hasUpstream: true, aheadCount: 1 });
+    assert.equal(
+      formatQuickActionLabel(resolveQuickAction(one, false, true, true), one),
+      "Push 1 commit",
     );
   });
 
-  it("keeps non-zero branchChanges over the working tree", () => {
-    assert.deepEqual(
-      resolveChangesTotals(
-        status({
-          branchChanges: { baseRef: "origin/master", insertions: 20, deletions: 3 },
-          workingTree: {
-            files: [{ path: "a.ts", insertions: 1, deletions: 0 }],
-            insertions: 1,
-            deletions: 0,
-          },
-        }),
-      ),
-      { insertions: 20, deletions: 3, baseRef: "origin/master" },
-    );
-  });
-
-  it("uses the panel's branch comparison when it has file stats", () => {
-    const dirty = status({
-      branchChanges: { baseRef: "main", insertions: 20, deletions: 3 },
-    });
-    const source = {
-      id: "branch-range",
-      kind: "branch-range",
-      title: "Changes vs release",
-      baseRef: "release",
-      headRef: "feature/test",
-      diff: "",
-      diffHash: "hash",
-      truncated: false,
-    } as const;
-    assert.deepEqual(
-      resolveChangesTotals(dirty, {
-        ...source,
-        files: [
-          { path: "a.ts", previousPath: null, additions: 4, deletions: 1 },
-          { path: "b.ts", previousPath: null, additions: 2, deletions: 0 },
-        ],
-      }),
-      { insertions: 6, deletions: 1, baseRef: "release" },
-    );
-    assert.deepEqual(resolveChangesTotals(dirty, source), {
-      insertions: 20,
-      deletions: 3,
-      baseRef: "main",
-    });
-  });
-
-  it("falls back to the working tree when branchChanges is omitted", () => {
-    assert.deepInclude(
-      resolveChangesTotals(
-        status({
-          workingTree: {
-            files: [{ path: "a.ts", insertions: 2, deletions: 0 }],
-            insertions: 2,
-            deletions: 0,
-          },
-        }),
-      ),
-      { insertions: 2, deletions: 0 },
+  it("leaves labels that push nothing alone", () => {
+    const synced = status({ refName: "feature/x", hasUpstream: true, aheadCount: 0 });
+    const action = resolveQuickAction(synced, false, false, true);
+    assert.equal(formatQuickActionLabel(action, synced), action.label);
+    const dirty = status({ hasWorkingTreeChanges: true, hasUpstream: true, aheadCount: 2 });
+    assert.equal(
+      formatQuickActionLabel(resolveQuickAction(dirty, false, true, true), dirty),
+      "Commit & push",
     );
   });
 });
