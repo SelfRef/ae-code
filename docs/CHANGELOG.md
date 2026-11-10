@@ -8,6 +8,14 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+### Fixed
+
+- Forgejo / Gitea: a `GITEA_TOKEN` in the server's environment without an instance no longer hides the signed-in `gt` account (the provider read as not authenticated).
+- Updating a Docker or bare-host server from another app (sidebar, banner) installs the newest GitHub release even when
+  the app's own version is a local build that is no release.
+
+## [v2026.11.10.4] - 2026-11-10
+
 ### Added
 
 - Docker image: carries the `gh`, `glab`, `fj` and `gt` source-control CLIs. The README now describes the image as a base to
@@ -81,9 +89,6 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Fixed
 
-- Forgejo / Gitea: a `GITEA_TOKEN` in the server's environment without an instance no longer hides the signed-in `gt` account (the provider read as not authenticated).
-- Updating a Docker or bare-host server from another app (sidebar, banner) installs the newest GitHub release even when
-  the app's own version is a local build that is no release.
 - Git status stays current: opening a thread rereads it, a git action that fails refreshes it too, and a feature branch already merged into the local default branch no longer offers "Merge N commits" again.
 - Android: pushing from the default branch on a new-thread draft asks to confirm instead of refusing with "Choose a feature branch".
 - Android: Settings → Source control shows the "Confirm pushing to the default branch" switch while a project is selected too.
