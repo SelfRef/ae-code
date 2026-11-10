@@ -32,6 +32,7 @@ import { useSelectedThreadGitActions } from "../../../state/use-selected-thread-
 import { useSelectedThreadGitState } from "../../../state/use-selected-thread-git-state";
 import { useSelectedThreadWorktree } from "../../../state/use-selected-thread-worktree";
 import { vcsEnvironment } from "../../../state/vcs";
+import { useConfirmPushToDefaultBranch } from "./useConfirmPushToDefaultBranch";
 import { menuItemIconName, statusSummary } from "./gitSheetComponents";
 import {
   LinkedPullRequestRow,
@@ -104,6 +105,7 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
   const hasPrimaryRemote = gitStatus.data?.hasPrimaryRemote ?? false;
   const isDefaultRef = gitStatus.data?.isDefaultRef ?? false;
 
+  const confirmPushToDefaultBranch = useConfirmPushToDefaultBranch();
   const menuItems = isRepo ? buildMenuItems(gitStatus.data, busy, hasPrimaryRemote) : [];
 
   const sheetMenuItems = menuItems.map((item) => ({
@@ -151,6 +153,7 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
       branchName &&
       confirmableAction &&
       !input.featureBranch &&
+      confirmPushToDefaultBranch &&
       requiresDefaultBranchConfirmation(input.action, isDefaultRef)
     ) {
       presentRoute(() =>
@@ -195,6 +198,14 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
     }
     if (item.dialogAction === "create_pr") {
       await runActionWithPrompt({ action: "create_pr" });
+      return;
+    }
+    if (item.dialogAction === "force_push") {
+      await gitActions.onForcePushSelectedThreadBranch();
+      return;
+    }
+    if (item.dialogAction === "merge" || item.dialogAction === "merge_push") {
+      await runActionWithPrompt({ action: item.dialogAction });
     }
   };
 
@@ -210,6 +221,10 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
     if (item.dialogAction === "push" && (status.aheadCount ?? 0) > 0) {
       const ahead = status.aheadCount ?? 0;
       return `${ahead} commit${ahead === 1 ? "" : "s"} ahead`;
+    }
+    if (item.dialogAction === "merge" || item.dialogAction === "merge_push") {
+      const commits = status.aheadOfDefaultCount ?? status.aheadCount ?? 0;
+      if (commits > 0) return `${commits} commit${commits === 1 ? "" : "s"} to merge`;
     }
     if (item.kind === "open_pr" && status.pr?.number != null) {
       return `${shortLabel} #${status.pr.number} ${status.pr.state ?? "open"}`;

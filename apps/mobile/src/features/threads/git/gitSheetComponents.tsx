@@ -3,6 +3,7 @@ import { SymbolView } from "../../../components/ui/AppSymbol";
 import type { ComponentProps } from "react";
 import { View } from "react-native";
 import { Button } from "../../../components/ui/Button";
+import { aheadLabel } from "./aheadLabel";
 import { PullRequestGlyph } from "../../pull-requests/pullRequestGlyphs";
 
 export function SheetActionButton(props: {
@@ -33,7 +34,9 @@ export function statusSummary(
     readonly isRepo?: boolean;
     readonly hasWorkingTreeChanges?: boolean;
     readonly workingTree?: { readonly files: readonly { readonly path: string }[] };
+    readonly isDefaultRef?: boolean;
     readonly aheadCount?: number;
+    readonly aheadOfDefaultCount?: number;
     readonly behindCount?: number;
     readonly pr?: { readonly state?: string; readonly number?: number } | null;
     readonly sourceControlProvider?: { readonly kind: string } | null;
@@ -54,9 +57,8 @@ export function statusSummary(
   } else {
     parts.push("Clean");
   }
-  if ((gitStatus.aheadCount ?? 0) > 0) {
-    parts.push(`${gitStatus.aheadCount} ahead`);
-  }
+  const ahead = aheadLabel(gitStatus);
+  if (ahead) parts.push(ahead);
   if ((gitStatus.behindCount ?? 0) > 0) {
     parts.push(`${gitStatus.behindCount} behind`);
   }

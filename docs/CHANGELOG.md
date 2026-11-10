@@ -10,6 +10,13 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Added
 
+- Android: Input, Done and draft threads are tinted in the list, and an unsent draft reads "Draft".
+- Android: the Git sheet and menu merge into the default branch, force push (listing what it deletes) and offer
+  "Merge by agent" when a merge fails; the main Git action follows the project's setting. Their headers
+  count a feature branch's "ahead" commits against the default branch, not its upstream.
+- Android: choosing a branch checked out in another worktree, such as `main`, moves the thread there.
+- Android: a started thread can be moved into a new worktree from its menu.
+- Android: Settings → Source control sets the main Git action and whether pushing to the default branch asks first.
 - Actions: the Command field lists the variables a command can use (`T3CODE_PROJECT_ROOT`,
   `T3CODE_WORKTREE_PATH`).
 - Saved environments are shared between browsers: the environments you add in one browser signed in to a

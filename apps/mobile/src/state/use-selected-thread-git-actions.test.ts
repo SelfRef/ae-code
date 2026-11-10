@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
     environmentId: "environment",
     branch: "main",
     worktreePath: null as string | null,
+    runtime: null,
   },
   commits: 0,
   pushes: 0,
@@ -62,6 +63,7 @@ vi.mock("./use-vcs-action-state", () => ({
   showGitActionResult: (result: { type: string; description?: string }) =>
     state.results.push(result),
 }));
+vi.mock("../components/ui/Dialog", () => ({ confirm: () => {} }));
 vi.mock("../lib/uuid", () => ({ uuidv4: () => "action" }));
 vi.mock("./threads", () => ({
   threadEnvironment: {
@@ -159,6 +161,32 @@ describe("thread Git mutation permissions", () => {
       expect(state.thread.branch).toBe(canOperate ? "feature/task" : "main");
     },
   );
+
+  it.each([
+    ["a linked worktree", "/repo-linked", "/repo-linked"],
+    ["the project checkout", "/repo", null],
+  ])("moves the thread into %s without switching branches", async (_name, path, expected) => {
+    state.scopes.add(AuthOrchestrationOperateScope);
+    state.thread.worktreePath = "/repo-other";
+    const result = await useSelectedThreadGitActions().onUseSelectedThreadWorktree({
+      branch: "main",
+      worktreePath: path as string,
+    });
+    expect(result).toEqual({ branch: "main", worktreePath: path });
+    expect(state.thread.worktreePath).toBe(expected);
+    expect(state.thread.branch).toBe("main");
+    expect(state.branch).toBe("main");
+  });
+
+  it("does not move the thread without task permission", async () => {
+    expect(
+      await useSelectedThreadGitActions().onUseSelectedThreadWorktree({
+        branch: "main",
+        worktreePath: "/repo-linked",
+      }),
+    ).toBeNull();
+    expect(state.metadataRequests).toEqual([]);
+  });
 
   it("keeps ordinary commits and pushes available without task permission", async () => {
     const actions = useSelectedThreadGitActions();
