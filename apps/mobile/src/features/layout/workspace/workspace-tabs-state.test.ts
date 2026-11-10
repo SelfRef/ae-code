@@ -55,6 +55,7 @@ describe("Duo list clearance", () => {
 describe("workspace root navigation", () => {
   it("pairs Settings, chats and pull requests with a detail column, and keeps Usage one page", () => {
     expect(workspaceUsesColumns("usage")).toBe(false);
+    expect(workspaceUsesColumns("branches")).toBe(false);
     expect(workspaceUsesColumns("issues")).toBe(false);
     expect(workspaceUsesColumns("releases")).toBe(false);
     expect(workspaceUsesColumns("usage", true)).toBe(true);
@@ -65,6 +66,7 @@ describe("workspace root navigation", () => {
   it("completes a saved order with the registered sections", () => {
     expect(resolveWorkspaceTabOrder(undefined)).toEqual([
       "threads",
+      "branches",
       "issues",
       "releases",
       "pullRequests",
@@ -74,6 +76,7 @@ describe("workspace root navigation", () => {
       "usage",
       "issues",
       "threads",
+      "branches",
       "releases",
       "pullRequests",
     ]);

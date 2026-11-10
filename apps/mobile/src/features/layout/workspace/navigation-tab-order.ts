@@ -1,5 +1,6 @@
 export const NAVIGATION_TAB_ORDER = [
   "threads",
+  "branches",
   "issues",
   "releases",
   "pullRequests",
@@ -11,8 +12,10 @@ export type NavigationTab = (typeof NAVIGATION_TAB_ORDER)[number];
 export const DEFAULT_HIDDEN_NAVIGATION_TABS: readonly NavigationTab[] = ["pullRequests"];
 
 /** Tabs that are one page rather than a list beside a detail column. */
-export function isPageNavigationTab(tab: unknown): tab is "issues" | "releases" | "usage" {
-  return tab === "issues" || tab === "releases" || tab === "usage";
+export function isPageNavigationTab(
+  tab: unknown,
+): tab is "branches" | "issues" | "releases" | "usage" {
+  return tab === "branches" || tab === "issues" || tab === "releases" || tab === "usage";
 }
 
 /** Tabs whose provider isn't signed in on any connected environment; they show nowhere. */
@@ -34,6 +37,7 @@ export function navigationCustomizationAvailable(
 
 export const NAVIGATION_TAB_LABELS: Readonly<Record<NavigationTab, string>> = {
   threads: "Threads",
+  branches: "Branches",
   issues: "Issues",
   releases: "Releases",
   pullRequests: "Pulls",
