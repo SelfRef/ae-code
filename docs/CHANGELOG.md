@@ -58,6 +58,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Changed
 
+- The floating browser and device preview shows its buttons (open in the right panel, pop out, close) in its top-right corner while the pointer is over it, instead of behind a small dot; on a touch screen they are always shown.
 - Forgejo and Gitea use Gitea's new `gt` CLI (1.0 or later, Gitea 28 or later) instead of `tea`. Sign in again with `gt auth login`; `fj` is still preferred when it has a login for the server.
 - The Uncommitted row in the Git panel names how many files changed, beside the added and removed line totals.
 - The Git actions menu uses short labels (Commit & merge, Merge & push) and grows wider than the panel when a label needs it, instead of cutting it off.
