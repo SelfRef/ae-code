@@ -64,8 +64,12 @@ interface ThreadFixture {
   readonly deletedAt?: string | null;
 }
 
-const makeProjection = (overrides: ThreadFixture = {}): OrchestrationV2ThreadProjection =>
+const makeProjection = (
+  overrides: ThreadFixture = {},
+  runStatuses: ReadonlyArray<string> = [],
+): OrchestrationV2ThreadProjection =>
   ({
+    runs: runStatuses.map((status) => ({ status })),
     thread: {
       id: threadId,
       projectId,
@@ -76,7 +80,7 @@ const makeProjection = (overrides: ThreadFixture = {}): OrchestrationV2ThreadPro
       deletedAt: null,
       ...overrides,
     },
-  }) as OrchestrationV2ThreadProjection;
+  }) as unknown as OrchestrationV2ThreadProjection;
 
 const project: Project = {
   id: projectId,
@@ -116,6 +120,8 @@ interface HarnessOptions {
   readonly deleteLocalBranchFails?: boolean;
   readonly createWorktreeGate?: Effect.Effect<void>;
   readonly existsFails?: boolean;
+  readonly runStatuses?: ReadonlyArray<string>;
+  readonly flatBranchExists?: boolean;
 }
 
 const makeHarness = (options: HarnessOptions = {}) => {
@@ -175,7 +181,7 @@ const makeHarness = (options: HarnessOptions = {}) => {
       return Effect.succeed(makeProjection({ ...thread, archivedAt: "2026-01-02T00:00:00.000Z" }));
     }
     return id === threadId && thread !== null
-      ? Effect.succeed(makeProjection(thread))
+      ? Effect.succeed(makeProjection(thread, options.runStatuses))
       : Effect.fail(new OrchestratorProjectionError({ threadId: id }));
   });
   const getById = vi.fn((id: ProjectId) =>
@@ -238,6 +244,7 @@ const makeHarness = (options: HarnessOptions = {}) => {
       totalCount: options.existingBranchWorktreePath === undefined ? 0 : 1,
     }),
   );
+  const hasCommit = vi.fn((_: unknown) => Effect.succeed(options.flatBranchExists === true));
   const localStatus = vi.fn((_: unknown) =>
     Effect.succeed({
       isRepo: options.notARepo !== true,
@@ -301,6 +308,7 @@ const makeHarness = (options: HarnessOptions = {}) => {
           listRefs,
           listLocalBranchNames,
           localStatus,
+          hasCommit,
           fetchWorktreeBaseCommit,
           createWorktree,
           removeWorktree,
@@ -374,6 +382,12 @@ const runStatus = (harness: ReturnType<typeof makeHarness>) =>
   Effect.gen(function* () {
     const service = yield* WorktreeMcpService.WorktreeMcpService;
     return yield* service.status(harness.scope);
+  }).pipe(Effect.provide(harness.layer));
+
+const runMove = (harness: ReturnType<typeof makeHarness>) =>
+  Effect.gen(function* () {
+    const service = yield* WorktreeMcpService.WorktreeMcpService;
+    return yield* service.moveThread({ threadId });
   }).pipe(Effect.provide(harness.layer));
 
 const decodeHandoffInput = Schema.decodeUnknownEffect(WorktreeMcpHandoffInput);
@@ -728,6 +742,49 @@ describe("t3_worktree_list", () => {
       const exit = yield* Effect.exit(listRefs(harness, "/worktrees/project/unreadable"));
       expectTypedFailure(exit, { _tag: "PlatformError" });
       expect(harness.listRefs).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe("moving an idle thread to a worktree", () => {
+  it.effect(
+    "creates a worktree on a temporary branch from the checked-out branch and binds it",
+    () => {
+      const harness = makeHarness({ runStatuses: ["completed", "interrupted"] });
+      return Effect.gen(function* () {
+        const result = yield* runMove(harness);
+        expect(result.branch).toMatch(/^t3\/[0-9a-f]{8}$/);
+        expect(result.worktreePath).toBe(`/worktrees/project/${result.branch}`);
+        expect(harness.createWorktree).toHaveBeenCalledWith(
+          expect.objectContaining({ refName: "dev", newRefName: result.branch }),
+        );
+        expect(harness.dispatch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: "thread.metadata.update",
+            branch: result.branch,
+            worktreePath: result.worktreePath,
+            expectedWorktreePath: null,
+          }),
+        );
+        expect(harness.runForThread).toHaveBeenCalled();
+      });
+    },
+  );
+
+  it.effect("flattens the temporary branch when a `t3` branch already exists", () => {
+    const harness = makeHarness({ flatBranchExists: true });
+    return Effect.gen(function* () {
+      const result = yield* runMove(harness);
+      expect(result.branch).toMatch(/^t3-[0-9a-f]{8}$/);
+    });
+  });
+
+  it.effect("refuses a thread with queued or running work", () => {
+    const harness = makeHarness({ runStatuses: ["completed", "queued"] });
+    return Effect.gen(function* () {
+      const exit = yield* Effect.exit(runMove(harness));
+      expectTypedFailure(exit, { _tag: "WorktreeMcpFailure", code: "invalid_request" });
+      expect(harness.createWorktree).not.toHaveBeenCalled();
     });
   });
 });

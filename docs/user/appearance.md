@@ -34,6 +34,12 @@ the web and desktop clients.
 version next to the name at the top of the sidebar. This preference applies to the web and desktop
 clients.
 
+A started thread that works in the project's own checkout and is not running can still move into a new
+worktree: pick **New worktree** in the workspace control, or **Move to new worktree** in the thread's menu.
+The worktree branches from the checked-out branch on a temporary name, and its setup script runs. Uncommitted
+changes stay in the local checkout. The thread keeps its conversation and continues in the worktree on its
+next message.
+
 ## Math
 
 Turn on **Render math** in **Settings → Appearance** to typeset LaTeX in messages and Markdown

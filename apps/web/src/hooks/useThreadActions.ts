@@ -4,9 +4,16 @@ import {
   scopeThreadRef,
   scopedThreadKey,
 } from "@t3tools/client-runtime/environment";
-import { settlePromise, squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
+import {
+  isAtomCommandInterrupted,
+  settlePromise,
+  squashAtomCommandFailure,
+} from "@t3tools/client-runtime/state/runtime";
 import { canSnooze, threadWokeAt } from "@t3tools/client-runtime/state/thread-settled";
-import { threadRuntimeCanArchive } from "@t3tools/client-runtime/state/models";
+import {
+  threadRuntimeCanArchive,
+  threadRuntimeIsActive,
+} from "@t3tools/client-runtime/state/models";
 import {
   AuthOrchestrationOperateScope,
   AuthSourceControlWriteScope,
@@ -28,6 +35,7 @@ import { environmentSession, readEnvironmentScope } from "../state/session";
 import { appAtomRegistry } from "../rpc/atomRegistry";
 import { environmentServerConfigsAtom } from "../state/server";
 import { isScratchProject } from "@t3tools/client-runtime/state/projects";
+import { useAtomValue } from "@effect/atom-react";
 import { orchestrationEnvironment } from "../state/orchestration";
 import { projectEnvironment } from "../state/projects";
 import { threadEnvironment } from "../state/threads";
@@ -45,6 +53,8 @@ import {
   readProject,
   readThreadShell,
   readThreadShells,
+  useProject,
+  useQuietThreadShell,
 } from "../state/entities";
 import { useUiStateStore } from "../uiStateStore";
 import { useDiffPanelStore } from "../diffPanelStore";
@@ -262,6 +272,79 @@ export function canTurnThreadIntoProject(threadRef: ScopedThreadRef): boolean {
   return project !== null && isScratchProject(project, config.scratchWorkspaceRoot);
 }
 
+type MoveCheckConfig = ReturnType<typeof readServerConfig>;
+
+function readServerConfig(environmentId: ScopedThreadRef["environmentId"]) {
+  return appAtomRegistry.get(environmentServerConfigsAtom).get(environmentId);
+}
+
+/** An idle thread in the project checkout, on a server that can move it into a worktree. */
+function threadCanMoveToWorktree(
+  thread: NonNullable<ReturnType<typeof readThreadShell>> | null | undefined,
+  config: MoveCheckConfig,
+  project: ReturnType<typeof readProject>,
+): boolean {
+  return (
+    thread != null &&
+    !thread.worktreePath &&
+    !thread.archivedAt &&
+    !threadRuntimeIsActive(thread.runtime) &&
+    config?.environment.capabilities.threadMoveToWorktree === true &&
+    project !== null &&
+    !isScratchProject(project, config.scratchWorkspaceRoot)
+  );
+}
+
+export function canMoveThreadToWorktree(threadRef: ScopedThreadRef): boolean {
+  const thread = readThreadShell(threadRef);
+  return threadCanMoveToWorktree(
+    thread,
+    readServerConfig(threadRef.environmentId),
+    thread
+      ? readProject({ environmentId: threadRef.environmentId, projectId: thread.projectId })
+      : null,
+  );
+}
+
+/** Reactive `canMoveThreadToWorktree`, for controls that stay mounted while the thread runs. */
+export function useCanMoveThreadToWorktree(threadRef: ScopedThreadRef): boolean {
+  const thread = useQuietThreadShell(threadRef);
+  const config = useAtomValue(environmentServerConfigsAtom).get(threadRef.environmentId);
+  const project = useProject(
+    thread ? scopeProjectRef(thread.environmentId, thread.projectId) : null,
+  );
+  return threadCanMoveToWorktree(thread, config, project);
+}
+
+export function useMoveThreadToWorktree() {
+  const moveToWorktree = useAtomCommand(threadEnvironment.moveToWorktree, {
+    reportFailure: false,
+  });
+  return async (target: ScopedThreadRef) => {
+    const result = await moveToWorktree({
+      environmentId: target.environmentId,
+      input: { threadId: target.threadId },
+    });
+    if (result._tag === "Success") {
+      toastManager.add({
+        type: "success",
+        title: "Moved to a new worktree",
+        description: `${result.value.branch}. Uncommitted changes stay in the local checkout.`,
+      });
+    } else if (!isAtomCommandInterrupted(result)) {
+      const error = squashAtomCommandFailure(result);
+      toastManager.add(
+        stackedThreadToast({
+          type: "error",
+          title: "Could not move thread to a worktree",
+          description: error instanceof Error ? error.message : "An error occurred.",
+        }),
+      );
+    }
+    return result;
+  };
+}
+
 function threadOperationFailure(target: ScopedThreadRef) {
   return readEnvironmentScope(target.environmentId, AuthOrchestrationOperateScope)
     ? null
@@ -316,6 +399,7 @@ export function useThreadActions() {
   const createProjectFromThread = useAtomCommand(projectEnvironment.createFromThread, {
     reportFailure: false,
   });
+  const moveThreadToWorktree = useMoveThreadToWorktree();
   const stopThreadSession = useOrchestrationCommand(threadEnvironment.stopSession);
   const removeWorktree = useAtomCommand(vcsEnvironment.removeWorktree, {
     reportFailure: false,
@@ -1029,6 +1113,7 @@ export function useThreadActions() {
     reorderActiveThread,
     markThreadUnread,
     setThreadAutoSettle,
+    moveThreadToWorktree,
     turnThreadIntoProject: (target: ScopedThreadRef) =>
       createProjectFromThread({
         environmentId: target.environmentId,

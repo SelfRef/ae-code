@@ -125,6 +125,7 @@ import {
   WorktreeSetupStreamEvent,
   WorktreeSetupSubscribeInput,
 } from "./worktreeSetup.ts";
+import { ThreadMoveToWorktreeInput, ThreadMoveToWorktreeResult } from "./threadWorktree.ts";
 import {
   GitActionProgressEvent,
   VcsSwitchRefInput,
@@ -477,6 +478,7 @@ export const WS_METHODS = {
   projectsEnsureScratch: "projects.ensureScratch",
   projectsCreateNew: "projects.createNew",
   projectsCreateFromThread: "projects.createFromThread",
+  threadsMoveToWorktree: "threads.moveToWorktree",
 
   shellOpenInEditor: "shell.openInEditor",
 
@@ -1520,6 +1522,12 @@ const WsProjectsCreateFromThreadRpc = Rpc.make(WS_METHODS.projectsCreateFromThre
   error: Schema.Union([OrchestrationDispatchCommandError, EnvironmentAuthorizationError]),
 });
 
+const WsThreadsMoveToWorktreeRpc = Rpc.make(WS_METHODS.threadsMoveToWorktree, {
+  payload: ThreadMoveToWorktreeInput,
+  success: ThreadMoveToWorktreeResult,
+  error: Schema.Union([OrchestrationDispatchCommandError, EnvironmentAuthorizationError]),
+});
+
 const WsShellOpenInEditorRpc = Rpc.make(WS_METHODS.shellOpenInEditor, {
   payload: LaunchEditorInput,
   error: Schema.Union([ExternalLauncherError, EnvironmentAuthorizationError]),
@@ -2467,6 +2475,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsProjectsEnsureScratchRpc,
   WsProjectsCreateNewRpc,
   WsProjectsCreateFromThreadRpc,
+  WsThreadsMoveToWorktreeRpc,
   WsProjectsWriteFileRpc,
   WsProjectsMutateRpc,
   WsShellOpenInEditorRpc,

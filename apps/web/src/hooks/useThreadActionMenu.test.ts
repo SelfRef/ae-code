@@ -119,6 +119,7 @@ vi.mock("./useSettings", () => ({
     }),
 }));
 vi.mock("./useThreadActions", () => ({
+  canMoveThreadToWorktree: () => false,
   canTurnThreadIntoProject: () => false,
   useThreadActions: () =>
     Object.fromEntries(
