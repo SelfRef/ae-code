@@ -6,6 +6,7 @@ import { useState, type FormEvent } from "react";
 import { issueEnvironment } from "~/state/issues";
 import { useEnvironmentQuery } from "~/state/query";
 import { useProjects } from "~/state/entities";
+import { useSourceControlSignIn } from "~/state/sourceControl";
 import { formatRelativeTimeLabel } from "~/timestampFormat";
 import { cn } from "~/lib/utils";
 
@@ -149,7 +150,7 @@ export function IssueListPage({
 export function IssuesPage() {
   const search = useSearch({ from: "/_chat/issues" });
   const navigate = useNavigate();
-  const projects = issueProjects(useProjects());
+  const projects = issueProjects(useProjects(), useSourceControlSignIn().githubSignedOut);
   const project = selectIssueProject(projects, search);
   const [pages, setPages] = useState(1);
   const [draft, setDraft] = useState(search.q ?? "");
