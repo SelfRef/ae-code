@@ -81,6 +81,11 @@ export const CLIENT_GUARDED_RPC_SCOPES = {
   [WS_METHODS.skillsInspectSource]: AuthFilesystemWriteScope,
   [WS_METHODS.skillsInstall]: AuthFilesystemWriteScope,
   [WS_METHODS.skillsUpdate]: AuthFilesystemWriteScope,
+  // Changes what every new Claude session is offered, as the memory switches do.
+  [WS_METHODS.skillsSetSettings]: AuthSettingsWriteScope,
+  // Reads other providers' skills folders, so it needs the same grant as browsing the disk.
+  [WS_METHODS.skillsImportScan]: AuthFilesystemReadScope,
+  [WS_METHODS.skillsImport]: AuthFilesystemWriteScope,
   [WS_METHODS.scheduledTasksUpsert]: AuthOrchestrationOperateScope,
   [WS_METHODS.scheduledTasksSetEnabled]: AuthOrchestrationOperateScope,
   [WS_METHODS.scheduledTasksDelete]: AuthOrchestrationOperateScope,

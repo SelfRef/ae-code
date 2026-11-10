@@ -393,6 +393,10 @@ import {
 } from "./memory.ts";
 import {
   SkillLibraryError,
+  SkillLibraryImportInput,
+  SkillLibraryImportResult,
+  SkillLibraryImportScanInput,
+  SkillLibraryImportScanResult,
   SkillLibraryInspectSourceInput,
   SkillLibraryInspectSourceResult,
   SkillLibraryInstallInput,
@@ -407,6 +411,8 @@ import {
   SkillLibraryRestoreResult,
   SkillLibrarySetLinkInput,
   SkillLibrarySetLinkResult,
+  SkillLibrarySetSettingsInput,
+  SkillLibrarySetSettingsResult,
   SkillLibraryUpdateInput,
   SkillLibraryUpdateResult,
   SkillLibraryWriteInput,
@@ -610,6 +616,9 @@ export const WS_METHODS = {
   skillsInspectSource: "skills.inspectSource",
   skillsInstall: "skills.install",
   skillsUpdate: "skills.update",
+  skillsSetSettings: "skills.setSettings",
+  skillsImportScan: "skills.importScan",
+  skillsImport: "skills.import",
 
   scheduledTasksSubscribe: "scheduledTasks.subscribe",
   scheduledTasksUpsert: "scheduledTasks.upsert",
@@ -2226,6 +2235,24 @@ const WsSkillsUpdateRpc = Rpc.make(WS_METHODS.skillsUpdate, {
   error: Schema.Union([SkillLibraryError, EnvironmentAuthorizationError]),
 });
 
+const WsSkillsSetSettingsRpc = Rpc.make(WS_METHODS.skillsSetSettings, {
+  payload: SkillLibrarySetSettingsInput,
+  success: SkillLibrarySetSettingsResult,
+  error: Schema.Union([SkillLibraryError, EnvironmentAuthorizationError]),
+});
+
+const WsSkillsImportScanRpc = Rpc.make(WS_METHODS.skillsImportScan, {
+  payload: SkillLibraryImportScanInput,
+  success: SkillLibraryImportScanResult,
+  error: Schema.Union([SkillLibraryError, EnvironmentAuthorizationError]),
+});
+
+const WsSkillsImportRpc = Rpc.make(WS_METHODS.skillsImport, {
+  payload: SkillLibraryImportInput,
+  success: SkillLibraryImportResult,
+  error: Schema.Union([SkillLibraryError, EnvironmentAuthorizationError]),
+});
+
 const WsSubscribeAuthAccessRpc = Rpc.make(WS_METHODS.subscribeAuthAccess, {
   payload: Schema.Struct({}),
   success: AuthAccessStreamEvent,
@@ -2319,6 +2346,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsSkillsInspectSourceRpc,
   WsSkillsInstallRpc,
   WsSkillsUpdateRpc,
+  WsSkillsSetSettingsRpc,
+  WsSkillsImportScanRpc,
+  WsSkillsImportRpc,
   WsScheduledTasksSubscribeRpc,
   WsScheduledTasksUpsertRpc,
   WsScheduledTasksSetEnabledRpc,

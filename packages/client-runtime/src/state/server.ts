@@ -1610,6 +1610,23 @@ export function createServerEnvironmentAtoms<R, E>(
       scheduler: configScheduler,
       concurrency: configConcurrency,
     }),
+    setSkillSettings: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:skills:setsettings",
+      tag: WS_METHODS.skillsSetSettings,
+      scheduler: configScheduler,
+      concurrency: configConcurrency,
+    }),
+    // A command, not a query: it reads other providers' folders, which the client guards by scope.
+    scanSkillImport: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:skills:importscan",
+      tag: WS_METHODS.skillsImportScan,
+    }),
+    importSkills: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:skills:import",
+      tag: WS_METHODS.skillsImport,
+      scheduler: configScheduler,
+      concurrency: configConcurrency,
+    }),
     setSkillLink: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:server:skills:setlink",
       tag: WS_METHODS.skillsSetLink,

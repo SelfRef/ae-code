@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 
-import { discoverClaudeSkills } from "./ClaudeSkills.ts";
+import { discoverClaudeSkills, filterClaudeSkillsToAllowlist } from "./ClaudeSkills.ts";
 import { planClaudeSkillDispatch } from "./ClaudeSkillDispatch.ts";
 
 const writeSkill = Effect.fn(function* (
@@ -935,4 +935,18 @@ it.layer(NodeServices.layer)("discoverClaudeSkills", (it) => {
       );
     }),
   );
+});
+
+it("keeps only the allowed skills in the menu, and everything when there is no allowlist", () => {
+  const skills = ["own", "tidy", "plug:thing"].map((name) => ({
+    name,
+    path: `/skills/${name}/SKILL.md`,
+    enabled: true,
+  }));
+  assert.deepEqual(
+    filterClaudeSkillsToAllowlist(skills, ["tidy"]).map((skill) => skill.name),
+    ["tidy"],
+  );
+  assert.deepEqual(filterClaudeSkillsToAllowlist(skills, []), []);
+  assert.strictEqual(filterClaudeSkillsToAllowlist(skills, undefined), skills);
 });

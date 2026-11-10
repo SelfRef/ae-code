@@ -7,6 +7,10 @@ import {
   type SkillLibraryError,
   type SkillLibrarySkill,
 } from "@t3tools/contracts";
+import {
+  claudeSkillAllowlist,
+  setClaudeSkillAllowlistSource,
+} from "@t3tools/provider-core/server/skillPolicy";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -163,10 +167,7 @@ it.effect("checks what is written: names, frontmatter, duplicates and linked fol
   withLibrary(({ service, claudeSkills, home, fileSystem }) =>
     Effect.gen(function* () {
       const code = (effect: Effect.Effect<unknown, SkillLibraryError>) =>
-        effect.pipe(
-          Effect.flip,
-          Effect.map((error) => error.code),
-        );
+        effect.pipe(Effect.match({ onSuccess: () => "ok", onFailure: (error) => error.code }));
       expect(
         yield* code(
           service.write({ id: "Bad Name", mode: "create", content: skillText("Bad Name") }),
@@ -343,4 +344,117 @@ it.effect(
         ).toBe("not_found");
       }),
     ),
+);
+
+it.effect("imports a provider's own skills by copy or by move, and only real skill folders", () =>
+  withLibrary(({ service, home, claudeSkills, fileSystem }) =>
+    Effect.gen(function* () {
+      const own = (id: string, extra?: string) =>
+        fileSystem
+          .makeDirectory(`${claudeSkills}/${id}/scripts`, { recursive: true })
+          .pipe(
+            Effect.andThen(
+              fileSystem.writeFileString(`${claudeSkills}/${id}/SKILL.md`, skillText(id)),
+            ),
+            Effect.andThen(
+              extra === undefined
+                ? Effect.void
+                : fileSystem.writeFileString(`${claudeSkills}/${id}/scripts/run.sh`, extra),
+            ),
+          );
+      yield* own("kept", "echo kept");
+      yield* own("moved", "echo moved");
+      // A folder the provider manages has no SKILL.md of its own; a link came from somewhere else.
+      yield* fileSystem.makeDirectory(`${claudeSkills}/synced/bucket`, { recursive: true });
+      yield* fileSystem.writeFileString(
+        `${claudeSkills}/synced/bucket/SKILL.md`,
+        skillText("deep"),
+      );
+      yield* fileSystem.writeFileString(`${claudeSkills}/note.txt`, "not a folder");
+      yield* service.write({ id: "elsewhere", mode: "create", content: skillText("elsewhere") });
+      yield* service.setLink({ id: "elsewhere", instanceId: claude, linked: true });
+
+      const scanned = yield* service.scanImport();
+      expect(scanned.candidates.map((candidate) => [candidate.id, candidate.inLibrary])).toEqual([
+        ["kept", false],
+        ["moved", false],
+      ]);
+
+      const result = yield* service.importSkills({
+        instanceId: claude,
+        ids: ["kept", "moved", "synced", "nope"],
+        mode: "copy",
+      });
+      expect(result.imported).toEqual(["kept", "moved"]);
+      expect(result.skipped.map((entry) => entry.id)).toEqual(["synced", "nope"]);
+      expect(yield* fileSystem.readFileString(`${home}/.agents/skills/kept/scripts/run.sh`)).toBe(
+        "echo kept",
+      );
+      // A copy leaves the original, which also keeps the library's skill from taking its place.
+      expect(yield* fileSystem.exists(`${claudeSkills}/kept/SKILL.md`)).toBe(true);
+      expect(stateOf(byId((yield* service.list()).skills, "kept"), claude)).toBe("blocked");
+      const again = yield* service.importSkills({
+        instanceId: claude,
+        ids: ["kept"],
+        mode: "copy",
+      });
+      expect(again.skipped[0]?.reason).toMatch(/library has a skill/);
+
+      yield* fileSystem.remove(`${home}/.agents/skills/moved`, { recursive: true });
+      const moved = yield* service.importSkills({
+        instanceId: claude,
+        ids: ["moved"],
+        mode: "move",
+      });
+      expect(moved.imported).toEqual(["moved"]);
+      expect(yield* fileSystem.readLink(`${claudeSkills}/moved`)).toBe(
+        "../../.agents/skills/moved",
+      );
+      expect(yield* fileSystem.readFileString(`${claudeSkills}/moved/scripts/run.sh`)).toBe(
+        "echo moved",
+      );
+      expect(stateOf(byId((yield* service.list()).skills, "moved"), claude)).toBe("linked");
+      // Nothing is left to import but the copy that was kept.
+      expect((yield* service.scanImport()).candidates.map((c) => [c.id, c.inLibrary])).toEqual([
+        ["kept", true],
+      ]);
+      expect(
+        (yield* service
+          .importSkills({ instanceId: codex, ids: ["kept"], mode: "copy" })
+          .pipe(Effect.flip)).code,
+      ).toBe("invalid");
+    }),
+  ),
+);
+
+it.effect("publishes the skills Claude may load once it is told to use only the library's", () =>
+  withLibrary(({ service }) =>
+    Effect.gen(function* () {
+      try {
+        yield* service.write({ id: "tidy", mode: "create", content: skillText("tidy") });
+        yield* service.write({ id: "other", mode: "create", content: skillText("other") });
+        yield* service.setLink({ id: "tidy", instanceId: claude, linked: true });
+        expect(claudeSkillAllowlist(claude)).toBeUndefined();
+
+        const on = yield* service.setSettings({ claudeLibraryOnly: true });
+        expect(on.settings).toEqual({ claudeLibraryOnly: true });
+        // Only what is linked for Claude; a native provider has no filter of this kind.
+        expect(claudeSkillAllowlist(claude)).toEqual(["tidy"]);
+        expect(claudeSkillAllowlist(codex)).toBeUndefined();
+        expect((yield* service.list()).settings.claudeLibraryOnly).toBe(true);
+
+        yield* service.setLink({ id: "other", instanceId: claude, linked: true });
+        expect(claudeSkillAllowlist(claude)).toEqual(["other", "tidy"]);
+        yield* service.remove({ id: "tidy" });
+        expect(claudeSkillAllowlist(claude)).toEqual(["other"]);
+        yield* service.setLink({ id: "other", instanceId: claude, linked: false });
+        expect(claudeSkillAllowlist(claude)).toEqual([]);
+
+        yield* service.setSettings({ claudeLibraryOnly: false });
+        expect(claudeSkillAllowlist(claude)).toBeUndefined();
+      } finally {
+        setClaudeSkillAllowlistSource(() => undefined);
+      }
+    }),
+  ),
 );

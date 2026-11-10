@@ -2,9 +2,15 @@ import {
   ClaudeSettings,
   resolveProviderInstanceEnabled,
   SKILL_FILE_MAX_BYTES,
+  DEFAULT_SKILL_LIBRARY_SETTINGS,
+  SkillLibrarySettings,
   SkillLibraryError,
   SkillLibrarySource,
   type ProviderInstanceId,
+  type SkillLibraryImportCandidate,
+  type SkillLibraryImportInput,
+  type SkillLibraryImportResult,
+  type SkillLibraryImportScanResult,
   type SkillLibraryInspectSourceInput,
   type SkillLibraryInspectSourceResult,
   type SkillLibraryInstallInput,
@@ -19,6 +25,8 @@ import {
   type SkillLibraryRestoreResult,
   type SkillLibrarySetLinkInput,
   type SkillLibrarySetLinkResult,
+  type SkillLibrarySetSettingsInput,
+  type SkillLibrarySetSettingsResult,
   type SkillLibrarySkill,
   type SkillLibraryTarget,
   type SkillLibraryTrashEntry,
@@ -27,6 +35,7 @@ import {
   type SkillLibraryWriteInput,
   type SkillLibraryWriteResult,
 } from "@t3tools/contracts";
+import { setClaudeSkillAllowlistSource } from "@t3tools/provider-core/server/skillPolicy";
 import { mergeProviderInstanceEnvironment } from "@t3tools/provider-core/server/instanceEnvironment";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Context from "effect/Context";
@@ -88,6 +97,13 @@ export class SkillLibraryService extends Context.Service<
     readonly update: (
       input: SkillLibraryUpdateInput,
     ) => Effect.Effect<SkillLibraryUpdateResult, SkillLibraryError>;
+    readonly setSettings: (
+      input: SkillLibrarySetSettingsInput,
+    ) => Effect.Effect<SkillLibrarySetSettingsResult, SkillLibraryError>;
+    readonly scanImport: () => Effect.Effect<SkillLibraryImportScanResult, SkillLibraryError>;
+    readonly importSkills: (
+      input: SkillLibraryImportInput,
+    ) => Effect.Effect<SkillLibraryImportResult, SkillLibraryError>;
   }
 >()("t3/skills/SkillLibraryService") {}
 
@@ -102,6 +118,7 @@ const HOME_LINK_DIRECTORIES: Readonly<Record<string, ReadonlyArray<string>>> = {
 const TRASH_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
 const MAX_TRASH_ENTRIES = 50;
 const MAX_LISTED_FILES = 200;
+const MAX_IMPORT_CANDIDATES = 500;
 const MAX_LIST_DEPTH = 3;
 const MAX_DISCOVERED_SKILLS = 200;
 const MAX_DISCOVERY_DEPTH = 4;
@@ -121,6 +138,7 @@ const GIT_ENV = {
 const LockFile = Schema.Struct({
   version: Schema.Literal(1),
   skills: Schema.Record(Schema.String, SkillLibrarySource),
+  settings: Schema.optional(SkillLibrarySettings),
 });
 type LockFile = typeof LockFile.Type;
 const decodeLockFile = Schema.decodeUnknownOption(Schema.fromJsonString(LockFile));
@@ -206,7 +224,7 @@ const make = Effect.gen(function* () {
     const lock = yield* readLock;
     const skills = { ...lock.skills };
     change(skills);
-    yield* writeLock({ version: 1, skills });
+    yield* writeLock({ ...lock, skills });
   });
 
   // Targets: how each enabled provider instance reaches the library.
@@ -382,6 +400,7 @@ const make = Effect.gen(function* () {
       skills: described.filter((skill): skill is SkillLibrarySkill => skill !== undefined),
       targets,
       trash: yield* listTrash(),
+      settings: lock.settings ?? DEFAULT_SKILL_LIBRARY_SETTINGS,
     };
   });
 
@@ -492,8 +511,23 @@ const make = Effect.gen(function* () {
     return yield* mutations.withPermits(1)(writeLocked(input));
   });
 
+  // The chat's skill menu reads each provider's snapshot, and a project's own snapshot keeps for a few
+  // minutes, so those are refreshed too.
+  const refreshProviderNow = Effect.fn("SkillLibraryService.refreshProvider")(function* (
+    instanceId: ProviderInstanceId,
+  ) {
+    const providers = yield* providerRegistry.refreshInstance(instanceId);
+    const folders =
+      providers.find((provider) => provider.instanceId === instanceId)?.workspaceSnapshots ?? [];
+    yield* Effect.forEach(
+      folders,
+      (snapshot) =>
+        providerRegistry.refreshWorkspaceSnapshot({ instanceId, cwd: snapshot.cwd, fresh: true }),
+      { concurrency: 2, discard: true },
+    );
+  });
   const refreshProvider = (instanceId: ProviderInstanceId) =>
-    providerRegistry.refreshInstance(instanceId).pipe(Effect.ignore, Effect.forkIn(serviceScope));
+    refreshProviderNow(instanceId).pipe(Effect.ignore, Effect.forkIn(serviceScope));
 
   const unlink = (linkPath: string) =>
     fileSystem.remove(linkPath, { force: true }).pipe(io("Could not remove the link"));
@@ -950,16 +984,211 @@ const make = Effect.gen(function* () {
     );
   });
 
+  // "Claude uses only the library's skills": the names each Claude instance may load, which are the
+  // library skills linked for it. Published for the adapter, which builds session options synchronously.
+  const publishPolicy = Effect.fn("SkillLibraryService.publishPolicy")(function* () {
+    const settings = (yield* readLock).settings ?? DEFAULT_SKILL_LIBRARY_SETTINGS;
+    const allowed = new Map<string, ReadonlyArray<string>>();
+    if (settings.claudeLibraryOnly) {
+      const names = yield* fileSystem
+        .readDirectory(libraryPath)
+        .pipe(Effect.orElseSucceed((): ReadonlyArray<string> => []));
+      for (const target of yield* resolveTargets()) {
+        if (String(target.driver) !== "claudeAgent") continue;
+        const linked: string[] = [];
+        for (const id of names.filter(isSafeFolderId)) {
+          if ((yield* providerState(target, id)) === "linked") linked.push(id);
+        }
+        allowed.set(target.instanceId, linked);
+      }
+    }
+    setClaudeSkillAllowlistSource((instanceId) => allowed.get(instanceId));
+  });
+  const publishPolicyQuietly = publishPolicy().pipe(Effect.ignore);
+  const publishing =
+    <Args extends ReadonlyArray<unknown>, A, E, R>(
+      run: (...args: Args) => Effect.Effect<A, E, R>,
+    ) =>
+    (...args: Args) =>
+      run(...args).pipe(Effect.tap(() => publishPolicyQuietly));
+  // A change to the library or the setting: every provider's menu may list something else now.
+  const changing =
+    <Args extends ReadonlyArray<unknown>, A, E, R>(
+      run: (...args: Args) => Effect.Effect<A, E, R>,
+    ) =>
+    (...args: Args) =>
+      run(...args).pipe(
+        Effect.tap(() => publishPolicyQuietly),
+        Effect.tap(() =>
+          resolveTargets().pipe(
+            Effect.flatMap((targets) =>
+              Effect.forEach(
+                targets.filter((target) => target.mode !== "none"),
+                (target) => refreshProvider(target.instanceId),
+                { discard: true },
+              ),
+            ),
+            Effect.ignore,
+          ),
+        ),
+      );
+
+  const setSettings = Effect.fn("SkillLibraryService.setSettings")(function* (
+    input: SkillLibrarySetSettingsInput,
+  ) {
+    return yield* mutations.withPermits(1)(
+      Effect.gen(function* () {
+        const lock = yield* readLock;
+        const settings = {
+          ...(lock.settings ?? DEFAULT_SKILL_LIBRARY_SETTINGS),
+          ...(input.claudeLibraryOnly === undefined
+            ? {}
+            : { claudeLibraryOnly: input.claudeLibraryOnly }),
+        };
+        yield* writeLock({ ...lock, settings });
+        return { settings };
+      }),
+    );
+  });
+
+  // Skill folders a provider keeps in its own folder: real folders with a SKILL.md, not links (those
+  // came from the library) and not the folders the provider manages itself, which have no SKILL.md.
+  const scanImport = Effect.fn("SkillLibraryService.scanImport")(function* () {
+    const candidates: SkillLibraryImportCandidate[] = [];
+    for (const target of yield* resolveTargets()) {
+      if (target.linkDirectory === undefined) continue;
+      const names = yield* fileSystem
+        .readDirectory(target.linkDirectory)
+        .pipe(Effect.orElseSucceed((): ReadonlyArray<string> => []));
+      for (const id of names.filter(isSafeFolderId).toSorted((a, b) => a.localeCompare(b))) {
+        if (candidates.length >= MAX_IMPORT_CANDIDATES) break;
+        const folder = path.join(target.linkDirectory, id);
+        if (Option.isSome(yield* fileSystem.readLink(folder).pipe(Effect.option))) continue;
+        const info = yield* fileSystem.stat(folder).pipe(Effect.option);
+        if (Option.isNone(info) || info.value.type !== "Directory") continue;
+        const file = yield* readSkillFileOption(folder);
+        if (Option.isNone(file) || file.value.text === undefined) continue;
+        const frontmatter = parseSkillFrontmatter(file.value.text);
+        const inLibrary =
+          (yield* exists(libraryFolder(id))) ||
+          Option.isSome(yield* fileSystem.readLink(libraryFolder(id)).pipe(Effect.option));
+        candidates.push({
+          instanceId: target.instanceId,
+          id,
+          name: frontmatter?.name ?? id,
+          ...(frontmatter?.description === undefined
+            ? {}
+            : { description: frontmatter.description }),
+          path: folder,
+          inLibrary,
+        });
+      }
+    }
+    return { candidates };
+  });
+
+  const importOne = Effect.fn("SkillLibraryService.importOne")(function* (
+    target: SkillLibraryTarget & { readonly linkDirectory: string },
+    id: string,
+    mode: SkillLibraryImportInput["mode"],
+  ) {
+    yield* requireId(id);
+    const source = path.join(target.linkDirectory, id);
+    if (Option.isSome(yield* fileSystem.readLink(source).pipe(Effect.option))) {
+      return yield* fail("invalid", "It is a link already, not a folder of the provider's own.");
+    }
+    const info = yield* fileSystem.stat(source).pipe(Effect.option);
+    if (Option.isNone(info) || info.value.type !== "Directory") {
+      return yield* fail("not_found", "There is no such folder.");
+    }
+    if (!(yield* exists(path.join(source, "SKILL.md")))) {
+      return yield* fail("invalid", "It has no SKILL.md.");
+    }
+    const folder = libraryFolder(id);
+    const taken = Effect.gen(function* () {
+      return (
+        (yield* exists(folder)) ||
+        Option.isSome(yield* fileSystem.readLink(folder).pipe(Effect.option))
+      );
+    });
+    if (yield* taken) return yield* fail("conflict", "The library has a skill with this name.");
+    const intoLibrary = (move: Effect.Effect<void, SkillLibraryError>) =>
+      mutations.withPermits(1)(
+        Effect.gen(function* () {
+          if (yield* taken)
+            return yield* fail("conflict", "The library has a skill with this name.");
+          yield* fileSystem
+            .makeDirectory(libraryPath, { recursive: true })
+            .pipe(io("Could not create the library"));
+          yield* move;
+        }),
+      );
+    if (mode === "move") {
+      yield* intoLibrary(
+        fileSystem
+          .rename(source, folder)
+          .pipe(
+            Effect.mapError((cause) =>
+              fail(
+                "unavailable",
+                `Could not move it (both folders must be on the same disk; copy it instead): ${cause.message}`,
+              ),
+            ),
+          ),
+      );
+      yield* createLink(target, id);
+      yield* refreshProvider(target.instanceId);
+      return;
+    }
+    const staged = path.join(stagingDirectory, `import-${yield* randomSuffix}`);
+    yield* copyTree(source, staged, { files: 0, bytes: 0 }).pipe(
+      Effect.andThen(
+        intoLibrary(fileSystem.rename(staged, folder).pipe(io("Could not import the skill"))),
+      ),
+      Effect.ensuring(
+        fileSystem.remove(staged, { recursive: true, force: true }).pipe(Effect.ignore),
+      ),
+    );
+  });
+
+  const importSkills = Effect.fn("SkillLibraryService.importSkills")(function* (
+    input: SkillLibraryImportInput,
+  ) {
+    const target = (yield* resolveTargets()).find(
+      (candidate) => candidate.instanceId === input.instanceId,
+    );
+    if (target === undefined || target.linkDirectory === undefined) {
+      return yield* fail(
+        "invalid",
+        "That provider has no skills folder of its own to import from.",
+      );
+    }
+    const importable = { ...target, linkDirectory: target.linkDirectory };
+    const imported: string[] = [];
+    const skipped: Array<{ id: string; reason: string }> = [];
+    for (const id of new Set(input.ids)) {
+      const outcome = yield* importOne(importable, id, input.mode).pipe(Effect.result);
+      if (outcome._tag === "Success") imported.push(id);
+      else skipped.push({ id, reason: outcome.failure.message });
+    }
+    return { imported, skipped };
+  });
+
+  yield* publishPolicyQuietly;
+
   return SkillLibraryService.of({
-    list,
+    list: publishing(list),
     read,
-    write,
-    remove,
-    restore,
-    setLink,
+    write: changing(write),
+    remove: changing(remove),
+    restore: changing(restore),
+    setLink: changing(setLink),
     inspectSource,
-    install,
-    update,
+    install: changing(install),
+    update: changing(update),
+    setSettings: changing(setSettings),
+    scanImport,
+    importSkills: changing(importSkills),
   });
 });
 
