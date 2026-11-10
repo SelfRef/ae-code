@@ -347,22 +347,6 @@ function RightPanelEmptyState(props: {
 
   const actions = [
     {
-      label: "Browser",
-      icon: Globe2,
-      shortcut: "B",
-      available: props.browserAvailable,
-      disabledReason: SURFACE_UNAVAILABLE_HINTS.browser,
-      onClick: props.onAddBrowser,
-    },
-    {
-      label: "Terminal",
-      icon: TerminalSquare,
-      shortcut: "T",
-      available: props.terminalAvailable,
-      disabledReason: SURFACE_UNAVAILABLE_HINTS.terminal,
-      onClick: props.onAddTerminal,
-    },
-    {
       label: "Files",
       icon: Files,
       shortcut: "F",
@@ -379,20 +363,12 @@ function RightPanelEmptyState(props: {
       onClick: props.onAddDiff,
     },
     {
-      label: "Pull request",
-      icon: PullRequestGlyph.pullRequest,
-      shortcut: "P",
-      available: props.pullRequestAvailable,
-      disabledReason: SURFACE_UNAVAILABLE_HINTS.pullRequest,
-      onClick: props.onAddPullRequest,
-    },
-    {
-      label: "Linked pull requests",
-      icon: PullRequestGlyph.link,
-      shortcut: "L",
-      available: props.pullRequestsAvailable,
-      disabledReason: SURFACE_UNAVAILABLE_HINTS.pullRequests,
-      onClick: props.onAddPullRequests,
+      label: "Terminal",
+      icon: TerminalSquare,
+      shortcut: "T",
+      available: props.terminalAvailable,
+      disabledReason: SURFACE_UNAVAILABLE_HINTS.terminal,
+      onClick: props.onAddTerminal,
     },
     ...(props.onAddIssues
       ? [
@@ -407,6 +383,30 @@ function RightPanelEmptyState(props: {
         ]
       : []),
     {
+      label: "Pull Request",
+      icon: PullRequestGlyph.pullRequest,
+      shortcut: "P",
+      available: props.pullRequestAvailable,
+      disabledReason: SURFACE_UNAVAILABLE_HINTS.pullRequest,
+      onClick: props.onAddPullRequest,
+    },
+    {
+      label: "Linked Pull Requests",
+      icon: PullRequestGlyph.link,
+      shortcut: "L",
+      available: props.pullRequestsAvailable,
+      disabledReason: SURFACE_UNAVAILABLE_HINTS.pullRequests,
+      onClick: props.onAddPullRequests,
+    },
+    {
+      label: "Browser",
+      icon: Globe2,
+      shortcut: "B",
+      available: props.browserAvailable,
+      disabledReason: SURFACE_UNAVAILABLE_HINTS.browser,
+      onClick: props.onAddBrowser,
+    },
+    {
       label: "Device",
       description: "Watch an iOS Simulator or Android Emulator.",
       icon: Smartphone,
@@ -418,7 +418,7 @@ function RightPanelEmptyState(props: {
     ...(props.onAddSideChat
       ? [
           {
-            label: "Side chat",
+            label: "Side Chat",
             description: "Ask a side question while this thread keeps working.",
             icon: MessagesSquare,
             shortcut: "S",
@@ -1121,22 +1121,6 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
 
   const addSurfaceActions = [
     {
-      label: "Browser",
-      icon: Globe2,
-      shortcut: "B",
-      available: props.browserAvailable,
-      disabledReason: SURFACE_DISABLED_REASONS.browser,
-      onClick: props.onAddBrowser,
-    },
-    {
-      label: "Terminal",
-      icon: TerminalSquare,
-      shortcut: "T",
-      available: props.terminalAvailable,
-      disabledReason: SURFACE_DISABLED_REASONS.terminal,
-      onClick: props.onAddTerminal,
-    },
-    {
       label: "Files",
       icon: Files,
       shortcut: "F",
@@ -1153,20 +1137,12 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       onClick: props.onAddDiff,
     },
     {
-      label: "Pull request",
-      icon: PullRequestGlyph.pullRequest,
-      shortcut: "P",
-      available: props.pullRequestAvailable,
-      disabledReason: SURFACE_DISABLED_REASONS.pullRequest,
-      onClick: props.onAddPullRequest,
-    },
-    {
-      label: "Linked pull requests",
-      icon: PullRequestGlyph.link,
-      shortcut: "L",
-      available: props.pullRequestsAvailable,
-      disabledReason: SURFACE_DISABLED_REASONS.pullRequests,
-      onClick: props.onAddPullRequests,
+      label: "Terminal",
+      icon: TerminalSquare,
+      shortcut: "T",
+      available: props.terminalAvailable,
+      disabledReason: SURFACE_DISABLED_REASONS.terminal,
+      onClick: props.onAddTerminal,
     },
     ...(props.onAddIssues
       ? [
@@ -1181,6 +1157,30 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
         ]
       : []),
     {
+      label: "Pull Request",
+      icon: PullRequestGlyph.pullRequest,
+      shortcut: "P",
+      available: props.pullRequestAvailable,
+      disabledReason: SURFACE_DISABLED_REASONS.pullRequest,
+      onClick: props.onAddPullRequest,
+    },
+    {
+      label: "Linked Pull Requests",
+      icon: PullRequestGlyph.link,
+      shortcut: "L",
+      available: props.pullRequestsAvailable,
+      disabledReason: SURFACE_DISABLED_REASONS.pullRequests,
+      onClick: props.onAddPullRequests,
+    },
+    {
+      label: "Browser",
+      icon: Globe2,
+      shortcut: "B",
+      available: props.browserAvailable,
+      disabledReason: SURFACE_DISABLED_REASONS.browser,
+      onClick: props.onAddBrowser,
+    },
+    {
       label: "Device",
       icon: Smartphone,
       shortcut: "M",
@@ -1191,7 +1191,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
     ...(props.onAddSideChat
       ? [
           {
-            label: "Side chat",
+            label: "Side Chat",
             icon: MessagesSquare,
             shortcut: "S",
             available: props.sideChatAvailable === true && !props.sideChatDisabledReason,
