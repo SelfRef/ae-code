@@ -126,6 +126,18 @@ export const VcsPullInput = Schema.Struct({
 });
 export type VcsPullInput = typeof VcsPullInput.Type;
 
+export const VcsForcePushPreviewInput = Schema.Struct({
+  cwd: TrimmedNonEmptyStringSchema,
+});
+export type VcsForcePushPreviewInput = typeof VcsForcePushPreviewInput.Type;
+
+export const VcsForcePushInput = Schema.Struct({
+  cwd: TrimmedNonEmptyStringSchema,
+  /** The upstream commit the user reviewed; the push is refused when the remote no longer points at it. */
+  expectedUpstreamSha: TrimmedNonEmptyStringSchema,
+});
+export type VcsForcePushInput = typeof VcsForcePushInput.Type;
+
 export const GitRunStackedActionInput = Schema.Struct({
   actionId: TrimmedNonEmptyStringSchema,
   cwd: TrimmedNonEmptyStringSchema,
@@ -349,6 +361,38 @@ export const VcsPullResult = Schema.Struct({
   upstreamRef: TrimmedNonEmptyStringSchema.pipe(Schema.NullOr),
 });
 export type VcsPullResult = typeof VcsPullResult.Type;
+
+export const VcsForcePushCommit = Schema.Struct({
+  sha: TrimmedNonEmptyStringSchema,
+  subject: Schema.String,
+  author: Schema.String,
+  committedAt: Schema.String,
+});
+export type VcsForcePushCommit = typeof VcsForcePushCommit.Type;
+
+/** Both lists are capped; the counts are the full totals. */
+export const VcsForcePushPreview = Schema.Struct({
+  refName: TrimmedNonEmptyStringSchema,
+  remoteName: TrimmedNonEmptyStringSchema,
+  upstreamRef: TrimmedNonEmptyStringSchema,
+  upstreamSha: TrimmedNonEmptyStringSchema,
+  localSha: TrimmedNonEmptyStringSchema,
+  /** Commits only this checkout has; the push publishes them. */
+  localCommits: Schema.Array(VcsForcePushCommit),
+  localCommitCount: NonNegativeInt,
+  /** Commits only the remote has; the push deletes them from the remote branch. */
+  upstreamCommits: Schema.Array(VcsForcePushCommit),
+  upstreamCommitCount: NonNegativeInt,
+});
+export type VcsForcePushPreview = typeof VcsForcePushPreview.Type;
+
+export const VcsForcePushResult = Schema.Struct({
+  refName: TrimmedNonEmptyStringSchema,
+  upstreamRef: TrimmedNonEmptyStringSchema,
+  previousSha: TrimmedNonEmptyStringSchema,
+  newSha: TrimmedNonEmptyStringSchema,
+});
+export type VcsForcePushResult = typeof VcsForcePushResult.Type;
 
 // Git stderr can echo credentials from argv and remote URLs. Only a fixed
 // reason reaches the error and its diagnostic suffix; newer, unknown reasons
