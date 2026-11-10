@@ -24,10 +24,15 @@ of the selected theme.
 ## Composer context
 
 Git-backed projects show branch and worktree controls below the composer while you create a thread.
-The controls retreat as the composer docks after you send the first message.
+**Composer context** keeps those controls visible after the thread starts. It is on by default; turn
+it off to let them retreat as the composer docks after the first message. This preference applies to
+the web and desktop clients.
 
-Turn on **Composer context** to keep those controls visible after the thread starts. This preference
-applies to the web and desktop clients.
+## Version in the header
+
+**Show version in header** (Settings → Appearance → Advanced, on by default) shows the server's
+version next to the name at the top of the sidebar. This preference applies to the web and desktop
+clients.
 
 ## Math
 
@@ -43,9 +48,9 @@ preference is saved separately on each device.
 
 ## Motion
 
-The main sidebar, right panel, and terminal drawer open and close immediately by default. Move the
-**Panel animations** slider above 0 ms to add motion, up to 400 ms, unless reduced motion is enabled
-in your operating system. Moving between threads always snaps to the selected thread's panel state
+The main sidebar, right panel, and terminal drawer open and close in 100 ms by default. Move the
+**Panel animations** slider to 0 ms to open them immediately, or up to 400 ms for slower motion. Motion is
+off when reduced motion is enabled in your operating system. Moving between threads always snaps to the selected thread's panel state
 without replaying its transitions.
 
 ## Custom themes
