@@ -1,8 +1,11 @@
 import { createContext, useRef, useState } from "react";
+import { Modal, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaInsetsContext, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PaneContext } from "../../components/ui/Pane";
 import { PaneSheet } from "../../components/ui/PaneSheet";
+import { useWideAndroidSheet, WideSheetCard } from "../../components/ui/WideSheetCard";
 import { RoutedFormSheetContext } from "../../components/ui/RoutedFormSheetContext";
 import { formSheetDetents } from "../../native/sheet-surface";
 import { InspectorPanes } from "./inspector-host";
@@ -42,11 +45,40 @@ export function WorkspaceInspectorSheet(props: {
     afterClose.current = null;
     then?.();
   };
+  const centered = useWideAndroidSheet();
   const close = (then?: () => void) => {
     afterClose.current = then ?? null;
     props.onClose();
+    // A Modal has no dismissal callback on Android, so it unmounts as it closes.
+    if (centered) closed();
   };
   if (!presented.mounted) return null;
+  if (centered) {
+    return (
+      <Modal
+        transparent
+        statusBarTranslucent
+        navigationBarTranslucent
+        animationType="slide"
+        visible={props.open}
+        onRequestClose={() => close()}
+      >
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <InspectorSheetContext value={close}>
+            <RoutedFormSheetContext value={false}>
+              <PaneContext value="inspector">
+                <WideSheetCard heightFraction={0.8} onDismiss={() => close()}>
+                  <View className="flex-1 pt-3">
+                    <InspectorPanes content={props.content} onClose={() => close()} />
+                  </View>
+                </WideSheetCard>
+              </PaneContext>
+            </RoutedFormSheetContext>
+          </InspectorSheetContext>
+        </GestureHandlerRootView>
+      </Modal>
+    );
+  }
   return (
     <PaneSheet
       key={presented.session}
