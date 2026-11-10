@@ -181,7 +181,9 @@ Built differently from the plan below, to stay small:
   `issues` and answer "unsupported".
 - **Web**: page `/issues` (project picker when several projects are on GitHub, search, Open/Closed/All, list next to
   the issue, Markdown body and comments, "Open on GitHub"), a sidebar button and a command-palette action, both shown
-  only when a project is on GitHub. It is a page like `/pull-requests`, not a right-panel kind.
+  only when a project is on GitHub.
+- **Right panel**: an "Issues" tab (add menu, key `I`) lists and reads the thread's project issues beside the chat, same
+  list and detail as the page. Offered when the thread's project is on GitHub.
 - **Android**: an Issues tab next to Threads, Pulls and Usage. Settings → Navigation chooses which tabs show; Pulls is
   hidden by default (the choice is saved once changed).
 - Not built: everything that writes (phase B), MCP tools (C), threads from issues (D), iOS.

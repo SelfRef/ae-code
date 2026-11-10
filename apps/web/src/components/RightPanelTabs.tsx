@@ -42,6 +42,7 @@ import {
   ChevronRight,
   FileDiff,
   Files,
+  CircleDotIcon,
   Globe2,
   MessagesSquare,
   Plus,
@@ -142,6 +143,8 @@ export interface RightPanelTabsProps {
   onAddFiles: () => void;
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
+  /** Absent where the project has no GitHub issues. */
+  onAddIssues?: (() => void) | undefined;
   onAddDevice: () => void;
   /** Absent where side chats are not offered. */
   onAddSideChat?: (() => void) | undefined;
@@ -151,6 +154,7 @@ export interface RightPanelTabsProps {
   filesAvailable: boolean;
   pullRequestAvailable: boolean;
   pullRequestsAvailable: boolean;
+  issuesAvailable?: boolean;
   deviceAvailable: boolean;
   sideChatAvailable?: boolean;
   /** Overrides the default reason while side chats are available but cannot start. */
@@ -180,6 +184,7 @@ const SURFACE_DISABLED_REASONS = {
   diff: "Diff is only available for server threads in Git repositories.",
   pullRequest: "This thread's branch has no pull request yet.",
   pullRequests: "No linked pull requests are available for this thread.",
+  issues: "Issues are only available for projects on GitHub.",
   device: "Devices are only available from a thread.",
   sideChat: "Side chats start after the first message.",
 } as const;
@@ -205,6 +210,7 @@ const SURFACE_UNAVAILABLE_HINTS = {
   diff: "Available for Git repositories.",
   pullRequest: "No pull request on this branch yet.",
   pullRequests: "No linked pull requests available.",
+  issues: "Available for projects on GitHub.",
   device: "Available from a thread.",
   sideChat: "Available after the first message.",
 } as const;
@@ -323,6 +329,8 @@ function RightPanelEmptyState(props: {
   onAddFiles: () => void;
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
+  /** Absent where the project has no GitHub issues. */
+  onAddIssues?: (() => void) | undefined;
   onAddDevice: () => void;
   /** Absent where side chats are not offered. */
   onAddSideChat?: (() => void) | undefined;
@@ -332,6 +340,7 @@ function RightPanelEmptyState(props: {
   filesAvailable: boolean;
   pullRequestAvailable: boolean;
   pullRequestsAvailable: boolean;
+  issuesAvailable?: boolean;
   deviceAvailable: boolean;
   sideChatAvailable: boolean;
   sideChatDisabledReason: string | null;
@@ -387,6 +396,18 @@ function RightPanelEmptyState(props: {
       disabledReason: SURFACE_UNAVAILABLE_HINTS.pullRequests,
       onClick: props.onAddPullRequests,
     },
+    ...(props.onAddIssues
+      ? [
+          {
+            label: "Issues",
+            icon: CircleDotIcon,
+            shortcut: "I",
+            available: props.issuesAvailable === true,
+            disabledReason: SURFACE_UNAVAILABLE_HINTS.issues,
+            onClick: props.onAddIssues,
+          },
+        ]
+      : []),
     {
       label: "Device",
       description: "Watch an iOS Simulator or Android Emulator.",
@@ -592,6 +613,8 @@ function surfaceTitle(
       return `#${surface.number}`;
     case "pull-requests":
       return "Pull requests";
+    case "issues":
+      return "Issues";
     case "device":
       return surface.title ?? surface.target?.name ?? "Device";
     case "side-chat":
@@ -684,6 +707,8 @@ function SurfaceIcon({
       );
     case "pull-requests":
       return <PullRequestGlyph.link className="size-3 shrink-0" />;
+    case "issues":
+      return <CircleDotIcon className="size-3 shrink-0" />;
     case "side-chat":
       return <SideChatTabIcon environmentId={environmentId} threadId={surface.threadId} />;
     case "device":
@@ -1146,6 +1171,18 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       disabledReason: SURFACE_DISABLED_REASONS.pullRequests,
       onClick: props.onAddPullRequests,
     },
+    ...(props.onAddIssues
+      ? [
+          {
+            label: "Issues",
+            icon: CircleDotIcon,
+            shortcut: "I",
+            available: props.issuesAvailable === true,
+            disabledReason: SURFACE_DISABLED_REASONS.issues,
+            onClick: props.onAddIssues,
+          },
+        ]
+      : []),
     {
       label: "Device",
       icon: Smartphone,
@@ -1550,6 +1587,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             onAddFiles={props.onAddFiles}
             onAddPullRequest={props.onAddPullRequest}
             onAddPullRequests={props.onAddPullRequests}
+            onAddIssues={props.onAddIssues}
             onAddDevice={props.onAddDevice}
             onAddSideChat={props.onAddSideChat}
             browserAvailable={props.browserAvailable}
@@ -1558,6 +1596,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             filesAvailable={props.filesAvailable}
             pullRequestAvailable={props.pullRequestAvailable}
             pullRequestsAvailable={props.pullRequestsAvailable}
+            issuesAvailable={props.issuesAvailable === true}
             deviceAvailable={props.deviceAvailable}
             sideChatAvailable={props.sideChatAvailable === true}
             sideChatDisabledReason={props.sideChatDisabledReason ?? null}
