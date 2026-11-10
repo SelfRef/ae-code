@@ -346,6 +346,7 @@ export function planScopedSettingsPatch(
                   (key === "defaultModelSelection" ||
                     key === "sourceControlWriterModelSelection" ||
                     key === "reviewGuideModelSelection" ||
+                    key === "mergeByAgentModelSelection" ||
                     key === "textGenerationModelSelection") &&
                   (value.instanceId !== undefined || value.model !== undefined)
                 ) {

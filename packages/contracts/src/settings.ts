@@ -1191,6 +1191,8 @@ export const PROJECT_SCOPED_SERVER_SETTING_KEYS = [
   "reviewGuideModelSelection",
   "reviewGuideInstructions",
   "sourceControlWritingStyle",
+  "mergeByAgentEnabled",
+  "mergeByAgentModelSelection",
   "removeAgentCreditsOnMerge",
   "branchNamingMode",
   "branchNamePrefix",
@@ -1230,6 +1232,8 @@ export const ProjectSettingsOverrides = Schema.Struct({
   reviewGuideModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
   reviewGuideInstructions: Schema.optionalKey(TrimmedString),
   sourceControlWritingStyle: Schema.optionalKey(SourceControlWritingStyleSetting),
+  mergeByAgentEnabled: Schema.optionalKey(Schema.Boolean),
+  mergeByAgentModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
   removeAgentCreditsOnMerge: Schema.optionalKey(Schema.Boolean),
   branchNamingMode: Schema.optionalKey(BranchNamingMode),
   branchNamePrefix: Schema.optionalKey(TrimmedString),
@@ -1269,6 +1273,7 @@ const NULLABLE_PROJECT_SETTINGS_OVERRIDES: ReadonlySet<ProjectScopedServerSettin
   "defaultModelSelection",
   "sourceControlWriterModelSelection",
   "reviewGuideModelSelection",
+  "mergeByAgentModelSelection",
   "pullRequestMergeMethod",
   "sidebarAutoSettleAfterDays",
 ]);
@@ -1566,6 +1571,12 @@ export const ServerSettings = Schema.Struct({
     Schema.withDecodingDefault(Effect.succeed(null)),
   ),
   reviewGuideInstructions: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  /** A failed merge into the default branch is handed to the thread's agent. */
+  mergeByAgentEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
+  /** Null runs the thread's own model. */
+  mergeByAgentModelSelection: Schema.NullOr(ModelSelection).pipe(
+    Schema.withDecodingDefault(Effect.succeed(null)),
+  ),
 
   pullRequestMergeMethod: Schema.NullOr(PullRequestMergeMethod).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
@@ -1959,6 +1970,8 @@ export const ServerSettingsPatch = Schema.Struct({
   reviewGuidesEnabled: Schema.optionalKey(Schema.Boolean),
   reviewGuideModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
   reviewGuideInstructions: Schema.optionalKey(TrimmedString),
+  mergeByAgentEnabled: Schema.optionalKey(Schema.Boolean),
+  mergeByAgentModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
   pullRequestMergeMethod: Schema.optionalKey(Schema.NullOr(PullRequestMergeMethod)),
   observability: Schema.optionalKey(
     Schema.Struct({

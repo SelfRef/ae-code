@@ -71,6 +71,7 @@ import {
 } from "./settingsSecrets.ts";
 
 export {
+  resolveMergeByAgentModelSelection,
   resolveReviewGuideModelSelection,
   resolveSourceControlWriterModelSelection,
 } from "@t3tools/shared/serverSettings";
@@ -545,6 +546,7 @@ const ATOMIC_SETTINGS_KEYS: ReadonlySet<string> = new Set([
   "providerHealthRefreshInterval",
   "sourceControlWriterModelSelection",
   "reviewGuideModelSelection",
+  "mergeByAgentModelSelection",
   "textGenerationModelSelection",
   "fallbackModelSelection",
   "pullRequestMergeMethod",

@@ -6747,5 +6747,46 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
         ).toBe("feature/merge-me");
       }),
     );
+
+    it.effect("gives a conflicting merge to the hand-off, which settles the action", () =>
+      Effect.gen(function* () {
+        const { repoDir, worktreeDir } = yield* setupMerge;
+        NodeFS.writeFileSync(NodePath.join(repoDir, "thread.txt"), "main wrote this first\n");
+        yield* runGit(repoDir, ["add", "thread.txt"]);
+        yield* runGit(repoDir, ["commit", "-m", "Conflicting"]);
+        const { manager } = yield* makeManager();
+        const errors: string[] = [];
+        const result = yield* runStackedAction(
+          manager,
+          { cwd: worktreeDir, action: "merge" },
+          {
+            handOffMerge: (error) => Effect.sync(() => errors.push(error) > 0),
+          },
+        );
+
+        expect(errors).toHaveLength(1);
+        expect(errors[0]).toContain("conflicts");
+        expect(result.merge).toBeUndefined();
+        expect(result.toast.title).toBe("The agent finished its turn");
+
+        const { manager: disabled } = yield* makeManager({
+          serverSettings: { mergeByAgentEnabled: false },
+        });
+        const off = yield* runStackedAction(
+          disabled,
+          { cwd: worktreeDir, action: "merge" },
+          { handOffMerge: (error) => Effect.sync(() => errors.push(error) > 0) },
+        ).pipe(Effect.result);
+        expect(Result.isFailure(off)).toBe(true);
+        expect(errors).toHaveLength(1);
+
+        const declined = yield* runStackedAction(
+          manager,
+          { cwd: worktreeDir, action: "merge" },
+          { handOffMerge: () => Effect.succeed(false) },
+        ).pipe(Effect.result);
+        expect(Result.isFailure(declined)).toBe(true);
+      }),
+    );
   });
 });

@@ -161,6 +161,21 @@ export function resolveReviewGuideModelSelection(
     : resolveSourceControlWriterModelSelection(settings, providers, projectId);
 }
 
+/** The model a failed merge is handed to, or null for the thread's own. Like review guides, never a text generator. */
+export function resolveMergeByAgentModelSelection(
+  settings: ServerSettings,
+  providers: ReadonlyArray<ServerProvider> | undefined,
+  projectId: ProjectId | null,
+): ModelSelection | null {
+  const selection = settings.mergeByAgentModelSelection;
+  return selection &&
+    textGeneratorForSelection(settings, selection.instanceId) === undefined &&
+    resolveProjectProviderInstanceEnabled(settings, projectId, selection.instanceId) &&
+    isTextGenerationTargetUsable(settings, providers, selection.instanceId)
+    ? selection
+    : null;
+}
+
 /** Transcript cleanup follows the text generation model unless its own usable model is set. */
 export function resolveSpeechPostProcessingModelSelection(
   settings: ServerSettings,
@@ -647,6 +662,9 @@ export function applyServerSettingsPatch(
       : {}),
     ...(patch.reviewGuideModelSelection !== undefined
       ? { reviewGuideModelSelection: patch.reviewGuideModelSelection }
+      : {}),
+    ...(patch.mergeByAgentModelSelection !== undefined
+      ? { mergeByAgentModelSelection: patch.mergeByAgentModelSelection }
       : {}),
     ...(automaticGitFetchInterval !== undefined ? { automaticGitFetchInterval } : {}),
     ...(providerHealthRefreshInterval !== undefined ? { providerHealthRefreshInterval } : {}),

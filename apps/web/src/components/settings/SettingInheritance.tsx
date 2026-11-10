@@ -56,9 +56,11 @@ function formatValue(key: keyof ServerSettings, value: unknown): string {
             ? "Text generation model"
             : key === "reviewGuideModelSelection"
               ? "Source control writer model"
-              : key === "defaultThreadEnvMode" || key === "worktreeSubmodules"
-                ? "Inherit"
-                : "Not set";
+              : key === "mergeByAgentModelSelection"
+                ? "The thread's model"
+                : key === "defaultThreadEnvMode" || key === "worktreeSubmodules"
+                  ? "Inherit"
+                  : "Not set";
   }
   if (typeof value === "boolean") return value ? "On" : "Off";
   if (typeof value === "number") {

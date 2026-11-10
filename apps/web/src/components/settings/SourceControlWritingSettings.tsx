@@ -9,6 +9,7 @@ import {
 import { DEFAULT_UNIFIED_SETTINGS } from "@t3tools/contracts/settings";
 import { createModelSelection, pickModelSelection } from "@t3tools/shared/model";
 import {
+  resolveMergeByAgentModelSelection,
   resolveReviewGuideModelSelection,
   resolveSourceControlWriterModelSelection,
 } from "@t3tools/shared/serverSettings";
@@ -43,7 +44,6 @@ import {
   SettingsSection,
 } from "./settingsLayout";
 import { useClientSettings, useUpdatePrimarySettings } from "~/hooks/useSettings";
-import { AdvancedSettings } from "./AdvancedSettings";
 import { searchableSetting } from "./settingsSearch";
 
 const MODE_OPTIONS: Record<SourceControlWritingStyleMode, { label: string; description: string }> =
@@ -99,6 +99,8 @@ export function SourceControlWritingSettingsSection() {
   const mixedWriterModel = useScopedSettingsMixed(["sourceControlWriterModelSelection"]);
   const mixedReviewGuideModel = useScopedSettingsMixed(["reviewGuideModelSelection"]);
   const mixedReviewGuideInstructions = useScopedSettingsMixed(["reviewGuideInstructions"]);
+  const mixedMergeByAgent = useScopedSettingsMixed(["mergeByAgentEnabled"]);
+  const mixedMergeModel = useScopedSettingsMixed(["mergeByAgentModelSelection"]);
   const reviewGuideInstructionsEdited = useRef(false);
   const scopeKey = targets.map((target) => `${target.environmentId}:${target.projectId}`).join(",");
   const customInstructionsRef = useRef<HTMLTextAreaElement>(null);
@@ -196,6 +198,37 @@ export function SourceControlWritingSettingsSection() {
   );
   const reviewGuideInstanceEntry = instanceEntries.find(
     (entry) => entry.instanceId === reviewGuideSelection.instanceId,
+  );
+  // Merging by agent runs a coding agent, so like review guides it never uses a text generator.
+  const usesMergeModel = settings.mergeByAgentModelSelection !== null;
+  const mergeSelection = resolveAppModelSelectionState(
+    {
+      ...settings,
+      textGenerationModelSelection:
+        resolveMergeByAgentModelSelection(
+          settings,
+          projectAgentProviders,
+          target?.projectId ?? null,
+        ) ??
+        resolveReviewGuideModelSelection(
+          settings,
+          projectAgentProviders,
+          target?.projectId ?? null,
+        ),
+    },
+    projectAgentProviders,
+  );
+  const mergeModelOptionsByInstance = getTextGenerationModelOptionsByInstance(
+    settings,
+    projectAgentProviders,
+    mergeSelection.instanceId,
+    mergeSelection.model,
+  );
+  const canEnableMergeModel = instanceEntries.some(
+    (entry) => entry.instanceId === mergeSelection.instanceId && entry.enabled && entry.isAvailable,
+  );
+  const mergeInstanceEntry = instanceEntries.find(
+    (entry) => entry.instanceId === mergeSelection.instanceId,
   );
 
   return (
@@ -502,101 +535,222 @@ export function SourceControlWritingSettingsSection() {
           </SettingsRow>
         </>
       ) : null}
-      <AdvancedSettings
-        targetIds={[
-          searchableSetting("follow-change-request-templates").id,
-          searchableSetting("source-control-writer-model").id,
-        ]}
-      >
-        <SettingsRow
-          serverScoped
-          settingKeys={["sourceControlWritingStyle"]}
-          mixed={templatesMixed}
-          {...searchableSetting("follow-change-request-templates")}
-          description="Use the repository's pull request template when it has one."
-          resetAction={
-            templatesMixed ||
-            style.followChangeRequestTemplates !== defaults.followChangeRequestTemplates ? (
-              <SettingResetButton
-                label="pull request templates"
-                onClick={() =>
-                  updateSettings({
-                    sourceControlWritingStyle: {
-                      followChangeRequestTemplates: defaults.followChangeRequestTemplates,
-                    },
-                  })
-                }
-              />
-            ) : null
-          }
-          control={
-            <Switch
-              mixed={templatesMixed}
-              checked={templatesMixed ? false : style.followChangeRequestTemplates}
-              onCheckedChange={(checked) =>
+      <SettingsRow
+        serverScoped
+        settingKeys={["sourceControlWritingStyle"]}
+        mixed={templatesMixed}
+        {...searchableSetting("follow-change-request-templates")}
+        description="Use the repository's pull request template when it has one."
+        resetAction={
+          templatesMixed ||
+          style.followChangeRequestTemplates !== defaults.followChangeRequestTemplates ? (
+            <SettingResetButton
+              label="pull request templates"
+              onClick={() =>
                 updateSettings({
                   sourceControlWritingStyle: {
-                    followChangeRequestTemplates: Boolean(checked),
+                    followChangeRequestTemplates: defaults.followChangeRequestTemplates,
                   },
                 })
               }
-              aria-label="Follow pull request templates"
             />
-          }
-        />
+          ) : null
+        }
+        control={
+          <Switch
+            mixed={templatesMixed}
+            checked={templatesMixed ? false : style.followChangeRequestTemplates}
+            onCheckedChange={(checked) =>
+              updateSettings({
+                sourceControlWritingStyle: {
+                  followChangeRequestTemplates: Boolean(checked),
+                },
+              })
+            }
+            aria-label="Follow pull request templates"
+          />
+        }
+      />
 
+      <SettingsRow
+        serverScoped
+        settingKeys={["sourceControlWriterModelSelection"]}
+        {...searchableSetting("source-control-writer-model")}
+        description="Model for commit messages, pull request text, and branch or bookmark names. When disabled, use the text generation model configured for this environment."
+        control={
+          !hasServerTargets ? (
+            <span className="text-sm text-muted-foreground">
+              Connect an environment to choose its source control writer model.
+            </span>
+          ) : (
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {usesDedicatedModel && !canEnableDedicatedModel ? (
+                <span className="text-sm text-muted-foreground">
+                  No text generation providers available.
+                </span>
+              ) : null}
+              {usesDedicatedModel && canEnableDedicatedModel ? (
+                <ProviderModelPicker
+                  environmentId={environmentId}
+                  activeInstanceId={activeSelection.instanceId}
+                  model={activeSelection.model}
+                  lockedProvider={null}
+                  instanceEntries={writerEntries}
+                  modelOptionsByInstance={modelOptionsByInstance}
+                  triggerClassName={SETTINGS_PICKER_TRIGGER_CLASSNAME}
+                  triggerAriaLabel="Source control writer model"
+                  {...(mixedWriterModel ? { triggerLabel: "Mixed" } : {})}
+                  {...(environmentId
+                    ? {
+                        onOpenProviderSetup: (instanceId: ProviderInstanceId) => {
+                          void navigate({
+                            to: "/settings/providers",
+                            search: { environmentId, instanceId },
+                          });
+                        },
+                      }
+                    : {})}
+                  getModelDisabledReason={writerModelDisabledReason}
+                  onInstanceModelChange={(instanceId, model) => {
+                    const reason = writerModelDisabledReason(instanceId, model);
+                    if (reason) {
+                      toastManager.add({
+                        type: "error",
+                        title: "Source control writer model not saved",
+                        description: reason,
+                      });
+                      return;
+                    }
+                    updateSettings({
+                      sourceControlWriterModelSelection: pickModelSelection(
+                        mixedWriterModel ? null : activeSelection,
+                        instanceId,
+                        model,
+                      ),
+                    });
+                  }}
+                />
+              ) : null}
+              {usesDedicatedModel &&
+              canEnableDedicatedModel &&
+              !mixedWriterModel &&
+              writerInstanceEntry ? (
+                <TraitsPicker
+                  provider={writerInstanceEntry.driverKind}
+                  models={writerInstanceEntry.models}
+                  model={activeSelection.model}
+                  modelOptions={activeSelection.options ?? []}
+                  allowPromptInjectedEffort={false}
+                  includePlanAgent={selectsPlanAgent(activeSelection.options)}
+                  triggerClassName={SETTINGS_PICKER_TRIGGER_CLASSNAME}
+                  onModelOptionsChange={(options) =>
+                    updateSettings({
+                      sourceControlWriterModelSelection: createModelSelection(
+                        activeSelection.instanceId,
+                        activeSelection.model,
+                        options,
+                      ),
+                    })
+                  }
+                />
+              ) : null}
+              <Switch
+                checked={usesDedicatedModel}
+                disabled={!usesDedicatedModel && !canEnableDedicatedModel}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    const reason = writerModelDisabledReason(
+                      defaultModelSelection.instanceId,
+                      defaultModelSelection.model,
+                    );
+                    if (reason) {
+                      toastManager.add({
+                        type: "error",
+                        title: "Writer model not saved",
+                        description: reason,
+                      });
+                      return;
+                    }
+                  }
+                  updateSettings({
+                    sourceControlWriterModelSelection: checked
+                      ? createModelSelection(
+                          defaultModelSelection.instanceId,
+                          defaultModelSelection.model,
+                          defaultModelSelection.options,
+                        )
+                      : null,
+                  });
+                }}
+                aria-label="Use a separate source control writer model"
+              />
+            </div>
+          )
+        }
+      />
+
+      <SettingsRow
+        serverScoped
+        settingKeys={["mergeByAgentEnabled"]}
+        mixed={mixedMergeByAgent}
+        {...searchableSetting("merge-by-agent")}
+        description="When a merge into the default branch cannot be done without conflicts, the thread's agent finishes it. Turn off to just show the error."
+        resetAction={
+          mixedMergeByAgent || !settings.mergeByAgentEnabled ? (
+            <SettingResetButton
+              label="merge by agent"
+              onClick={() => updateSettings({ mergeByAgentEnabled: true })}
+            />
+          ) : null
+        }
+        control={
+          <Switch
+            mixed={mixedMergeByAgent}
+            checked={mixedMergeByAgent ? false : settings.mergeByAgentEnabled}
+            onCheckedChange={(checked) => updateSettings({ mergeByAgentEnabled: Boolean(checked) })}
+            aria-label="Merge by agent"
+          />
+        }
+      />
+
+      {settings.mergeByAgentEnabled || mixedMergeByAgent ? (
         <SettingsRow
           serverScoped
-          settingKeys={["sourceControlWriterModelSelection"]}
-          {...searchableSetting("source-control-writer-model")}
-          description="Model for commit messages, pull request text, and branch or bookmark names. When disabled, use the text generation model configured for this environment."
+          settingKeys={["mergeByAgentModelSelection"]}
+          {...searchableSetting("merge-by-agent-model")}
+          description="Must be a coding agent. When disabled, the agent uses the thread's own model."
           control={
             !hasServerTargets ? (
               <span className="text-sm text-muted-foreground">
-                Connect an environment to choose its source control writer model.
+                Connect an environment to choose its merge model.
               </span>
             ) : (
               <div className="flex flex-wrap items-center justify-end gap-2">
-                {usesDedicatedModel && !canEnableDedicatedModel ? (
-                  <span className="text-sm text-muted-foreground">
-                    No text generation providers available.
-                  </span>
-                ) : null}
-                {usesDedicatedModel && canEnableDedicatedModel ? (
+                {(usesMergeModel || mixedMergeModel) && canEnableMergeModel ? (
                   <ProviderModelPicker
                     environmentId={environmentId}
-                    activeInstanceId={activeSelection.instanceId}
-                    model={activeSelection.model}
+                    activeInstanceId={mergeSelection.instanceId}
+                    model={mergeSelection.model}
                     lockedProvider={null}
-                    instanceEntries={writerEntries}
-                    modelOptionsByInstance={modelOptionsByInstance}
+                    instanceEntries={instanceEntries}
+                    modelOptionsByInstance={mergeModelOptionsByInstance}
                     triggerClassName={SETTINGS_PICKER_TRIGGER_CLASSNAME}
-                    triggerAriaLabel="Source control writer model"
-                    {...(mixedWriterModel ? { triggerLabel: "Mixed" } : {})}
-                    {...(environmentId
-                      ? {
-                          onOpenProviderSetup: (instanceId: ProviderInstanceId) => {
-                            void navigate({
-                              to: "/settings/providers",
-                              search: { environmentId, instanceId },
-                            });
-                          },
-                        }
-                      : {})}
+                    triggerAriaLabel="Merge by agent model"
+                    {...(mixedMergeModel ? { triggerLabel: "Mixed" } : {})}
                     getModelDisabledReason={writerModelDisabledReason}
                     onInstanceModelChange={(instanceId, model) => {
                       const reason = writerModelDisabledReason(instanceId, model);
                       if (reason) {
                         toastManager.add({
                           type: "error",
-                          title: "Source control writer model not saved",
+                          title: "Merge by agent model not saved",
                           description: reason,
                         });
                         return;
                       }
                       updateSettings({
-                        sourceControlWriterModelSelection: pickModelSelection(
-                          mixedWriterModel ? null : activeSelection,
+                        mergeByAgentModelSelection: pickModelSelection(
+                          mixedMergeModel ? null : mergeSelection,
                           instanceId,
                           model,
                         ),
@@ -604,23 +758,20 @@ export function SourceControlWritingSettingsSection() {
                     }}
                   />
                 ) : null}
-                {usesDedicatedModel &&
-                canEnableDedicatedModel &&
-                !mixedWriterModel &&
-                writerInstanceEntry ? (
+                {usesMergeModel && canEnableMergeModel && !mixedMergeModel && mergeInstanceEntry ? (
                   <TraitsPicker
-                    provider={writerInstanceEntry.driverKind}
-                    models={writerInstanceEntry.models}
-                    model={activeSelection.model}
-                    modelOptions={activeSelection.options ?? []}
+                    provider={mergeInstanceEntry.driverKind}
+                    models={mergeInstanceEntry.models}
+                    model={mergeSelection.model}
+                    modelOptions={mergeSelection.options ?? []}
                     allowPromptInjectedEffort={false}
-                    includePlanAgent={selectsPlanAgent(activeSelection.options)}
+                    includePlanAgent={selectsPlanAgent(mergeSelection.options)}
                     triggerClassName={SETTINGS_PICKER_TRIGGER_CLASSNAME}
                     onModelOptionsChange={(options) =>
                       updateSettings({
-                        sourceControlWriterModelSelection: createModelSelection(
-                          activeSelection.instanceId,
-                          activeSelection.model,
+                        mergeByAgentModelSelection: createModelSelection(
+                          mergeSelection.instanceId,
+                          mergeSelection.model,
                           options,
                         ),
                       })
@@ -628,40 +779,41 @@ export function SourceControlWritingSettingsSection() {
                   />
                 ) : null}
                 <Switch
-                  checked={usesDedicatedModel}
-                  disabled={!usesDedicatedModel && !canEnableDedicatedModel}
+                  mixed={mixedMergeModel}
+                  checked={mixedMergeModel ? false : usesMergeModel}
+                  disabled={!usesMergeModel && !canEnableMergeModel}
                   onCheckedChange={(checked) => {
-                    if (checked) {
-                      const reason = writerModelDisabledReason(
-                        defaultModelSelection.instanceId,
-                        defaultModelSelection.model,
-                      );
-                      if (reason) {
-                        toastManager.add({
-                          type: "error",
-                          title: "Writer model not saved",
-                          description: reason,
-                        });
-                        return;
-                      }
+                    if (!checked) {
+                      updateSettings({ mergeByAgentModelSelection: null });
+                      return;
+                    }
+                    const seed = textGeneratorForSelection(settings, activeSelection.instanceId)
+                      ? mergeSelection
+                      : activeSelection;
+                    const reason = writerModelDisabledReason(seed.instanceId, seed.model);
+                    if (reason) {
+                      toastManager.add({
+                        type: "error",
+                        title: "Merge by agent model not saved",
+                        description: reason,
+                      });
+                      return;
                     }
                     updateSettings({
-                      sourceControlWriterModelSelection: checked
-                        ? createModelSelection(
-                            defaultModelSelection.instanceId,
-                            defaultModelSelection.model,
-                            defaultModelSelection.options,
-                          )
-                        : null,
+                      mergeByAgentModelSelection: createModelSelection(
+                        seed.instanceId,
+                        seed.model,
+                        seed.options,
+                      ),
                     });
                   }}
-                  aria-label="Use a separate source control writer model"
+                  aria-label="Use a separate merge by agent model"
                 />
               </div>
             )
           }
         />
-      </AdvancedSettings>
+      ) : null}
     </SettingsSection>
   );
 }

@@ -101,6 +101,11 @@ export interface GitActionProgressReporter {
 export interface GitRunStackedActionOptions {
   readonly actionId?: string;
   readonly progressReporter?: GitActionProgressReporter;
+  /** Takes over a failed merge and resolves once it is done; false leaves the failure as it is. */
+  readonly handOffMerge?: (
+    error: string,
+    modelSelection: ModelSelection | undefined,
+  ) => Effect.Effect<boolean>;
 }
 
 export interface GitRemoteStatusOptions extends GitVcsDriver.GitRemoteStatusOptions {
@@ -785,6 +790,31 @@ export const make = Effect.gen(function* () {
       ));
     return { settings: resolveProjectSettings(settings, projectId).settings, projectId };
   });
+  /** Null when merging by agent is turned off for the project (or its settings cannot be read). */
+  const mergeByAgentModel = (input: {
+    readonly cwd: string;
+    readonly threadId?: ThreadId | undefined;
+    readonly projectId?: ProjectId | undefined;
+  }) =>
+    projectSettingsFor(input).pipe(
+      Effect.flatMap(({ settings, projectId }) =>
+        !settings.mergeByAgentEnabled
+          ? Effect.succeed(null)
+          : settings.mergeByAgentModelSelection === null
+            ? Effect.succeed({ modelSelection: undefined })
+            : providerRegistry.getProviders.pipe(
+                Effect.map((providers) => ({
+                  modelSelection:
+                    ServerSettings.resolveMergeByAgentModelSelection(
+                      settings,
+                      providers,
+                      projectId,
+                    ) ?? undefined,
+                })),
+              ),
+      ),
+      Effect.orElseSucceed(() => null),
+    );
   const readThreadContext = Effect.fnUntraced(
     function* (threadId: ThreadId | undefined) {
       if (threadId === undefined) return undefined;
@@ -3617,6 +3647,8 @@ export const make = Effect.gen(function* () {
             )
           : { status: "skipped_not_requested" as const };
 
+        const handOffMerge = options?.handOffMerge;
+        let handedOff = false;
         const merge =
           wantsMerge && currentBranch
             ? yield* progress
@@ -3629,6 +3661,35 @@ export const make = Effect.gen(function* () {
                       branch: currentBranch,
                       push: input.action === "merge_push",
                     }),
+                  ),
+                  Effect.catch((error) =>
+                    handOffMerge === undefined
+                      ? Effect.fail(error)
+                      : mergeByAgentModel(input).pipe(
+                          Effect.flatMap((choice) =>
+                            choice === null
+                              ? Effect.succeed(false)
+                              : progress
+                                  .emit({
+                                    kind: "phase_started",
+                                    phase: "merge",
+                                    label: "Merging by agent...",
+                                  })
+                                  .pipe(
+                                    Effect.andThen(
+                                      handOffMerge(error.message, choice.modelSelection),
+                                    ),
+                                  ),
+                          ),
+                          Effect.flatMap((done) =>
+                            done
+                              ? Effect.sync(() => {
+                                  handedOff = true;
+                                  return undefined;
+                                })
+                              : Effect.fail(error),
+                          ),
+                        ),
                   ),
                 )
             : undefined;
@@ -3676,15 +3737,21 @@ export const make = Effect.gen(function* () {
               )
           : { status: "skipped_not_requested" as const };
 
-        const toast = merge
-          ? mergeCompletionToast(merge, commit.status === "created")
-          : yield* buildCompletionToast(input.cwd, {
-              action: input.action,
-              branch: branchStep,
-              commit,
-              push,
-              pr,
-            });
+        const toast = handedOff
+          ? {
+              title: "The agent finished its turn",
+              description: "Check the thread for how the merge went.",
+              cta: { kind: "none" as const },
+            }
+          : merge
+            ? mergeCompletionToast(merge, commit.status === "created")
+            : yield* buildCompletionToast(input.cwd, {
+                action: input.action,
+                branch: branchStep,
+                commit,
+                push,
+                pr,
+              });
 
         const result = {
           action: input.action,
