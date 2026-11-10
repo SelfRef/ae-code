@@ -53,6 +53,23 @@ for 14 days: **Restore** puts it back and restores the links it had.
 The last section lists what providers load from their own folders: plugin, built-in and synced skills, and folders made
 by hand. They belong to the provider, so they are listed but never moved or changed.
 
+## What agents can do
+
+Agents on every provider reach the library through five T3 tools, so "make me a skill for this" works the same on
+Claude, Codex, Cursor and the rest:
+
+- `t3_skill_list` and `t3_skill_read` show the library, what each provider can use, and a skill's `SKILL.md`. Any thread
+  may call them.
+- `t3_skill_write` (create or rewrite a `SKILL.md`), `t3_skill_link` and `t3_skill_remove` change it. They work only in
+  a thread running in **full access**, where the agent can already write any file without asking; in any other mode
+  they refuse and say so, and you change skills in Settings. Removing goes to the trash like the page's button, so you
+  can restore it.
+- Installing from a repository and updating stay in Settings: an agent cannot fetch instructions from a remote on its
+  own.
+
+A skill an agent writes reaches sessions that start afterwards, like any other change, and shows in the page at once.
+Skills are instructions every later session follows, so read what an agent wrote before you rely on it.
+
 ## Permissions
 
 Listing and reading need the same access as reading threads. Making, editing, linking, removing and installing need file

@@ -358,6 +358,21 @@ export function summarizeT3ToolCalls(
     case "memory-forget":
       label = phrase("Forgot", "forget", `memory ${times}`);
       break;
+    case "skill-list":
+      label = phrase("Listed", "list", `skills ${times}`);
+      break;
+    case "skill-read":
+      label = phrase("Read", "read", `a skill ${times}`);
+      break;
+    case "skill-write":
+      label = phrase("Wrote", "write", `a skill ${times}`);
+      break;
+    case "skill-remove":
+      label = phrase("Removed", "remove", `a skill ${times}`);
+      break;
+    case "skill-link":
+      label = phrase("Linked", "link", `a skill ${times}`);
+      break;
     case "environment-read":
       label = phrase("Checked", "check", `environment preferences ${times}`);
       break;
