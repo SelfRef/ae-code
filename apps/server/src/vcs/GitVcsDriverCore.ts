@@ -2013,17 +2013,33 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
   const computeAheadCountAgainstBase = Effect.fn("computeAheadCountAgainstBase")(function* (
     cwd: string,
     refName: string,
-    options?: { readonly knownOriginDefaultBranch: string | null },
+    options?: {
+      readonly knownOriginDefaultBranch: string | null;
+      readonly excludeLocalBase?: boolean;
+    },
   ) {
     const base = yield* resolveBaseBranchForNoUpstream(cwd, refName, options);
     if (!base) {
       return 0;
     }
 
+    // A merge into the default branch only advances the local ref, so those commits are
+    // already merged even while the remote-tracking ref lacks them.
+    const localBase = options?.excludeLocalBase
+      ? /^refs\/remotes\/[^/]+\/(.+)$/.exec(base.comparisonRef)?.[1]
+      : undefined;
+    const excludeLocalBase = localBase !== undefined && (yield* branchExists(cwd, localBase));
     const result = yield* executeGit(
       "GitVcsDriver.computeAheadCountAgainstBase",
       cwd,
-      ["rev-list", "--count", "--end-of-options", `${base.comparisonRef}..HEAD`],
+      [
+        "rev-list",
+        "--count",
+        "--end-of-options",
+        "HEAD",
+        `^${base.comparisonRef}`,
+        ...(excludeLocalBase ? [`^refs/heads/${localBase}`] : []),
+      ],
       { allowNonZeroExit: true },
     );
     if (result.exitCode !== 0) {
@@ -2117,11 +2133,10 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
         (defaultBranch === null && (branch === "main" || branch === "master")));
     const aheadOfDefaultCount =
       branch && !isDefaultBranch
-        ? upstreamRef === null
-          ? aheadCount
-          : yield* computeAheadCountAgainstBase(cwd, branch, {
-              knownOriginDefaultBranch: defaultBranch,
-            }).pipe(Effect.orElseSucceed(() => 0))
+        ? yield* computeAheadCountAgainstBase(cwd, branch, {
+            knownOriginDefaultBranch: defaultBranch,
+            excludeLocalBase: true,
+          }).pipe(Effect.orElseSucceed(() => 0))
         : 0;
 
     return {
@@ -2343,13 +2358,17 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
         (defaultBranch === null && (refName === "main" || refName === "master")));
     const needsFallbackAhead = includeDivergence && !upstreamRef && refName !== null;
     const needsAheadOfDefault = includeDivergence && refName !== null && !isDefaultBranch;
-    const [baseAheadCount, branchChanges] = yield* Effect.all(
+    const countAhead = (excludeLocalBase: boolean) =>
+      refName !== null
+        ? computeAheadCountAgainstBase(cwd, refName, {
+            knownOriginDefaultBranch: defaultBranch,
+            excludeLocalBase,
+          }).pipe(Effect.orElseSucceed(() => 0))
+        : Effect.succeed(0);
+    const [baseAheadCount, baseAheadOfDefaultCount, branchChanges] = yield* Effect.all(
       [
-        refName !== null && (needsFallbackAhead || needsAheadOfDefault)
-          ? computeAheadCountAgainstBase(cwd, refName, {
-              knownOriginDefaultBranch: defaultBranch,
-            }).pipe(Effect.orElseSucceed(() => 0))
-          : Effect.succeed(0),
+        needsFallbackAhead ? countAhead(false) : Effect.succeed(0),
+        needsAheadOfDefault ? countAhead(true) : Effect.succeed(0),
         options?.includeBranchChanges
           ? readBranchChangeTotals(repositoryPaths?.worktreeRoot ?? cwd, refName, {
               knownOriginDefaultBranch: defaultBranch,
@@ -2365,7 +2384,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
       behindCount = 0;
     }
     if (needsAheadOfDefault) {
-      aheadOfDefaultCount = baseAheadCount;
+      aheadOfDefaultCount = baseAheadOfDefaultCount;
     }
 
     const fileStatMap = new Map<string, { insertions: number; deletions: number }>();

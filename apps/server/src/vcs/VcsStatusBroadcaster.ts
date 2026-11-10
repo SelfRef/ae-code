@@ -772,11 +772,9 @@ export const make = Effect.gen(function* () {
         const cachedStatus = yield* getCachedStatus(cwd);
         const initialRemote = cachedStatus?.remote?.value ?? null;
         if (input.includeRemote !== false) {
-          yield* retainRemotePoller(
-            cwd,
-            input.cwd,
-            cachedStatus?.remote === null || cachedStatus?.remote === undefined,
-          );
+          // The cached remote part (ahead/behind counts, PR) can predate a push or merge made
+          // while nothing was subscribed, so the first subscriber triggers a refresh.
+          yield* retainRemotePoller(cwd, input.cwd, true);
         }
         const release =
           input.includeRemote === false
