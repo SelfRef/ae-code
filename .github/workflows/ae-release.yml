@@ -291,10 +291,16 @@ jobs:
   # (secrets ANDROID_KEYSTORE, the base64 of a PKCS12 keystore, and
   # ANDROID_KEYSTORE_PASSWORD): every update must use the same key.
   android:
-    name: Android app
+    name: Android app (${{ matrix.abi }})
     needs: [prepare, release]
     runs-on: ubuntu-24.04
     timeout-minutes: 75
+    # One APK per ABI, built independently: arm64 for phones, x86_64 for emulators.
+    # A failed ABI leaves the other one attached.
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [arm64-v8a, x86_64]
     permissions:
       contents: write
     env:
@@ -358,11 +364,11 @@ jobs:
           sed -i -E "s/versionCode [0-9]+/versionCode $code/" "$gradle"
           grep -E 'versionCode|versionName' "$gradle"
 
-      # arm64 for phones, x86_64 for emulators. Every ABI compiles the native
-      # modules again, which is most of the build time.
       - name: Build the release APK
         working-directory: apps/mobile/android
-        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,x86_64 -Dorg.gradle.jvmargs=-Xmx4g
+        env:
+          ABI: ${{ matrix.abi }}
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures="$ABI" -Dorg.gradle.jvmargs=-Xmx4g
 
       # Expo's template signs release builds with the public debug key; replace it.
       - name: Sign the APK
@@ -370,6 +376,7 @@ jobs:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE }}
           KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           TAG: ${{ needs.prepare.outputs.tag }}
+          ABI: ${{ matrix.abi }}
         run: |
           set -euo pipefail
           build_tools="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
@@ -381,12 +388,13 @@ jobs:
           "$build_tools/zipalign" -f -p 4 apps/mobile/android/app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/aligned.apk"
           "$build_tools/apksigner" sign --ks "$keystore" --ks-key-alias "$alias" \
             --ks-pass env:KS_PASS --key-pass env:KS_PASS \
-            --out "dist/ae-code-$TAG.apk" "$RUNNER_TEMP/aligned.apk"
-          "$build_tools/apksigner" verify --print-certs "dist/ae-code-$TAG.apk"
+            --out "dist/ae-code-$TAG-$ABI.apk" "$RUNNER_TEMP/aligned.apk"
+          "$build_tools/apksigner" verify --print-certs "dist/ae-code-$TAG-$ABI.apk"
           rm -f "$keystore"
 
       - name: Attach to the release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.prepare.outputs.tag }}
-        run: gh release upload "$TAG" "dist/ae-code-$TAG.apk"
+          ABI: ${{ matrix.abi }}
+        run: gh release upload "$TAG" "dist/ae-code-$TAG-$ABI.apk"
