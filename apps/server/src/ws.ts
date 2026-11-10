@@ -2860,6 +2860,8 @@ export const layerWsRpc = (
           withPullRequestViewer(input, pullRequests.setLabels(input)),
         [WS_METHODS.issuesList]: (input) => issues.list(input),
         [WS_METHODS.issuesRead]: (input) => issues.read(input),
+        [WS_METHODS.releasesList]: (input) => issues.listReleases(input),
+        [WS_METHODS.releasesRead]: (input) => issues.readRelease(input),
         [WS_METHODS.sourceControlLookupRepository]: (input) =>
           sourceControlRepositories.lookupRepository(input),
         [WS_METHODS.sourceControlCloneRepository]: (input) =>

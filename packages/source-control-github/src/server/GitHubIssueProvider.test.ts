@@ -134,4 +134,76 @@ describe("GitHubIssueProvider", () => {
       assert.strictEqual(malformed.reason, "failed");
     }).pipe(Effect.provide(api));
   });
+
+  it.effect("lists and reads releases, drafts and assets included", () => {
+    const paths: Array<string> = [];
+    const release = (id: number, extra: Record<string, unknown> = {}) => ({
+      id,
+      tag_name: `v${id}`,
+      name: null,
+      html_url: `https://github.com/o/r/releases/tag/v${id}`,
+      draft: false,
+      prerelease: false,
+      author: { login: "ada" },
+      created_at: "2026-01-01T00:00:00Z",
+      published_at: "2026-01-02T00:00:00Z",
+      ...extra,
+    });
+    const api = Layer.mock(GitHubRest.GitHubRest)({
+      rest: (input) => {
+        paths.push(input.path);
+        return respond(
+          input.path.endsWith("/releases/2")
+            ? release(2, {
+                body: "Notes",
+                target_commitish: "main",
+                assets: [
+                  {
+                    name: "app.zip",
+                    browser_download_url: "https://github.com/o/r/releases/download/v2/app.zip",
+                    size: 10,
+                    download_count: 3,
+                  },
+                ],
+              })
+            : [release(2, { prerelease: true }), release(1, { draft: true, published_at: null })],
+        );
+      },
+    });
+    return Effect.gen(function* () {
+      const provider = yield* GitHubIssueProvider.make;
+      const page = yield* provider.listReleases({
+        host: "github.com",
+        repository: "o/r",
+        page: 2,
+        pageSize: 2,
+      });
+      assert.deepStrictEqual(
+        page.releases.map((entry) => [
+          entry.id,
+          entry.name,
+          entry.prerelease,
+          entry.draft,
+          entry.publishedAt,
+        ]),
+        [
+          [2, "", true, false, "2026-01-02T00:00:00Z"],
+          [1, "", false, true, null],
+        ],
+      );
+      assert.isTrue(page.hasMore);
+      assert.strictEqual(paths[0], "repos/o/r/releases?per_page=2&page=2");
+      const detail = yield* provider.getRelease({ host: "github.com", repository: "o/r", id: 2 });
+      assert.strictEqual(detail.body, "Notes");
+      assert.strictEqual(detail.targetCommitish, "main");
+      assert.deepStrictEqual(detail.assets, [
+        {
+          name: "app.zip",
+          url: "https://github.com/o/r/releases/download/v2/app.zip",
+          size: 10,
+          downloadCount: 3,
+        },
+      ]);
+    }).pipe(Effect.provide(api));
+  });
 });

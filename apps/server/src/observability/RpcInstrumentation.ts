@@ -164,6 +164,8 @@ const RPC_AGGREGATES = {
   [WS_METHODS.pullRequestsSetLabels]: "pull-requests",
   [WS_METHODS.issuesList]: "issues",
   [WS_METHODS.issuesRead]: "issues",
+  [WS_METHODS.releasesList]: "releases",
+  [WS_METHODS.releasesRead]: "releases",
   [WS_METHODS.sourceControlLookupRepository]: "source-control",
   [WS_METHODS.sourceControlCloneRepository]: "source-control",
   [WS_METHODS.sourceControlPublishRepository]: "source-control",
