@@ -3920,6 +3920,8 @@ export default function ChatView(props: ChatViewProps) {
                     )
                   }
                   gitCwd={gitCwd}
+                  projectCwd={activeProjectCwd}
+                  {...(threadFindEnabled ? { onFindInThread: openThreadFindStable } : {})}
                   isGitRepo={isGitRepo}
                   envLocked={envLocked}
                   availableEnvironments={logicalProjectEnvironments}

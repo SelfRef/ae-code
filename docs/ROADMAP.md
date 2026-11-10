@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [34] | A "Thread actions" section in the thread details card: Settle thread, and the thread's context menu under an arrow                                                     | done    |
 | [33] | Saved environments follow you: a browser signed in to a server shows the environments saved on any other browser signed in to it (kept on that server)                 | done    |
 | [32] | Merge a thread's branch into the default branch (with or without pushing) from the Git actions menu, optionally as a project's main action                             | done    |
 | [31] | Move a started thread into a new worktree from the workspace control or the thread menu (the control used to lock after the first message)                             | done    |
@@ -1216,6 +1217,17 @@ from, and other browsers signed in to that server load it.
 - Web only. Desktop keeps its own catalog and mobile its own storage. Another browser sees a change at its next load, not
   live.
 - No data migration: the server's copy is created by the first browser that syncs.
+
+## Thread actions in the thread details card (change 34)
+
+The last section of the thread details card: a split button, **Settle thread** (**Un-settle thread** once settled) and an
+arrow that opens the thread's context menu (`useThreadActionMenu`, the one the header and right-click open). Shown on by
+default for server threads at full card density; **Thread actions** in the card's show/hide list turns it off.
+
+- Code: `apps/web/src/components/chat/ThreadDetailsActions.tsx`. Settling goes through `settleAndAdvance` like the keybinding.
+- The menu's Rename starts the header's inline rename through the `threadRename` registry (`apps/web/src/threadRename.ts`),
+  so it does nothing when no header is mounted.
+- No data migration: a new key in the sparse `threadDetailsItems` setting, absent meaning the default.
 
 ## Keeping the fork up to date with upstream
 

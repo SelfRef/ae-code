@@ -4,6 +4,7 @@ import type {
   ProjectId,
   ProjectScript,
   ResolvedKeybindingsConfig,
+  ScopedThreadRef,
   ThreadId,
 } from "@t3tools/contracts";
 
@@ -38,6 +39,7 @@ import { useProject, useServerConfigs } from "../../state/entities";
 import { ThreadDetailsThreadPrRows } from "./ThreadDetailsPrRows";
 import { cn } from "../../lib/utils";
 import { SlidersHorizontalIcon } from "lucide-react";
+import { ThreadDetailsActions } from "./ThreadDetailsActions";
 import { ThreadDetailsControl } from "./ThreadDetailsControl";
 import {
   THREAD_DETAILS_PANEL_ICON_CLASS,
@@ -90,6 +92,8 @@ interface ThreadDetailsPanelProps extends Pick<
   ) => Promise<ProjectScriptActionResult>;
   onDeleteProjectScript: (scriptId: string) => Promise<ProjectScriptActionResult>;
   usage: ThreadDetailsUsageInput;
+  projectCwd: string | null;
+  onFindInThread?: ((threadRef: ScopedThreadRef) => void) | undefined;
 }
 
 export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
@@ -286,6 +290,22 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
 
               {visible.context && props.usage.contextWindow ? (
                 <ThreadDetailsContext usage={props.usage.contextWindow} />
+              ) : null}
+
+              {density === "full" && props.isServerThread && visible.threadActions ? (
+                <ThreadDetailsSection
+                  headingId="thread-details-actions-heading"
+                  title="Thread actions"
+                  showHeading={false}
+                >
+                  <div className="flex flex-col">
+                    <ThreadDetailsActions
+                      threadRef={activeThreadRef}
+                      projectCwd={props.projectCwd}
+                      onFindInThread={props.onFindInThread}
+                    />
+                  </div>
+                </ThreadDetailsSection>
               ) : null}
 
               {/* Shown only when no section above has content, so an emptied card can be refilled. */}
