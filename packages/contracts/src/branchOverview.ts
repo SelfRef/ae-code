@@ -2,8 +2,16 @@ import * as Schema from "effect/Schema";
 
 import { IsoDateTime, NonNegativeInt, TrimmedNonEmptyString } from "./baseSchemas.ts";
 
+/** `VcsBranchOverviewInput.remote` value for every remote; no valid remote name holds a `*`. */
+export const ALL_VCS_REMOTES = "*";
+
 export const VcsBranchOverviewInput = Schema.Struct({
   cwd: TrimmedNonEmptyString,
+  /**
+   * Whose remote-only branches to list: one remote's name, or `ALL_VCS_REMOTES`. Unset is the primary
+   * remote, so a fork's upstream, with thousands of branches, does not fill the capped list.
+   */
+  remote: Schema.optional(TrimmedNonEmptyString),
   /** Fetch the primary remote first (at most as often as the Git status poll does), so counts follow the remote and not an old fetch. */
   fetch: Schema.optional(Schema.Boolean),
 });
@@ -37,6 +45,10 @@ export const VcsBranchOverviewResult = Schema.Struct({
   isRepo: Schema.Boolean,
   /** The branch the others are compared with: the local default branch when it exists, else its `origin/` ref. */
   defaultRef: Schema.NullOr(TrimmedNonEmptyString),
+  /** Every configured remote, the primary one first. */
+  remotes: Schema.Array(TrimmedNonEmptyString),
+  /** The remote the remote-only branches come from; null for all of them or when there is none. */
+  remote: Schema.NullOr(TrimmedNonEmptyString),
   /** The default branch first, then the rest by latest commit. */
   branches: Schema.Array(VcsBranchOverviewEntry),
   /** True when more branches exist than `branches` holds. */

@@ -1182,8 +1182,19 @@ describe("branchOverview", () => {
       yield* git(updater, ["commit", "-m", "pushed by someone else"]);
       yield* git(updater, ["push", "origin", "elsewhere"]);
       yield* git(cwd, ["fetch", "origin"]);
+      // A second remote, like a fork's upstream, has its branches left out unless asked for.
+      yield* git(cwd, ["remote", "add", "upstream", remote]);
+      yield* git(cwd, ["fetch", "upstream"]);
 
       const overview = yield* driver.branchOverview({ cwd });
+      assert.deepEqual(overview.remotes, ["origin", "upstream"]);
+      assert.equal(overview.remote, "origin");
+      assert.isFalse(overview.branches.some((branch) => branch.name.startsWith("upstream/")));
+      const everything = yield* driver.branchOverview({ cwd, remote: "*" });
+      assert.isNull(everything.remote);
+      assert.isTrue(everything.branches.some((branch) => branch.name === "upstream/elsewhere"));
+      const upstreamOnly = yield* driver.branchOverview({ cwd, remote: "upstream" });
+      assert.isFalse(upstreamOnly.branches.some((branch) => branch.name.startsWith("origin/")));
 
       const byName = new Map(overview.branches.map((branch) => [branch.name, branch]));
       assert.equal(overview.branches[0]?.name, initialBranch);

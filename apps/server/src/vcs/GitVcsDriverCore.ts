@@ -36,6 +36,7 @@ import {
   type ReviewDiffPreviewSource,
   type VcsBranchOverviewEntry,
   type VcsRef,
+  ALL_VCS_REMOTES,
 } from "@t3tools/contracts";
 import { dedupeRemoteBranchesWithLocalMatches } from "@t3tools/shared/git";
 import {
@@ -5198,16 +5199,32 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
       }),
     );
     if (repositoryPaths === null) {
-      return { isRepo: false, defaultRef: null, branches: [], truncated: false };
+      return {
+        isRepo: false,
+        defaultRef: null,
+        remotes: [],
+        remote: null,
+        branches: [],
+        truncated: false,
+      };
     }
     const { gitCommonDir } = repositoryPaths;
     const fetchCwd =
       path.basename(gitCommonDir) === ".git" ? path.dirname(gitCommonDir) : gitCommonDir;
+    const configuredRemotes = yield* listRemoteNames(fetchCwd).pipe(
+      Effect.orElseSucceed((): ReadonlyArray<string> => []),
+    );
+    const primaryRemote = configuredRemotes.includes("origin")
+      ? "origin"
+      : (configuredRemotes[0] ?? null);
+    const remotes =
+      primaryRemote === null
+        ? []
+        : [primaryRemote, ...configuredRemotes.filter((name) => name !== primaryRemote)];
+    const shownRemote = input.remote === ALL_VCS_REMOTES ? null : (input.remote ?? primaryRemote);
     if (input.fetch === true) {
       // Shares the status poll's throttled fetch; a failed one, for example offline, keeps the last fetch's counts.
-      const remoteName = yield* resolvePrimaryRemoteName(fetchCwd).pipe(
-        Effect.orElseSucceed(() => null),
-      );
+      const remoteName = primaryRemote;
       if (remoteName !== null) {
         yield* Cache.get(
           statusRemoteRefreshCache,
@@ -5252,10 +5269,11 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
           : `refs/remotes/origin/${defaultName}`;
 
     const entries = orderBranchOverview(
-      dedupeRemoteBranchesWithLocalMatches([
-        ...snapshot.localBranches,
-        ...snapshot.remoteBranches,
-      ]).map((ref) => {
+      dedupeRemoteBranchesWithLocalMatches(
+        [...snapshot.localBranches, ...snapshot.remoteBranches].filter(
+          (ref) => !ref.isRemote || shownRemote === null || ref.name.startsWith(`${shownRemote}/`),
+        ),
+      ).map((ref) => {
         const details = info.get(
           ref.isRemote ? `refs/remotes/${ref.name}` : `refs/heads/${ref.name}`,
         );
@@ -5324,6 +5342,8 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     return {
       isRepo: true,
       defaultRef: defaultRef === null ? null : defaultRef.replace(/^refs\/(heads|remotes)\//, ""),
+      remotes,
+      remote: shownRemote,
       branches,
       truncated: entries.length > shown.length,
     };
