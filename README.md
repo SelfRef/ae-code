@@ -90,7 +90,12 @@ The image is Ubuntu with `git` and `ssh` and runs as a non-root user; state live
 
 ### Android
 
-Install `ae-code-<tag>.apk` from the [latest release](https://github.com/SelfRef/ae-code/releases/latest) and pair it with a running server.
+Install `ae-code-<tag>.apk` from the [latest release](https://github.com/SelfRef/ae-code/releases/latest) and pair it with a running server. With [Obtainium](https://obtainium.imranr.dev/) it updates itself from the releases.
+
+<p align="center">
+  <a href="https://github.com/SelfRef/ae-code/releases/latest"><img src="https://raw.githubusercontent.com/Kunzisoft/Github-badge/main/get-it-on-github.png" alt="Get it on GitHub" height="60"></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/SelfRef/ae-code"><img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="60"></a>
+</p>
 
 ### From source
 
