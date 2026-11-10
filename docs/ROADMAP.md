@@ -905,19 +905,31 @@ progressive loading keep working. Research and the upstream PRs this draws on: [
   for Claude (`mcp__t3-code__*`) and there is no per-tool approval prompt, so the gate is the thread's own trust level
   (in full access an agent can write any file anyway). A per-write approval card would be a new turn-item type like the
   secret request. Install and update are not tools. The tool list grew by 1782 bytes (`agentContextBudget.json`).
+- **Import** (like change 13's import from Claude): scans every linkable provider's own skills folder for real folders
+  with a `SKILL.md` (links, folders without one such as Claude's `synced`, and plugin skills are not offered). Copy
+  leaves the original; move renames it into the library (same disk) and leaves a relative link, so the provider keeps
+  the skill. A name the library has is refused.
+- **Claude uses only the library's skills** (like change 13's native-memory switch, all or nothing): the setting lives
+  in the lock file. `SkillLibraryService` publishes, per Claude instance, the names of the library skills linked for
+  it to `packages/provider-core/src/server/skillPolicy.ts` (process-wide, refreshed on start and after every change
+  and list), and `ClaudeAdapterV2` passes them as the SDK's `skills` option for new sessions. That hides Claude's own,
+  plugin and bundled skills from the model. The chat's skill menu is filtered to the same names (`ClaudeDriver` for the
+  snapshots, the adapter for slash dispatch), so it does not offer what the model cannot see. Every library change
+  refreshes each provider's snapshot and its project snapshots, which otherwise keep five minutes. An empty list passes
+  a name no skill has, because an empty array may be read as no filter. New sessions only; a link or skill added outside T3 counts after the next change or list.
 - **Settings → Skills** (web and desktop, one environment at a time): the library with a switch per linkable provider,
   an editor, create, install, trash, and a read-only list of what providers load from their own folders (from the
   provider snapshots). User guide: `docs/user/skills.md`.
 
 ### Not built
 
-- **Native per-provider switches** (Claude `skillOverrides`, Codex `[[skills.config]]`, OpenCode `permission.skill`): a
-  provider that reads the library itself always has it. Taking a skill away from one of them would mean changing three
-  adapters and their replay fixtures.
+- **Per-skill switches** (Claude `skillOverrides`, Codex `[[skills.config]]`, OpenCode `permission.skill`): a provider
+  that reads the library itself always has it, and Claude's switch below is all or nothing. Taking one skill away from
+  one provider would mean changing three adapters and their replay fixtures.
 - Phase "read-only list from the snapshots" was skipped: symlinked skills have different paths per provider in the
   snapshots, so the list is read from the filesystem and the snapshots only feed the last section.
-- Project skills; a skills.sh search or catalog (a source must be named); adopting a provider's existing skill folder into
-  the library; update checks without fetching; Windows junctions (relative symlinks need developer mode there).
+- Project skills; a skills.sh search or catalog (a source must be named); removing a provider's own skills (import and the Claude switch
+  cover moving them); update checks without fetching; Windows junctions (relative symlinks need developer mode there).
 - A per-write approval card for the agent tools; a `t3_skill_load` for providers with no native skills; a read-only bind
   mount of a host library; sync between environments (upstream PR #24377); bundled workflow skills; a mobile page (like
   memory, Settings pages are web and desktop).

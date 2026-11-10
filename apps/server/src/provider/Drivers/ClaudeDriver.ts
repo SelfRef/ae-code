@@ -23,6 +23,8 @@ import {
 } from "../../orchestration-v2/Adapters/ClaudeAdapterV2.ts";
 import { ProviderDriverError } from "../Errors.ts";
 import { claudeUsageReader } from "./claudeUsage.ts";
+import { filterClaudeSkillsToAllowlist } from "./ClaudeSkills.ts";
+import { claudeSkillAllowlist } from "@t3tools/provider-core/server/skillPolicy";
 import { makeClaudeScopedLimitNames } from "../claudeUsageLimits.ts";
 import * as ClaudeResetCredits from "../claudeResetCredits.ts";
 import * as ResetCreditCoordinator from "../resetCreditCoordinator.ts";
@@ -261,6 +263,13 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv, Path.
               : Effect.void,
           ),
           Effect.map(stampIdentity),
+          Effect.map((provider) => ({
+            ...provider,
+            skills: filterClaudeSkillsToAllowlist(
+              provider.skills,
+              claudeSkillAllowlist(instanceId),
+            ),
+          })),
           Effect.flatMap((provider) =>
             applyManagedNpmInstallStatus(provider, effectiveConfig.binaryPath, processEnv),
           ),
@@ -394,6 +403,13 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv, Path.
           Effect.flatMap((machineSnapshot) =>
             probeClaudeWorkspaceSnapshot(effectiveConfig, machineSnapshot, cwd, processEnv),
           ),
+          Effect.map((workspace) => ({
+            ...workspace,
+            skills: filterClaudeSkillsToAllowlist(
+              workspace.skills,
+              claudeSkillAllowlist(instanceId),
+            ),
+          })),
           Effect.provideService(FileSystem.FileSystem, fileSystem),
           Effect.provideService(Path.Path, path),
         ),

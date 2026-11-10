@@ -2237,6 +2237,9 @@ export const layerWsRpc = (
         [WS_METHODS.skillsInspectSource]: (input) => skillLibrary.inspectSource(input),
         [WS_METHODS.skillsInstall]: (input) => skillLibrary.install(input),
         [WS_METHODS.skillsUpdate]: (input) => skillLibrary.update(input),
+        [WS_METHODS.skillsSetSettings]: (input) => skillLibrary.setSettings(input),
+        [WS_METHODS.skillsImportScan]: () => skillLibrary.scanImport(),
+        [WS_METHODS.skillsImport]: (input) => skillLibrary.importSkills(input),
         [WS_METHODS.scheduledTasksSubscribe]: (_input) =>
           scheduledTasks.subscribeList().pipe(Stream.map(withVisibleWebhookUrls)),
         [WS_METHODS.scheduledTasksUpsert]: (input) => scheduledTasks.upsert(input),

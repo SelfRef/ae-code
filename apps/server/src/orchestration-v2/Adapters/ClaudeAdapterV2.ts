@@ -169,6 +169,7 @@ import {
   customClaudeApiEndpointHost,
   discoverClaudeSkills,
   readClaudeSettingsEnv,
+  filterClaudeSkillsToAllowlist,
 } from "../../provider/Drivers/ClaudeSkills.ts";
 import {
   compileClaudeModelSelection,
@@ -210,6 +211,7 @@ import {
   T3_CODE_ORCHESTRATION_INSTRUCTIONS,
 } from "@t3tools/provider-core/server/orchestrationInstructions";
 import { memoryDigest, nativeMemoryDisabled } from "@t3tools/provider-core/server/memoryPolicy";
+import { claudeSkillAllowlist } from "@t3tools/provider-core/server/skillPolicy";
 import { buildRuntimeInstructions } from "@t3tools/provider-core/server/runtimeInstructions";
 import {
   mcpToolPresentation,
@@ -1755,6 +1757,8 @@ const subagentDeviceInstructions: HookCallback = () =>
     },
   });
 
+const CLAUDE_NO_SKILLS_FILTER = "t3-no-skills";
+
 export function makeClaudeQueryOptions(input: {
   readonly modelSelection: ModelSelection;
   readonly modelCatalog?: ClaudeModelCatalog;
@@ -1785,6 +1789,8 @@ export function makeClaudeQueryOptions(input: {
   readonly toolSearchOverride?: "true";
   /** Saved memories for this thread, from `memoryDigest`; the session carries them once. */
   readonly memoryDigest?: string;
+  /** Settings → Skills: load only these skills (names or directory names). Empty loads none. */
+  readonly skillAllowlist?: ReadonlyArray<string>;
 }): ClaudeAgentSdkQueryOptions {
   const compiledSelection = compileClaudeModelSelection(input.modelSelection, input.modelCatalog);
   const {
@@ -1885,6 +1891,15 @@ export function makeClaudeQueryOptions(input: {
       : effectiveQuerySettings === undefined
         ? {}
         : { settings: effectiveQuerySettings }),
+    // An empty list could be read as "no filter", so none is a name no skill has.
+    ...(input.skillAllowlist === undefined
+      ? {}
+      : {
+          skills:
+            input.skillAllowlist.length === 0
+              ? [CLAUDE_NO_SKILLS_FILTER]
+              : [...input.skillAllowlist],
+        }),
     ...(input.onUserDialog === undefined ? {} : { onUserDialog: input.onUserDialog }),
     ...(input.onElicitation === undefined ? {} : { onElicitation: input.onElicitation }),
     ...(input.supportedDialogKinds === undefined
@@ -5169,7 +5184,7 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
       Effect.map(
         (skills) =>
           new Map(
-            skills
+            filterClaudeSkillsToAllowlist(skills, claudeSkillAllowlist(adapterOptions.instanceId))
               .filter((skill) => skill.enabled && skill.userInvocable !== false)
               .map((skill) => [skill.name, skill]),
           ),
@@ -11209,12 +11224,14 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
             turnInput.runtimePolicy.cwd,
             launchArgSettings,
           );
+          const skillAllowlist = claudeSkillAllowlist(turnInput.appThread.providerInstanceId);
           const queryOptions = makeClaudeQueryOptions({
             modelSelection: turnInput.modelSelection,
             modelCatalog,
             nativeThreadId,
             title: turnInput.appThread.title,
             memoryDigest: memoryDigest(turnInput.appThread.projectId),
+            ...(skillAllowlist === undefined ? {} : { skillAllowlist }),
             resume: shouldResume,
             ...(resumeSessionAt === undefined ? {} : { resumeSessionAt }),
             cwd: turnInput.runtimePolicy.cwd,

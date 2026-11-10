@@ -347,6 +347,22 @@ describe("ClaudeAdapterV2 runtime query policy", () => {
     assert.notInclude(appendOf(), "Reply in Polish");
   });
 
+  it("loads only the listed skills, and none for an empty list", () => {
+    const skillsOf = (skillAllowlist?: ReadonlyArray<string>) =>
+      ClaudeAdapterV2.makeClaudeQueryOptions({
+        modelSelection: CLAUDE_TEST_MODEL_SELECTION,
+        nativeThreadId: "native-skill-allowlist",
+        resume: false,
+        cwd: "/workspace",
+        ...(skillAllowlist === undefined ? {} : { skillAllowlist }),
+      }).skills;
+
+    assert.isUndefined(skillsOf());
+    assert.deepEqual(skillsOf(["tidy", "review"]), ["tidy", "review"]);
+    // An empty list could be read as "no filter", so it names a skill that does not exist.
+    assert.deepEqual(skillsOf([]), ["t3-no-skills"]);
+  });
+
   it("passes every --add-dir launch directory to Claude", () => {
     const options = ClaudeAdapterV2.makeClaudeQueryOptions({
       modelSelection: CLAUDE_TEST_MODEL_SELECTION,

@@ -605,3 +605,10 @@ export const discoverClaudeSkills = Effect.fn("discoverClaudeSkills")(function* 
 
   return [...skillsByName.values()].sort((left, right) => left.name.localeCompare(right.name));
 });
+
+/** Settings → Skills → "Claude uses only the library's skills": the menu offers what the session will load. */
+export const filterClaudeSkillsToAllowlist = (
+  skills: ReadonlyArray<ServerProviderSkill>,
+  allowlist: ReadonlyArray<string> | undefined,
+): ReadonlyArray<ServerProviderSkill> =>
+  allowlist === undefined ? skills : skills.filter((skill) => allowlist.includes(skill.name));

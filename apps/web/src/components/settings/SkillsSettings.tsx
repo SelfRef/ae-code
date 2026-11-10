@@ -7,12 +7,14 @@ import {
 import type {
   EnvironmentId,
   ServerProvider,
+  SkillLibraryImportCandidate,
   SkillLibraryListResult,
   SkillLibrarySkill,
   SkillLibrarySourceSkill,
 } from "@t3tools/contracts";
 import {
   DownloadIcon,
+  FolderInputIcon,
   PencilIcon,
   PlusIcon,
   RefreshCwIcon,
@@ -48,7 +50,8 @@ import {
 type Panel =
   | { readonly mode: "create" }
   | { readonly mode: "edit"; readonly id: string }
-  | { readonly mode: "install" };
+  | { readonly mode: "install" }
+  | { readonly mode: "import" };
 
 export function SkillsSettingsPanel() {
   const { environment } = useSettingsScope();
@@ -74,6 +77,9 @@ function EnvironmentSkills({ environmentId }: { readonly environmentId: Environm
   const list = useEnvironmentQuery(serverEnvironment.skillsList({ environmentId, input: {} }));
   const providers = useEnvironmentProviders().get(environmentId) ?? [];
   const canWrite = useAtomValue(serverEnvironment.writeSkill.permissionAtom(environmentId));
+  const canWriteSettings = useAtomValue(
+    serverEnvironment.setSkillSettings.permissionAtom(environmentId),
+  );
   const [query, setQuery] = useState("");
   const [panel, setPanel] = useState<Panel | null>(null);
   const write = useAtomCommand(serverEnvironment.writeSkill, { label: "skill write" });
@@ -81,6 +87,9 @@ function EnvironmentSkills({ environmentId }: { readonly environmentId: Environm
   const restore = useAtomCommand(serverEnvironment.restoreSkill, { label: "skill restore" });
   const setLink = useAtomCommand(serverEnvironment.setSkillLink, { label: "skill link" });
   const update = useAtomCommand(serverEnvironment.updateSkill, { label: "skill update" });
+  const setSettings = useAtomCommand(serverEnvironment.setSkillSettings, {
+    label: "skill settings",
+  });
 
   const fail = (title: string, result: Parameters<typeof squashAtomCommandFailure>[0]) =>
     toastManager.add(
@@ -116,6 +125,10 @@ function EnvironmentSkills({ environmentId }: { readonly environmentId: Environm
         headerAction={
           canWrite && panel === null ? (
             <div className="flex items-center gap-1.5">
+              <Button size="xs" variant="outline" onClick={() => setPanel({ mode: "import" })}>
+                <FolderInputIcon className="size-3" aria-hidden />
+                Import
+              </Button>
               <Button size="xs" variant="outline" onClick={() => setPanel({ mode: "install" })}>
                 <DownloadIcon className="size-3" aria-hidden />
                 Install
@@ -142,6 +155,26 @@ function EnvironmentSkills({ environmentId }: { readonly environmentId: Environm
             </>
           }
         />
+        {library !== null &&
+        library.targets.some((target) => String(target.driver) === "claudeAgent") ? (
+          <SettingsRow
+            title="Claude uses only the library's skills"
+            description="New Claude sessions offer only the skills linked below, not Claude's own, plugin or built-in ones. Other providers are unaffected."
+            control={
+              <Switch
+                aria-label="Claude uses only the library's skills"
+                checked={library.settings.claudeLibraryOnly}
+                disabled={!canWriteSettings}
+                onCheckedChange={(checked) =>
+                  void attempt(
+                    "Could not change the setting",
+                    setSettings({ environmentId, input: { claudeLibraryOnly: Boolean(checked) } }),
+                  )
+                }
+              />
+            }
+          />
+        ) : null}
         {panel?.mode === "create" ? (
           <CreateSkillForm
             taken={skills.map((skill) => skill.id)}
@@ -156,6 +189,15 @@ function EnvironmentSkills({ environmentId }: { readonly environmentId: Environm
               );
               if (created !== undefined) setPanel({ mode: "edit", id });
             }}
+          />
+        ) : null}
+        {panel?.mode === "import" ? (
+          <ImportPanel
+            environmentId={environmentId}
+            providers={providers}
+            targets={library?.targets ?? []}
+            onClose={() => setPanel(null)}
+            onImported={() => list.refresh()}
           />
         ) : null}
         {panel?.mode === "install" ? (
@@ -721,6 +763,172 @@ function InstallPanel({
             onClick={() => void installSelected()}
           >
             {busy ? "Installing…" : `Install ${selected.size}`}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ImportPanel({
+  environmentId,
+  providers,
+  targets,
+  onClose,
+  onImported,
+}: {
+  readonly environmentId: EnvironmentId;
+  readonly providers: ReadonlyArray<Pick<ServerProvider, "instanceId" | "displayName">>;
+  readonly targets: SkillLibraryListResult["targets"];
+  readonly onClose: () => void;
+  readonly onImported: () => void;
+}) {
+  const scan = useAtomCommand(serverEnvironment.scanSkillImport, { label: "skill import scan" });
+  const importSkills = useAtomCommand(serverEnvironment.importSkills, { label: "skill import" });
+  const [candidates, setCandidates] = useState<ReadonlyArray<SkillLibraryImportCandidate> | null>(
+    null,
+  );
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [move, setMove] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [scanned, setScanned] = useState(false);
+  const keyOf = (candidate: SkillLibraryImportCandidate) =>
+    `${candidate.instanceId}\u0000${candidate.id}`;
+  const labelOf = (instanceId: string) => {
+    const target = targets.find((entry) => entry.instanceId === instanceId);
+    return target === undefined ? instanceId : targetLabel(target, providers);
+  };
+
+  const find = async () => {
+    setBusy(true);
+    setProblem(null);
+    const result = await scan({ environmentId, input: {} });
+    setBusy(false);
+    setScanned(true);
+    if (result._tag === "Failure") {
+      if (!isAtomCommandInterrupted(result)) setProblem(String(squashAtomCommandFailure(result)));
+      return;
+    }
+    setCandidates(result.value.candidates);
+    setSelected(new Set(result.value.candidates.filter((entry) => !entry.inLibrary).map(keyOf)));
+  };
+
+  const importSelected = async () => {
+    const chosen = (candidates ?? []).filter((candidate) => selected.has(keyOf(candidate)));
+    const instanceIds = [...new Set(chosen.map((candidate) => candidate.instanceId))];
+    setBusy(true);
+    setProblem(null);
+    const failures: string[] = [];
+    let imported = 0;
+    for (const instanceId of instanceIds) {
+      const result = await importSkills({
+        environmentId,
+        input: {
+          instanceId,
+          ids: chosen.filter((c) => c.instanceId === instanceId).map((c) => c.id),
+          mode: move ? "move" : "copy",
+        },
+      });
+      if (result._tag === "Failure") {
+        if (!isAtomCommandInterrupted(result))
+          failures.push(String(squashAtomCommandFailure(result)));
+        continue;
+      }
+      imported += result.value.imported.length;
+      for (const entry of result.value.skipped) {
+        failures.push(`${labelOf(instanceId)} ${entry.id}: ${entry.reason}`);
+      }
+    }
+    setBusy(false);
+    onImported();
+    if (imported > 0) {
+      toastManager.add({
+        type: "success",
+        title: `Imported ${imported} ${imported === 1 ? "skill" : "skills"}`,
+      });
+    }
+    if (failures.length > 0) {
+      setProblem(failures.join("\n"));
+      void find();
+      return;
+    }
+    onClose();
+  };
+
+  return (
+    <div className="space-y-2 px-4 py-3">
+      <p className="text-xs text-muted-foreground">
+        Skills that providers keep in their own folders (Claude's <code>~/.claude/skills</code>, for
+        one) can move into the library, which then reaches every provider. Folders a provider
+        manages itself, and links, are not listed.
+      </p>
+      {scanned ? null : (
+        <Button size="xs" variant="outline" disabled={busy} onClick={() => void find()}>
+          {busy ? "Looking…" : "Find skills"}
+        </Button>
+      )}
+      {candidates === null ? null : candidates.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No skills of their own in those folders.</p>
+      ) : (
+        <div className="space-y-1.5">
+          {candidates.map((candidate) => (
+            <label key={keyOf(candidate)} className="flex items-start gap-2 text-sm">
+              <Checkbox
+                className="mt-0.5"
+                checked={selected.has(keyOf(candidate))}
+                disabled={candidate.inLibrary}
+                onCheckedChange={(checked) =>
+                  setSelected((current) => {
+                    const next = new Set(current);
+                    if (checked === true) next.add(keyOf(candidate));
+                    else next.delete(keyOf(candidate));
+                    return next;
+                  })
+                }
+              />
+              <span className="min-w-0">
+                <span className="flex flex-wrap items-center gap-2">
+                  {candidate.name}
+                  <Badge variant="outline">{labelOf(candidate.instanceId)}</Badge>
+                  {candidate.inLibrary ? <Badge variant="outline">In the library</Badge> : null}
+                </span>
+                {candidate.description === undefined ? null : (
+                  <span className="block text-xs text-muted-foreground wrap-anywhere">
+                    {candidate.description}
+                  </span>
+                )}
+              </span>
+            </label>
+          ))}
+          <label className="flex items-start gap-2 text-xs">
+            <Checkbox
+              className="mt-0.5"
+              checked={move}
+              onCheckedChange={(checked) => setMove(checked === true)}
+            />
+            <span>
+              Replace the originals with links, so the provider keeps each skill and its files live
+              in one place. Otherwise the originals stay as they are, and the provider keeps using
+              them.
+            </span>
+          </label>
+        </div>
+      )}
+      {problem === null ? null : (
+        <p className="whitespace-pre-wrap text-xs text-destructive wrap-anywhere">{problem}</p>
+      )}
+      <div className="flex items-center justify-end gap-2">
+        <Button size="xs" variant="ghost" onClick={onClose} disabled={busy}>
+          Close
+        </Button>
+        {candidates === null || candidates.length === 0 ? null : (
+          <Button
+            size="xs"
+            disabled={busy || selected.size === 0}
+            onClick={() => void importSelected()}
+          >
+            {busy ? "Importing…" : `Import ${selected.size}`}
           </Button>
         )}
       </div>

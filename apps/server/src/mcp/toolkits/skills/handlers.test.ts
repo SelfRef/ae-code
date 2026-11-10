@@ -43,7 +43,13 @@ const makeLayer = (runtimeMode: RuntimeMode) =>
         Layer.mock(SkillLibraryService.SkillLibraryService)({
           list: () =>
             Effect.sync(() => void calls.push("list")).pipe(
-              Effect.as({ libraryPath: "/lib", skills: [], targets: [], trash: [] }),
+              Effect.as({
+                libraryPath: "/lib",
+                skills: [],
+                targets: [],
+                trash: [],
+                settings: { claudeLibraryOnly: false },
+              }),
             ),
           write: (input) =>
             input.id === "taken"
