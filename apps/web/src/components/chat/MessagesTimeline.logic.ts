@@ -71,6 +71,7 @@ import { compactDynamicToolOutput } from "@t3tools/shared/toolOutput";
 import { htmlRenderReferencesEqual, type HtmlRenderReference } from "@t3tools/shared/htmlRender";
 import { mcpAppReferencesEqual, type McpAppReference } from "@t3tools/shared/mcpApp";
 import { dynamicToolTitle } from "@t3tools/shared/toolActivity";
+import { deriveRunGitActivity, type RunGitActivity } from "./runGitActivity";
 import { formatWorkspaceRelativePath } from "../../filePathDisplay";
 import {
   collectToolFilePaths,
@@ -600,6 +601,7 @@ type MessagesTimelineRowContent =
       showAssistantCopyButton: boolean;
       assistantCopyStreaming: boolean;
       assistantTurnDiffSummary?: TurnDiffSummary | undefined;
+      assistantRunGitActivity?: RunGitActivity | undefined;
       revertTurnCount?: number | undefined;
       /** Another of your messages follows directly, so the two sit closer together. */
       groupedWithNext?: boolean;
@@ -1513,6 +1515,13 @@ function deriveTimelineTurnFolds(
   });
 }
 
+function assistantRunGitActivity(
+  summary: TurnDiffSummary | undefined,
+  byRunId: ReadonlyMap<RunId, RunGitActivity>,
+): RunGitActivity | undefined {
+  return summary && summary.files.length > 0 ? byRunId.get(summary.runId) : undefined;
+}
+
 export function deriveMessagesTimelineRows(input: {
   timelineEntries: ReadonlyArray<TimelineEntry>;
   pendingApprovalRequestIds?: ReadonlySet<RuntimeRequestId>;
@@ -1553,6 +1562,7 @@ export function deriveMessagesTimelineRows(input: {
       turnDiffSummaryByAssistantMessageId.set(summary.assistantMessageId, summary);
     }
   }
+  const gitActivityByRunId = deriveRunGitActivity(input.timelineEntries);
   const unsettledRunId = deriveUnsettledRunId(input.latestRun ?? null, input.runningRunId ?? null);
   const revertTurnCountByUserMessageId = input.supportsConversationRollback
     ? deriveRevertTurnCountByUserMessageId({
@@ -2209,6 +2219,10 @@ export function deriveMessagesTimelineRows(input: {
         timelineEntry.message.role === "assistant"
           ? turnDiffSummaryByAssistantMessageId.get(timelineEntry.message.id)
           : undefined,
+      assistantRunGitActivity: assistantRunGitActivity(
+        turnDiffSummaryByAssistantMessageId.get(timelineEntry.message.id),
+        gitActivityByRunId,
+      ),
       revertTurnCount:
         timelineEntry.message.role === "user"
           ? revertTurnCountByUserMessageId.get(timelineEntry.message.id)
@@ -2681,6 +2695,8 @@ function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean
         a.showAssistantCopyButton === bm.showAssistantCopyButton &&
         a.assistantCopyStreaming === bm.assistantCopyStreaming &&
         a.assistantTurnDiffSummary === bm.assistantTurnDiffSummary &&
+        a.assistantRunGitActivity?.commits === bm.assistantRunGitActivity?.commits &&
+        a.assistantRunGitActivity?.pushed === bm.assistantRunGitActivity?.pushed &&
         a.revertTurnCount === bm.revertTurnCount &&
         a.groupedWithNext === bm.groupedWithNext &&
         a.groupedWithPrevious === bm.groupedWithPrevious &&

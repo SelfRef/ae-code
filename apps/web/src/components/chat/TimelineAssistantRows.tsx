@@ -11,6 +11,7 @@ import { HtmlRenderFrame } from "./HtmlRenderFrame";
 import { McpAppFrame } from "./McpAppFrame";
 import { checkpointFileTotals } from "@t3tools/client-runtime/state/thread-checkpoints";
 import { ChangedFilesCard } from "./ChangedFilesTree";
+import { type RunGitActivity } from "./runGitActivity";
 import { useFileContextMenuHandler } from "../../fileContextMenu";
 import { useAssistantMessageText, useProject, useThreadShell } from "../../state/entities";
 import { MessageCopyButton } from "./MessageCopyButton";
@@ -65,6 +66,7 @@ export function AssistantTimelineRow({ row }: { row: Extract<TimelineRow, { kind
         {ctx.onOpenTurnDiff ? (
           <AssistantChangedFilesSection
             turnSummary={row.assistantTurnDiffSummary}
+            gitActivity={row.assistantRunGitActivity}
             routeThreadKey={ctx.routeThreadKey}
             resolvedTheme={ctx.resolvedTheme}
             onOpenTurnDiff={ctx.onOpenTurnDiff}
@@ -298,11 +300,13 @@ export function McpAppTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "
  *  so toggling re-renders only this component — not the entire list. */
 const AssistantChangedFilesSection = memo(function AssistantChangedFilesSection({
   turnSummary,
+  gitActivity,
   routeThreadKey,
   resolvedTheme,
   onOpenTurnDiff,
 }: {
   turnSummary: TurnDiffSummary | undefined;
+  gitActivity: RunGitActivity | undefined;
   routeThreadKey: string;
   resolvedTheme: "light" | "dark";
   displayThreadKey?: string;
@@ -315,6 +319,7 @@ const AssistantChangedFilesSection = memo(function AssistantChangedFilesSection(
   return (
     <AssistantChangedFilesSectionInner
       turnSummary={turnSummary}
+      gitActivity={gitActivity}
       checkpointFiles={checkpointFiles}
       routeThreadKey={routeThreadKey}
       resolvedTheme={resolvedTheme}
@@ -325,12 +330,14 @@ const AssistantChangedFilesSection = memo(function AssistantChangedFilesSection(
 
 function AssistantChangedFilesSectionInner({
   turnSummary,
+  gitActivity,
   checkpointFiles,
   routeThreadKey,
   resolvedTheme,
   onOpenTurnDiff,
 }: {
   turnSummary: TurnDiffSummary;
+  gitActivity: RunGitActivity | undefined;
   checkpointFiles: TurnDiffSummary["files"];
   routeThreadKey: string;
   resolvedTheme: "light" | "dark";
@@ -357,6 +364,7 @@ function AssistantChangedFilesSectionInner({
       runId={turnSummary.runId}
       files={checkpointFiles}
       totals={checkpointFileTotals(turnSummary)}
+      gitActivity={gitActivity}
       allDirectoriesExpanded={allDirectoriesExpanded}
       resolvedTheme={resolvedTheme}
       onToggleAllDirectories={() =>
