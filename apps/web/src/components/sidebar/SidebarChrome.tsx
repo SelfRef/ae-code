@@ -3,6 +3,7 @@ import {
   ArrowRightIcon,
   ChartNoAxesColumnIcon,
   CircleDotIcon,
+  GitBranchIcon,
   SettingsIcon,
   TagIcon,
 } from "lucide-react";
@@ -23,6 +24,7 @@ import { cn } from "../../lib/utils";
 import { usePullRequestsSupported } from "../../state/environments";
 import { useSourceControlSignIn } from "../../state/sourceControl";
 import { useProjects } from "../../state/entities";
+import { branchProjects } from "@t3tools/client-runtime/branch-overview";
 import { issueProjects } from "@t3tools/client-runtime/issue-projects";
 import { T3Wordmark } from "../T3Wordmark";
 import {
@@ -250,7 +252,9 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
   });
   const signIn = useSourceControlSignIn();
   const pullRequestsSupported = usePullRequestsSupported() && !signIn.pullRequestsHidden;
-  const issuesSupported = issueProjects(useProjects(), signIn.githubSignedOut).length > 0;
+  const projects = useProjects();
+  const branchesSupported = branchProjects(projects).length > 0;
+  const issuesSupported = issueProjects(projects, signIn.githubSignedOut).length > 0;
   const closeMobileSidebar = () => {
     if (isMobile) {
       setOpenMobile(false);
@@ -262,6 +266,10 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
       to: "/pull-requests",
       search: readPullRequestListPreferences(),
     });
+  };
+  const handleBranchesClick = () => {
+    closeMobileSidebar();
+    void navigate({ to: "/branches" });
   };
   const handleIssuesClick = () => {
     closeMobileSidebar();
@@ -309,6 +317,13 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
               icon={<PullRequestGlyph.pullRequest />}
               label="Pull requests"
               onClick={handlePullRequestsClick}
+            />
+          ) : null}
+          {branchesSupported ? (
+            <SidebarUtilityItem
+              icon={<GitBranchIcon />}
+              label="Branches"
+              onClick={handleBranchesClick}
             />
           ) : null}
           {issuesSupported ? (

@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [38] | Branches: every branch and worktree of a project with what to push, pull and merge, on the web (`/branches`)                                                           | done    |
 | [37] | Forgejo and Gitea use the `gt` CLI (Gitea 28+) instead of `tea`; `fj` stays preferred                                                                                  | done    |
 | [36] | GitHub Releases: read-only list and detail per project on the web (`/releases`, right panel) and in the Android app                                                    | done    |
 | [35] | Android catch-up: tinted Input, Done and draft threads; merge, force push and worktree switching in Git                                                                | done    |
@@ -74,6 +75,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 [27]: #skills-manager-change-27
 [30]: #synced-drafts-change-30
 [33]: #saved-environments-shared-through-the-server-change-33
+[38]: #branches-change-38
 [36]: #github-releases-change-36
 [35]: #android-catch-up-change-35
 [26]: #pull-requests-from-the-fork-change-26
@@ -1233,6 +1235,32 @@ default for server threads at full card density; **Thread actions** in the card'
 - The menu's Rename starts the header's inline rename through the `threadRename` registry (`apps/web/src/threadRename.ts`),
   so it does nothing when no header is mounted.
 - No data migration: a new key in the sparse `threadDetailsItems` setting, absent meaning the default.
+
+## Branches (change 38)
+
+A page that answers "was this merged yet?": a project's branches and worktrees with how far each is from the default
+branch and from its own upstream. Read-only; nothing here switches, pulls, pushes or deletes.
+
+- **Server**: one RPC, `vcs.branchOverview` (read scope; contract `packages/contracts/src/branchOverview.ts`), a method on
+  `GitVcsDriver` (`branchOverview`, parsing in `apps/server/src/vcs/branchOverview.ts`). It reuses the ref snapshot behind
+  `vcs.listRefs` (local branches, remote-only branches, worktree paths, default branch) and adds one `for-each-ref` for
+  commit date, subject, upstream and `upstream:track`, and one `rev-list --left-right --count` per branch against the
+  default ref. The default ref is the local default branch when it exists (merges land there before they are pushed), else
+  `origin/<default>`. At most 200 branches come back, default first and then by latest
+  commit; `truncated` says more exist.
+- **Fresh counts**: the clients ask with `fetch: true`, which goes through the Git status poll's throttled fetch
+  (at most one per 15 s, backing off on failure), so ahead and behind follow the remote without a fetch storm. Offline,
+  the counts are those of the last fetch.
+- **Entries** are "Branch" (plain local), "Worktree" (checked out in a linked worktree, not the main checkout) or
+  "Remote only". Highlighted: a branch with commits the default lacks ("N ahead of main", warning tint). A branch
+  with none is "Merged". Each row also shows commits to push and to pull, "Not pushed" without an upstream, and
+  "Upstream deleted".
+- **Threads**: a row links to the newest live thread of that project working on it (in that worktree, or on that branch in
+  the project root). Matching is client-side (`threadForBranch` in `packages/client-runtime/src/branchOverview.ts`);
+  remote-only branches have no thread.
+- **Web**: page `/branches` (project picker when several projects, All / Not merged filter), a sidebar button before
+  Issues and a command-palette action. Shown for every project that is not archived or a scratch one.
+- No data migration.
 
 ## GitHub Releases (change 36)
 
