@@ -1,9 +1,11 @@
 import type { DevicePlatform, EnvironmentId } from "@t3tools/contracts";
 import { useAtomValue } from "@effect/atom-react";
+import * as Schema from "effect/Schema";
 import { AsyncResult, Atom } from "effect/reactivity";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { cn } from "~/lib/utils";
+import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { Button } from "~/components/ui/button";
 import { renewDeviceHubAccess, useDeviceHubAccess } from "~/state/device";
 import { resolveDeviceShape } from "@t3tools/client-runtime/device/shape-profile";
@@ -24,6 +26,8 @@ import {
 } from "./deviceStreamSession";
 import type { DeviceHardwareButton, DeviceScreenSize } from "@t3tools/client-runtime/device/stream";
 import { observeResize } from "~/lib/observeResize";
+
+const PresentationSchema = Schema.Literals(["phone", "flat"]);
 
 const NO_SESSION_ATOM = Atom.make<DeviceStreamSession | null>(null).pipe(
   Atom.withLabel("device-stream:none"),
@@ -98,7 +102,11 @@ export function DeviceStreamView(props: {
 }) {
   const model = deviceModel(props.platform, props.deviceName ?? "");
   const isDuo = model?.id === "iphone-duo";
-  const [presentation, setPresentation] = useState<"phone" | "flat">("phone");
+  const [presentation, setPresentation] = useLocalStorage(
+    "t3code:device-presentation:v1",
+    "phone",
+    PresentationSchema,
+  );
   const [keyboardAttached, setKeyboardAttached] = useState(false);
   const cancelPhoneInputRef = useRef<(() => void) | null>(null);
   const cancelPhoneInput = () => cancelPhoneInputRef.current?.();
