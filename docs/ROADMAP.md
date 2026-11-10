@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [25] | The Docker image updates in place from the fork's GitHub releases when `T3CODE_SELF_UPDATE=true` (Settings → About); one update channel, no Stable/Nightly picker      | done    |
 | [24] | The changed-files card under an answer says when that run committed and pushed (read from its successful `git commit` / `git push` commands)                           | done    |
 | [23] | Force push for a diverged branch (Git menu → "Force push..."), with a modal listing the commits it deletes and sends                                                   | done    |
 | [22] | Git panel and Diff panel start on uncommitted changes; "Not pushed" is the old branch diff; Push shows how many commits it sends                                       | done    |
@@ -59,6 +60,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 [22]: #uncommitted-changes-first-change-22
 [23]: #force-push-change-23
 [24]: #commit-and-push-on-the-changed-files-card-change-24
+[25]: #in-place-updates-of-the-docker-image-change-25
 
 `done` means it is a commit on `main`; the commit is found by subject (`git log --grep`), not by hash, because every
 rebase onto upstream changes the hashes. The history rules and the sync procedure are in the last section.
@@ -373,6 +375,8 @@ image to add the ones you use.
 
 A package GitHub creates starts private: after the first push, make `ae-code` public in the package settings (Package
 settings, Change visibility). Checked locally by building it around an upstream archive and starting the server.
+
+In-place updates are off by default; see "In-place updates of the Docker image (change 25)".
 
 ## Self-hosted Android push (change 10)
 
@@ -822,6 +826,33 @@ only way to know was to scroll through the commands.
   commands, not the repository: a commit made some other way, or whose command output was never loaded, is not shown,
   and neither is the push state the repository is in now.
 - Web only; mobile has no changed-files card. No data migration, no contract change.
+
+## In-place updates of the Docker image (change 25)
+
+Upstream's remote update path needs an npm package, a boot service or the desktop app, and its Settings → About offered
+a Stable/Nightly "Update track". The fork publishes one stream of GitHub releases (`vYYYY.MM.DD`) and its server runs
+in a container, so none of that applied.
+
+- **Switch:** `T3CODE_SELF_UPDATE=true` on the image. The image's entrypoint (`packaging/docker/entrypoint.sh`) then
+  sets `T3CODE_UPDATE_SUPERVISED=1` for the server, which is what makes the server report the existing `respawn`
+  self-update capability. Without the switch the entrypoint `exec`s the server as before and Settings → About says
+  that updates are off. A plain server never gets the capability, because nothing would start it again.
+- **Check:** `server.npmRelease` (the RPC keeps upstream's name) answers `latest` from
+  `api.github.com/repos/SelfRef/ae-code/releases/latest`, tag `v2026.11.09` read as version `2026.1109.0`. Anonymous
+  GitHub requests are limited to 60 an hour per address; the answer is cached for a minute.
+- **Install:** About → Install calls the existing `server.updateServer`. The server only accepts the newest release,
+  downloads `ae-code-linux-x64.tar.gz`, checks it against the digest GitHub lists for the asset, unpacks it into
+  `<home>/updates/<version>`, runs its `ae-code --version`, points `<home>/updates/current` at it and stops itself as a
+  SIGTERM would. The entrypoint then starts the server again from `current`. It keeps the image's own binary unless the
+  download is newer (an updated image over an old volume) and starts again only when `current` changed or on SIGHUP
+  (`docker kill -s HUP <container>` restarts the server without recreating the container), so `docker stop` and
+  crashes behave as before. The client's existing respawn handling waits for the server to come back on the new version.
+- **Limits:** the downloaded release has to run on the image's base (Ubuntu 24.04), and the state volume must allow
+  executables. Rolling back is `rm -r <home>/updates` and a restart. The desktop app's own updater is unchanged: no
+  desktop installers are released (see Identity).
+- **Update track removed:** the Stable/Nightly picker, its dialog and the hosted-app channel switch are gone, because the
+  fork has one channel. The track-switch planning in the sidebar's "update everything" code is left in place to keep
+  rebases small.
 
 ## Keeping the fork up to date with upstream
 
