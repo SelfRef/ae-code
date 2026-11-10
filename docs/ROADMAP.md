@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [40] | Other ways to run the Android emulator in the Device panel: investigate Cuttlefish and scrcpy; a Google Play image and foldable support are required                   | planned |
 | [39] | File operations in the Files panel: create files and folders, rename, move, copy and delete from a row's or the empty area's menu, on the web and in the Android app   | done    |
 | [38] | Branches: every branch and worktree of a project with what to push, pull and merge, on the web (`/branches`) and in the Android app                                    | done    |
 | [37] | Forgejo and Gitea use the `gt` CLI (Gitea 28+) instead of `tea`; `fj` stays preferred                                                                                  | done    |
@@ -77,6 +78,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 [27]: #skills-manager-change-27
 [30]: #synced-drafts-change-30
 [33]: #saved-environments-shared-through-the-server-change-33
+[40]: #other-ways-to-run-the-android-emulator-change-40
 [38]: #branches-change-38
 [39]: #file-operations-change-39
 [36]: #github-releases-change-36
@@ -1327,6 +1329,53 @@ thread details card) and the action editor.
 - **Confirm pushing to the default branch** is a device preference on Android (web keeps it in the browser): Settings →
   Source control → This device.
 - No data migration: one new optional key, `confirmPushToDefaultBranch`, in the Android preferences (absent means on).
+
+## Other ways to run the Android emulator (change 40)
+
+An investigation; nothing is built. Today the Device panel runs the Android Emulator from the SDK through upstream's
+`expo-device-hub` (`serve-emu`) and drives it with `agent-device` (`docs/internals/devices.md`). It works on a headless
+host, and the panel already has fold controls (`/api/fold`, `DeviceAndroidFoldControls`). The question is whether another
+way to run an emulator beats it on a server, in the host install and in Docker.
+
+**Requirements.** A candidate that fails either is out:
+
+1. **A Google Play image.** The Play Store opens, signs in and installs, and Play Integrity passes enough for the apps
+   under test. An AOSP image does not count.
+2. **Foldable support.** Fold and unfold at runtime (posture and hinge angle), the inner display resizing, and apps
+   receiving the fold state (Jetpack WindowManager), driven from the panel and by agents.
+
+**Baseline to beat.** The SDK emulator with a Play Store foldable AVD (a foldable device definition with a
+`google_apis_playstore` image), through the hub as now. First check that it meets both requirements on this host;
+if it does not, say where it fails. A physical foldable phone over adb meets both by construction (the hub already brings
+scrcpy for physical phones), so it is the fallback when no emulator does.
+
+**Cuttlefish.** Google's virtual device for Linux servers: headless, adjustable form factor, a WebRTC streamer, and a
+foldable target (`cf_x86_64_foldable`, seen in a 2021 commit of `device/google/cuttlefish`; check that it still exists and
+what it does). Unverified, and the likely blocker: Cuttlefish is built from AOSP, which ships without Google Play
+services, and nothing found says a public Play image exists. Check this first; if there is none, stop here. If there
+is one, check:
+
+- KVM and kernel needs on the host and in a container, and the cost beside the SDK emulator (boot time, idle CPU and RAM).
+- How the panel would reach it: `serve-emu`'s WebRTC path (used for EAS Simulator) already exists in the client; a host that
+  speaks the `serve-emu` protocol needs almost no client change (see change 1, which uses the same seam).
+
+**scrcpy.** A mirror and controller, not an emulator: it runs on top of any adb device, so it would replace the stream and
+input path, not the emulator, and Play and foldable support still come from whatever it mirrors. Things to find out: what
+it adds over `serve-emu` for an emulator (latency, audio, clipboard, hardware keyboard, its virtual display), whether a
+browser client can decode it (`ws-scrcpy` and `@yume-chan/scrcpy-decoder-webcodecs` use WebCodecs, so the secure-context
+limit stays), and how the fold posture is set, since that still comes from the emulator.
+
+**Docker.** The release image has no Android SDK, and a container has no `/dev/kvm` unless it is passed in. Find out what a derived image needs to run an emulator
+and what that costs, for each candidate.
+
+**Method.** Per candidate: the two requirements first, as a pass or fail with the evidence. Then, on this host, boot time,
+idle CPU and RAM, and the panel's frame latency over HTTPS (Tailscale). Only a candidate that beats the baseline on a
+named measure gets a `DeviceHost` adapter, built as in change 1: platform stays `android`, `upstream` names the backend,
+the proxy allowlist grows by its paths. Record the outcome here and drop what failed. A new setup step or consent screen
+would need docs under `docs/operations`; no data migration and no changelog line until something ships.
+
+Sources: [Cuttlefish](https://source.android.com/docs/devices/cuttlefish), [ws-scrcpy](https://github.com/maxduke/ws-scrcpy),
+[Tango's scrcpy WebCodecs decoder](https://docs.tangoapp.dev/scrcpy/video/web-codecs).
 
 ## Keeping the fork up to date with upstream
 
