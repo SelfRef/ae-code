@@ -228,6 +228,7 @@ import {
   IssueListResult,
   IssueReadInput,
 } from "./issue.ts";
+import { ReleaseDetail, ReleaseListInput, ReleaseListResult, ReleaseReadInput } from "./release.ts";
 import {
   RelayClientInstallFailedError,
   RelayClientInstallProgressEventSchema,
@@ -671,6 +672,8 @@ export const WS_METHODS = {
   pullRequestsLabelCandidates: "pullRequests.labelCandidates",
   issuesList: "issues.list",
   issuesRead: "issues.read",
+  releasesList: "releases.list",
+  releasesRead: "releases.read",
   pullRequestsSetLabels: "pullRequests.setLabels",
 
   sourceControlLookupRepository: "sourceControl.lookupRepository",
@@ -1331,6 +1334,18 @@ const WsIssuesListRpc = Rpc.make(WS_METHODS.issuesList, {
 const WsIssuesReadRpc = Rpc.make(WS_METHODS.issuesRead, {
   payload: IssueReadInput,
   success: IssueDetail,
+  error: IssueRpcError,
+});
+
+const WsReleasesListRpc = Rpc.make(WS_METHODS.releasesList, {
+  payload: ReleaseListInput,
+  success: ReleaseListResult,
+  error: IssueRpcError,
+});
+
+const WsReleasesReadRpc = Rpc.make(WS_METHODS.releasesRead, {
+  payload: ReleaseReadInput,
+  success: ReleaseDetail,
   error: IssueRpcError,
 });
 
@@ -2405,6 +2420,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsPullRequestsSetLabelsRpc,
   WsIssuesListRpc,
   WsIssuesReadRpc,
+  WsReleasesListRpc,
+  WsReleasesReadRpc,
   WsSourceControlLookupRepositoryRpc,
   WsSourceControlCloneRepositoryRpc,
   WsSourceControlPublishRepositoryRpc,

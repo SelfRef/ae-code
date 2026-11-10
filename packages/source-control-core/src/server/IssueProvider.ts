@@ -3,6 +3,8 @@ import type {
   IssueDetail,
   IssueListState,
   IssueSummary,
+  ReleaseDetail,
+  ReleaseSummary,
   SourceControlProviderKind,
 } from "@t3tools/contracts";
 
@@ -13,7 +15,12 @@ export interface IssueProviderPage {
   readonly hasMore: boolean;
 }
 
-/** Reads of a host's issues; hosts without one have no Issues view. */
+export interface ReleaseProviderPage {
+  readonly releases: ReadonlyArray<ReleaseSummary>;
+  readonly hasMore: boolean;
+}
+
+/** Reads of a host's issues and releases; hosts without one have no Issues or Releases view. */
 export interface IssueProviderApi {
   readonly kind: SourceControlProviderKind;
   readonly listIssues: (input: {
@@ -29,4 +36,15 @@ export interface IssueProviderApi {
     readonly repository: string;
     readonly number: number;
   }) => Effect.Effect<IssueDetail, PullRequestProviderError>;
+  readonly listReleases: (input: {
+    readonly host: string;
+    readonly repository: string;
+    readonly page: number;
+    readonly pageSize: number;
+  }) => Effect.Effect<ReleaseProviderPage, PullRequestProviderError>;
+  readonly getRelease: (input: {
+    readonly host: string;
+    readonly repository: string;
+    readonly id: number;
+  }) => Effect.Effect<ReleaseDetail, PullRequestProviderError>;
 }
