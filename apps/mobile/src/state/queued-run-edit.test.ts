@@ -146,10 +146,14 @@ describe("beginQueuedRunEdit", () => {
     const runs = Atom.make<ReadonlyArray<{ readonly id: RunId; readonly status: string }> | null>([
       { id: runId, status: "queued" },
     ]);
-    beginQueuedRunEdit(threadKey, edit([]), runs);
+    const queueHold = { hold: vi.fn(), release: vi.fn() };
+    beginQueuedRunEdit(threadKey, edit([]), runs, queueHold);
+    expect(queueHold.hold).toHaveBeenCalledOnce();
+    expect(queueHold.release).not.toHaveBeenCalled();
 
     appAtomRegistry.set(runs, [{ id: runId, status: "running" }]);
 
+    expect(queueHold.release).toHaveBeenCalledOnce();
     expect(getQueuedRunEdit(threadKey)).toBeNull();
     expect(getComposerDraftSnapshot(threadKey).text).toBe("");
     expect(getComposerDraftSnapshot(queuedEditDraftKey(threadKey, runId)).text).toBe("");

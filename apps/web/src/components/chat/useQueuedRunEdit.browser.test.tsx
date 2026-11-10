@@ -39,6 +39,9 @@ const mocks = await vi.hoisted(async () => {
   const { Atom } = await import("effect/reactivity");
   return {
     editQueuedRun: vi.fn<(value: unknown) => Promise<{ readonly _tag: "Success" | "Failure" }>>(),
+    holdThreadQueue: vi.fn(async (_value: unknown) => ({ _tag: "Success" as const })),
+    resumeThreadQueue: vi.fn(async (_value: unknown) => ({ _tag: "Success" as const })),
+    commands: { editQueuedRun: {}, holdThreadQueue: {}, resumeThreadQueue: {} },
     // The projection's runs per thread, written by each test to stand in for the server.
     threadRuns: Atom.family((_key: string) =>
       Atom.make<ReadonlyArray<RunStatus> | null>(null).pipe(Atom.keepAlive),
@@ -47,7 +50,12 @@ const mocks = await vi.hoisted(async () => {
 });
 
 vi.mock("../../state/use-atom-command", () => ({
-  useAtomCommand: () => mocks.editQueuedRun,
+  useAtomCommand: (command: object) =>
+    command === mocks.commands.holdThreadQueue
+      ? mocks.holdThreadQueue
+      : command === mocks.commands.resumeThreadQueue
+        ? mocks.resumeThreadQueue
+        : mocks.editQueuedRun,
 }));
 
 vi.mock("../../hooks/useSettings", () => ({
@@ -62,7 +70,7 @@ vi.mock("../../state/threads", async () => {
   return {
     threadEnvironment: {
       snapshotAtom: () => Atom.make(null),
-      editQueuedRun: {},
+      ...mocks.commands,
     },
     environmentThreadDetails: {
       statusAtom: () => Atom.make("ready"),
@@ -152,6 +160,8 @@ function view(
 function setup() {
   mocks.editQueuedRun.mockReset();
   useAttachmentUploadStore.setState({ uploadsByImageId: {} });
+  mocks.holdThreadQueue.mockClear();
+  mocks.resumeThreadQueue.mockClear();
   useComposerDraftStore.setState({ draftsByThreadKey: {}, draftThreadsByThreadKey: {} });
   setRuns(THREAD_A, "queued");
   setRuns(THREAD_B, "queued");
@@ -227,9 +237,13 @@ describe("useQueuedRunEdit", () => {
           .getState()
           .setRuntimeMode(requireHook(hook).draftTarget, "full-access"),
       );
+      expect(mocks.holdThreadQueue).toHaveBeenCalledOnce();
+      expect(mocks.resumeThreadQueue).not.toHaveBeenCalled();
       await act(() => setRuns(THREAD_A, "running"));
       expect(toast).not.toHaveBeenCalled();
       expect(requireHook(hook).isEditing).toBe(false);
+      // The edit's hold is released when its run leaves the queue.
+      expect(mocks.resumeThreadQueue).toHaveBeenCalledOnce();
       await act(() => setRuns(THREAD_A, "queued"));
       await act(() => requireHook(hook).beginEdit(request));
       const update = screen.getByRole("button", { name: "Update queued message" });

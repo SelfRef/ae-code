@@ -711,6 +711,39 @@ it.effect.each(["thread.stop", "run.interrupt"] as const)(
     }).pipe(Effect.provide(layerTest)),
 );
 
+it.effect("queue.hold holds only queued runs once, and queue.resume releases them", () =>
+  Effect.gen(function* () {
+    const orchestrator = yield* Orchestrator.OrchestratorV2;
+    const threadId = ThreadId.make("thread:queue-hold");
+    yield* createWatchingThread(threadId, 6);
+    yield* send(threadId, "active", "start_immediately");
+    yield* send(threadId, "follow-up", "queue_after_active");
+    const held = () =>
+      orchestrator
+        .getThreadProjection(threadId)
+        .pipe(
+          Effect.map((projection) =>
+            projection.runs.map((run) => `${run.status}:${run.queueHeld === true}`),
+          ),
+        );
+    for (const commandId of ["hold-1", "hold-2"]) {
+      yield* orchestrator.dispatch({
+        type: "queue.hold",
+        commandId: CommandId.make(commandId),
+        threadId,
+      });
+      assert.deepEqual((yield* held()).at(-1), "queued:true");
+      assert.notInclude((yield* held())[0], "queued");
+    }
+    yield* orchestrator.dispatch({
+      type: "queue.resume",
+      commandId: CommandId.make("resume-hold"),
+      threadId,
+    });
+    assert.isFalse((yield* held()).includes("queued:true"));
+  }).pipe(Effect.provide(layerTest)),
+);
+
 it.effect("a message the user sends after Stop releases the held queue; an agent's does not", () =>
   Effect.gen(function* () {
     const orchestrator = yield* Orchestrator.OrchestratorV2;
