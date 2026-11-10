@@ -74,6 +74,10 @@ jobs:
             echo "version=$version"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Check the changelog has notes for the release
+        if: steps.meta.outputs.release == 'true'
+        run: scripts/release-notes-section.sh "${{ steps.meta.outputs.tag }}" > /dev/null
+
   # The Linux x64 server as an archive: the server bundle and web client packed
   # into a single executable, with the resource monitor and libatomic beside it.
   # These are the CLI archive steps of upstream's release-desktop.yml without
@@ -292,23 +296,30 @@ jobs:
           path: release-assets
           merge-multiple: true
 
-      # What changed since the previous release: a link to upstream's commits
-      # between the two upstream bases, and the fork patches whose subjects the
-      # previous release did not have (every rebase rewrites the hashes, so the
-      # subject is the identity). The whole patch list is docs/ROADMAP.md.
+      # The notes are docs/CHANGELOG.md (see scripts/release-notes-section.sh),
+      # then a collapsed full list: a link to upstream's commits between the
+      # two upstream bases, and the fork patches whose subjects the previous
+      # release did not have (every rebase rewrites the hashes, so the subject
+      # is the identity). The whole patch list is docs/ROADMAP.md.
       - name: Write release notes
         env:
           GH_TOKEN: ${{ github.token }}
           REF: ${{ needs.prepare.outputs.ref }}
+          TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           set -euo pipefail
           git remote add upstream https://github.com/pingdotgg/t3code.git
           git fetch --no-tags --filter=blob:none upstream main
           base="$(git merge-base HEAD upstream/main)"
           last="$(gh release list --limit 1 --json tagName --jq '.[0].tagName // ""')"
-          git log --reverse --format='%s' "$base..HEAD" > patches.txt
+          git log --reverse --format='%s' "$base..HEAD" | { grep -v '^fixup! ' || true; } > patches.txt
           {
+            scripts/release-notes-section.sh "$TAG"
+            echo
             echo "Built from ${GITHUB_REPOSITORY}@${REF:0:10} on top of pingdotgg/t3code@${base:0:10}."
+            echo
+            echo "<details>"
+            echo "<summary>Full changelog</summary>"
             echo
             if [[ -n "$last" ]] && git rev-parse -q --verify "refs/tags/$last^{commit}" > /dev/null; then
               last_base="$(git merge-base "$last" upstream/main)"
@@ -322,14 +333,18 @@ jobs:
               new="$(grep -vxFf last-patches.txt patches.txt | sed 's/^/- /' || true)"
               if [[ -n "$new" ]]; then
                 echo "New fork changes since $last:"
+                echo
                 echo "$new"
               else
                 echo "No new fork changes since $last."
               fi
             else
               echo "Fork changes:"
+              echo
               sed 's/^/- /' patches.txt
             fi
+            echo
+            echo "</details>"
           } > release-notes.md
           cat release-notes.md
 
