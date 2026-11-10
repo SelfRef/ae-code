@@ -12,6 +12,8 @@ import {
   type VcsCreateRefResult,
   type VcsCreateWorktreeInput,
   type VcsCreateWorktreeResult,
+  type VcsBranchOverviewInput,
+  type VcsBranchOverviewResult,
   type VcsListRefsInput,
   type VcsListRefsResult,
   type GitManagerServiceError,
@@ -92,6 +94,9 @@ export class GitWorkflowService extends Context.Service<
     readonly listRefs: (
       input: VcsListRefsInput,
     ) => Effect.Effect<VcsListRefsResult, GitCommandError>;
+    readonly branchOverview: (
+      input: VcsBranchOverviewInput,
+    ) => Effect.Effect<VcsBranchOverviewResult, GitCommandError>;
     readonly createWorktree: (
       input: VcsCreateWorktreeInput,
       options?: GitVcsDriver.CreateWorktreeOptions,
@@ -462,6 +467,20 @@ export const make = Effect.gen(function* () {
       return detectGitRepositoryForCommand("GitWorkflowService.listRefs", input.cwd).pipe(
         Effect.flatMap((isGitRepository) =>
           isGitRepository ? git.listRefs(input) : Effect.succeed(nonRepositoryListRefs()),
+        ),
+      );
+    }),
+    branchOverview: Effect.fn("GitWorkflowService.branchOverview")(function (input) {
+      return detectGitRepositoryForCommand("GitWorkflowService.branchOverview", input.cwd).pipe(
+        Effect.flatMap((isGitRepository) =>
+          isGitRepository
+            ? git.branchOverview(input)
+            : Effect.succeed({
+                isRepo: false,
+                defaultRef: null,
+                branches: [],
+                truncated: false,
+              } satisfies VcsBranchOverviewResult),
         ),
       );
     }),

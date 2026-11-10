@@ -259,6 +259,10 @@
       "types": "./src/state/peerPairingCode.ts",
       "default": "./src/state/peerPairingCode.ts"
     },
+    "./branch-overview": {
+      "types": "./src/branchOverview.ts",
+      "default": "./src/branchOverview.ts"
+    },
     "./issue-projects": {
       "types": "./src/issueProjects.ts",
       "default": "./src/issueProjects.ts"

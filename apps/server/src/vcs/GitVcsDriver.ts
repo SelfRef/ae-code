@@ -29,6 +29,8 @@ import {
   type ReviewDiffFileContentsInput,
   type ReviewDiffFileContentsResult,
   type VcsInitInput,
+  type VcsBranchOverviewInput,
+  type VcsBranchOverviewResult,
   type VcsListRefsInput,
   type VcsListRefsResult,
   type VcsForcePushPreview,
@@ -394,6 +396,9 @@ export class GitVcsDriver extends Context.Service<
     readonly listRefs: (
       input: VcsListRefsInput,
     ) => Effect.Effect<VcsListRefsResult, GitCommandError>;
+    readonly branchOverview: (
+      input: VcsBranchOverviewInput,
+    ) => Effect.Effect<VcsBranchOverviewResult, GitCommandError>;
     readonly pullCurrentBranch: (cwd: string) => Effect.Effect<VcsPullResult, GitCommandError>;
     readonly forcePushPreview: (cwd: string) => Effect.Effect<VcsForcePushPreview, GitCommandError>;
     readonly forcePushCurrentBranch: (

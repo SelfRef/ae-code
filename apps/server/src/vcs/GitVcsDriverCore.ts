@@ -34,9 +34,16 @@ import {
   type ReviewDiffPreviewInput,
   type ReviewDiffFileStat,
   type ReviewDiffPreviewSource,
+  type VcsBranchOverviewEntry,
   type VcsRef,
 } from "@t3tools/contracts";
 import { dedupeRemoteBranchesWithLocalMatches } from "@t3tools/shared/git";
+import {
+  BRANCH_OVERVIEW_LIMIT,
+  BRANCH_OVERVIEW_REF_FORMAT,
+  orderBranchOverview,
+  parseOverviewRefs,
+} from "./branchOverview.ts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import { compactTraceAttributes } from "@t3tools/shared/observability";
 import { decodeJsonResult } from "@t3tools/shared/schemaJson";
@@ -5138,6 +5145,147 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     }
   });
 
+  const branchOverview: GitVcsDriver.GitVcsDriver["Service"]["branchOverview"] = Effect.fn(
+    "branchOverview",
+  )(function* (input) {
+    const repositoryPaths = yield* resolveRepositoryPaths(input.cwd).pipe(
+      Effect.catchTags({
+        GitCommandError: (error) =>
+          isMissingGitCwdError(error) ? Effect.succeed(null) : Effect.fail(error),
+      }),
+    );
+    if (repositoryPaths === null) {
+      return { isRepo: false, defaultRef: null, branches: [], truncated: false };
+    }
+    const { gitCommonDir } = repositoryPaths;
+    const fetchCwd =
+      path.basename(gitCommonDir) === ".git" ? path.dirname(gitCommonDir) : gitCommonDir;
+    if (input.fetch === true) {
+      // Shares the status poll's throttled fetch; a failed one, for example offline, keeps the last fetch's counts.
+      const remoteName = yield* resolvePrimaryRemoteName(fetchCwd).pipe(
+        Effect.orElseSucceed(() => null),
+      );
+      if (remoteName !== null) {
+        yield* Cache.get(
+          statusRemoteRefreshCache,
+          new StatusRemoteRefreshCacheKey({ gitCommonDir, remoteName }),
+        ).pipe(Effect.ignore);
+      }
+    }
+    const [snapshot, refsResult] = yield* Effect.all(
+      [
+        resolveListRefsSnapshot(gitCommonDir, input.fetch === true),
+        executeGit(
+          "GitVcsDriver.branchOverview.refs",
+          fetchCwd,
+          [
+            "--git-dir",
+            gitCommonDir,
+            "for-each-ref",
+            `--format=${BRANCH_OVERVIEW_REF_FORMAT}`,
+            "refs/heads",
+            "refs/remotes",
+          ],
+          { timeoutMs: 30_000, maxOutputBytes: 16 * 1024 * 1024 },
+        ),
+      ],
+      { concurrency: 2 },
+    );
+    const info = parseOverviewRefs(refsResult.stdout);
+    const mainRoot = path.normalize(path.resolve(fetchCwd));
+    const defaultName =
+      snapshot.localBranches.find((ref) => ref.isDefault)?.name ??
+      snapshot.remoteBranches.find((ref) => ref.isDefault)?.name.replace(/^origin\//, "") ??
+      DEFAULT_BASE_BRANCH_CANDIDATES.find((name) =>
+        snapshot.localBranches.some((ref) => ref.name === name),
+      ) ??
+      null;
+    // The local default first: merges land there before they are pushed, as in the Git menu's merge.
+    const defaultRef =
+      defaultName === null
+        ? null
+        : snapshot.localBranches.some((ref) => ref.name === defaultName)
+          ? `refs/heads/${defaultName}`
+          : `refs/remotes/origin/${defaultName}`;
+
+    const entries = orderBranchOverview(
+      dedupeRemoteBranchesWithLocalMatches([
+        ...snapshot.localBranches,
+        ...snapshot.remoteBranches,
+      ]).map((ref) => {
+        const details = info.get(
+          ref.isRemote ? `refs/remotes/${ref.name}` : `refs/heads/${ref.name}`,
+        );
+        const isRemoteOnly = ref.isRemote === true;
+        const worktreePath =
+          ref.worktreePath !== null && path.normalize(path.resolve(ref.worktreePath)) !== mainRoot
+            ? ref.worktreePath
+            : null;
+        return {
+          name: ref.name,
+          isRemoteOnly,
+          isDefault: isRemoteOnly ? ref.isDefault : ref.name === defaultName,
+          current: !isRemoteOnly && ref.name === repositoryPaths.currentBranch,
+          worktreePath,
+          upstream: details?.upstream ?? null,
+          upstreamGone: details?.upstreamGone ?? false,
+          ahead: details?.ahead ?? 0,
+          behind: details?.behind ?? 0,
+          lastCommitAt: details?.lastCommitAt ?? null,
+          lastCommitSubject: details?.subject ?? "",
+          ref: isRemoteOnly ? `refs/remotes/${ref.name}` : `refs/heads/${ref.name}`,
+        };
+      }),
+    );
+    const shown = entries.slice(0, BRANCH_OVERVIEW_LIMIT);
+    const branches = yield* Effect.forEach(
+      shown,
+      ({ ref, ...entry }) =>
+        defaultRef === null || entry.isDefault
+          ? Effect.succeed<VcsBranchOverviewEntry>({
+              ...entry,
+              aheadOfDefault: 0,
+              behindDefault: 0,
+            })
+          : executeGit(
+              "GitVcsDriver.branchOverview.divergence",
+              fetchCwd,
+              [
+                "--git-dir",
+                gitCommonDir,
+                "rev-list",
+                "--left-right",
+                "--count",
+                "--end-of-options",
+                `${defaultRef}...${ref}`,
+              ],
+              { allowNonZeroExit: true, timeoutMs: 15_000 },
+            ).pipe(
+              Effect.map((result) => {
+                const [behindDefault, aheadOfDefault] =
+                  result.exitCode === 0
+                    ? result.stdout
+                        .trim()
+                        .split(/\s+/)
+                        .map((count) => Number(count) || 0)
+                    : [0, 0];
+                return {
+                  ...entry,
+                  aheadOfDefault: aheadOfDefault ?? 0,
+                  behindDefault: behindDefault ?? 0,
+                };
+              }),
+            ),
+      { concurrency: 8 },
+    );
+    return {
+      isRepo: true,
+      defaultRef: defaultRef === null ? null : defaultRef.replace(/^refs\/(heads|remotes)\//, ""),
+      branches,
+      truncated: entries.length > shown.length,
+    };
+  });
+
   const createWorktree: GitVcsDriver.GitVcsDriver["Service"]["createWorktree"] = Effect.fn(
     "createWorktree",
   )(function* (input, options) {
@@ -6199,6 +6347,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     readBranchBase,
     resolveBranchName,
     listRefs,
+    branchOverview,
     createWorktree: Effect.fnUntraced(function* (input, options) {
       return yield* createWorktree(input, options).pipe(
         Effect.ensuring(invalidateWorktreeCreationCaches(input.cwd)),
