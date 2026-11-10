@@ -291,6 +291,9 @@ Select a server to open it in the browser panel. **Stop** ends the server's job
 and keeps the agent, the terminal, and T3 Code running. Stop needs terminal
 access to the environment and is not available on Windows.
 
+The card's last section, **Thread actions**, settles the thread (**Settle thread**, then **Un-settle thread**).
+Its arrow opens the same menu as right-clicking the thread: pin, snooze, rename, copy, archive and more.
+
 To choose what the thread details card shows, right-click the card or open
 **Settings → Appearance → Thread details**. Hidden rows keep their keyboard
 shortcuts, such as Open in editor and project scripts. **Reset to default** shows

@@ -1,0 +1,103 @@
+import { useAtomValue } from "@effect/atom-react";
+import { AuthOrchestrationOperateScope, type ScopedThreadRef } from "@t3tools/contracts";
+import {
+  isAtomCommandInterrupted,
+  squashAtomCommandFailure,
+  type AtomCommandResult,
+} from "@t3tools/client-runtime/state/runtime";
+import { ChevronDownIcon, CircleCheckIcon } from "lucide-react";
+
+import { useThreadActionMenu } from "../../hooks/useThreadActionMenu";
+import { useThreadActions } from "../../hooks/useThreadActions";
+import { cn } from "../../lib/utils";
+import { settleAndAdvance } from "../../settleAndAdvance";
+import { useQuietThreadShell } from "../../state/entities";
+import { useEnvironmentScope } from "../../state/session";
+import { requestThreadRename } from "../../threadRename";
+import { stackedThreadToast, toastManager } from "../ui/toast";
+import { canShareWithGuestAtom } from "./guestShareAvailability";
+import { ThreadDetailsControl } from "./ThreadDetailsControl";
+import {
+  THREAD_DETAILS_PANEL_CHEVRON_CLASS,
+  THREAD_DETAILS_PANEL_ICON_CLASS,
+  THREAD_DETAILS_PANEL_LABEL_CLASS,
+  THREAD_DETAILS_PANEL_SPLIT_GROUP_CLASS,
+  THREAD_DETAILS_PANEL_SPLIT_SEPARATOR_CLASS,
+} from "./threadDetailsPanelStyles";
+
+function toastFailure(title: string, result: AtomCommandResult<unknown, unknown>) {
+  if (result._tag !== "Failure" || isAtomCommandInterrupted(result)) return;
+  const error = squashAtomCommandFailure(result);
+  toastManager.add(
+    stackedThreadToast({
+      type: "error",
+      title,
+      description: error instanceof Error ? error.message : "An error occurred.",
+    }),
+  );
+}
+
+/** Settles the thread; the arrow opens the same menu as right-clicking the thread. */
+export function ThreadDetailsActions(props: {
+  readonly threadRef: ScopedThreadRef;
+  readonly projectCwd: string | null;
+  readonly onFindInThread: ((threadRef: ScopedThreadRef) => void) | undefined;
+}) {
+  const { threadRef } = props;
+  const thread = useQuietThreadShell(threadRef);
+  const canOperate = useEnvironmentScope(threadRef.environmentId, AuthOrchestrationOperateScope);
+  const canShareWithGuest = useAtomValue(canShareWithGuestAtom(threadRef.environmentId));
+  const { settleThread, unsettleThread } = useThreadActions();
+  const { openMenu } = useThreadActionMenu({
+    threadRef,
+    projectCwd: props.projectCwd,
+    onStartRename: requestThreadRename,
+    onFind: props.onFindInThread,
+    canShareWithGuest,
+  });
+  const settled = thread?.settledOverride === "settled";
+  const onSettle = async () => {
+    if (settled) {
+      toastFailure("Failed to un-settle thread", await unsettleThread(threadRef));
+    } else if (!settleAndAdvance(threadRef)) {
+      toastFailure("Failed to settle thread", await settleThread(threadRef));
+    }
+  };
+
+  return (
+    <div
+      role="group"
+      aria-label="Thread actions"
+      className={THREAD_DETAILS_PANEL_SPLIT_GROUP_CLASS}
+    >
+      <ThreadDetailsControl
+        variant="ghost"
+        size="xs"
+        part="primary"
+        panel
+        disabled={!canOperate || thread === null}
+        onClick={() => void onSettle()}
+      >
+        <CircleCheckIcon className={THREAD_DETAILS_PANEL_ICON_CLASS} aria-hidden />
+        <span className={cn("not-sr-only ml-0 truncate", THREAD_DETAILS_PANEL_LABEL_CLASS)}>
+          {settled ? "Un-settle thread" : "Settle thread"}
+        </span>
+      </ThreadDetailsControl>
+      <span aria-hidden="true" className={THREAD_DETAILS_PANEL_SPLIT_SEPARATOR_CLASS} />
+      <ThreadDetailsControl
+        aria-label="More thread actions"
+        aria-haspopup="menu"
+        size="sm"
+        variant="ghost"
+        part="secondary"
+        panel
+        onClick={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect();
+          openMenu({ x: rect.left, y: rect.bottom + 4 });
+        }}
+      >
+        <ChevronDownIcon aria-hidden="true" className={THREAD_DETAILS_PANEL_CHEVRON_CLASS} />
+      </ThreadDetailsControl>
+    </div>
+  );
+}
