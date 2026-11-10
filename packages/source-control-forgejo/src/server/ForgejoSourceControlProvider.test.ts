@@ -1280,6 +1280,19 @@ it.effect("discovers Forgejo accounts and retains the server port", () =>
   }),
 );
 
+it.effect("ignores the host-less entry gt reports for a GITEA_TOKEN without an instance", () =>
+  Effect.gen(function* () {
+    const accounts = yield* encodeJsonEffect([
+      { ...gtAccount("", "", { valid: false }), error: "GITEA_TOKEN requires an instance" },
+      gtAccount("https://forgejo.local", "maria"),
+    ]);
+    assert.deepStrictEqual(
+      ForgejoCli.parseForgejoLogins(accounts).map((login) => login.url),
+      ["https://forgejo.local"],
+    );
+  }),
+);
+
 it.effect("does not choose a default Forgejo login across ambiguous SSH server ports", () =>
   Effect.gen(function* () {
     const accounts = yield* encodeJsonEffect([
