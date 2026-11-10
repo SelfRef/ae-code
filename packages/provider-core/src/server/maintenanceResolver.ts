@@ -243,6 +243,11 @@ function isVitePlusGlobalCommandPath(commandPath: string): boolean {
   );
 }
 
+/** Linux distro packages (pacman, apt, dnf) install here; only the package manager may update them. */
+function isLinuxSystemPackageCommandPath(commandPath: string): boolean {
+  return /^\/(?:usr\/(?!local\/)|opt\/)/.test(normalizeCommandPath(commandPath));
+}
+
 function isBunGlobalCommandPath(commandPath: string): boolean {
   return normalizeCommandPath(commandPath).includes("/.bun/bin/");
 }
@@ -700,6 +705,7 @@ export const resolvePackageManagedProviderMaintenance = Effect.fn(
   // project, so the provider's own updater could act on the wrong install.
   const fallback =
     nativeUpdate?.requiresCommandPath ||
+    (context.platform === "linux" && isLinuxSystemPackageCommandPath(context.realCommandPath)) ||
     commandPaths.some((commandPath) => normalizeCommandPath(commandPath).includes("/node_modules/"))
       ? manual
       : native;

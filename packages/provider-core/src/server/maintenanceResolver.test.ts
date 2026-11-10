@@ -737,6 +737,33 @@ it.layer(
     }),
   );
 
+  it.effect.each([
+    { name: "/usr/bin", resolved: "/usr/bin/claude", real: "/usr/bin/claude", native: false },
+    { name: "/opt", resolved: "/usr/bin/claude", real: "/opt/claude-code/claude", native: false },
+    {
+      name: "a native install behind /usr/bin",
+      resolved: "/usr/bin/claude",
+      real: "/home/me/.local/share/claude/versions/2.1.0",
+      native: true,
+    },
+    {
+      name: "/usr/local/bin",
+      resolved: "/usr/local/bin/claude",
+      real: "/usr/local/bin/claude",
+      native: true,
+    },
+  ] as const)("resolves a Linux Claude install through $name", (fixture) =>
+    Effect.gen(function* () {
+      const capabilities = yield* resolveInstall({
+        definition: claudeUpdate,
+        platform: "linux",
+        ...fixture,
+      });
+
+      expect(capabilities.update === null).toBe(!fixture.native);
+    }),
+  );
+
   const chocolateyShim = "C:\\ProgramData\\chocolatey\\bin\\claude.exe";
   const chocolateyPackage = "C:\\ProgramData\\chocolatey\\lib\\claude-code\\tools\\claude.exe";
 
