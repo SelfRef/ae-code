@@ -37,6 +37,39 @@ The fork is kept as a linear stack of patch commits on top of upstream's `main`,
 
 Only the Linux x64 server and the Android app are built. There is no desktop installer, no iOS app and no `npx` launcher, so the desktop app's updater finds nothing. Install and sign in to at least one agent CLI on the machine that runs the server (Claude Code, Codex, Cursor, OpenCode and so on), or install Claude Code and OpenCode from Settings → Providers after the first start.
 
+### Dependencies on Arch Linux
+
+What the server calls on the host depends on the features you use.
+
+Required:
+
+```bash
+sudo pacman -S git openssh
+```
+
+`git` backs checkpoints and worktrees, and `openssh` is for cloning and pushing over SSH. You also need at least one agent CLI, as described above.
+
+For the Browser panel and HTML renders, which download a headless Chrome on first use, Chrome's shared libraries and fonts must be installed. `t3 browser setup` only knows apt, so on Arch install them yourself:
+
+```bash
+sudo pacman -S --needed nss at-spi2-core libx11 libxcomposite libxdamage libxext libxfixes libxrandr mesa libxkbcommon alsa-lib fontconfig ttf-liberation
+```
+
+Without them the browser tab reports missing libraries, and without fonts pages render with no text. Chrome's sandbox needs unprivileged user namespaces (on by default in the `linux` and `linux-lts` kernels, off in `linux-hardened`) and cannot start as root. Set `T3CODE_SERVER_BROWSER_SANDBOX=0` in the server's environment to run without it.
+
+Optional:
+
+- `nodejs npm`: install Claude Code and OpenCode from Settings → Providers.
+- `lsof`: list local server ports in the Browser panel.
+- `xdg-utils`: open files and folders in your desktop apps.
+- `github-cli`: GitHub pull requests and issues (`gh auth login`).
+- `glab`, `forgejo-cli` or `tea`: GitLab, Forgejo and Gitea.
+- `tailscale`: remote access with `t3 serve --tailscale-serve` (see [Remote access](./docs/user/remote-access.md)).
+- Device panel with an Android emulator: `android-tools` and `ffmpeg` (Arch's build includes libx264), plus `android-emulator` and `android-sdk-cmdline-tools-latest` from the AUR and an AVD created with `avdmanager`. Set `ANDROID_HOME` if the SDK is not in a standard location.
+- Device panel with a physical Android phone: `android-tools`. The device hub brings its own scrcpy.
+
+The iOS Simulator needs macOS, so the Device panel offers Android only on Arch.
+
 ### Server archive
 
 Download `ae-code-linux-x64.tar.gz` from the [latest release](https://github.com/SelfRef/ae-code/releases/latest), unpack it and run:
