@@ -35,6 +35,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Fixed
 
+- Linux: opening AE Code from a pinned dock icon uses that icon instead of adding a second one (the
+  launcher now names the window class the app really uses).
 - Compact counts and token numbers follow the browser's locale.
 - Rows in the browser's empty state can be clicked.
 - Providers installed from a Linux distribution's package stay manual-only: AE Code no longer

@@ -2903,7 +2903,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       ],
       desktop: {
         entry: {
-          StartupWMClass: "ae-code",
+          StartupWMClass: "dev.aperte.AECode",
         },
       },
     };
