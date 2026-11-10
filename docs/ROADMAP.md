@@ -34,7 +34,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 | [5]  | Claude usage limits for a setup-token session: let `rate_limit_event` stream updates fill the bars when `get_usage` is unsupported                                     | done    |
 | [4]  | Project and thread switchers in the chat breadcrumb (ported from a community branch, below)                                                                            | done    |
 | 3    | Claude reply text streams while it is written (upstream's `ClaudeAdapterV2` drops `text_delta`, issue #17270; port of the closed PR #22165 onto the 2026-11-08 `main`) | done    |
-| [2]  | GitHub Issues panel: list, read, comment, edit, label, close/reopen issues per project                                                                                 | planned |
+| [2]  | GitHub Issues: read-only list and detail per project on the web (`/issues`) and in the Android app; comment, edit, label, close/reopen still planned                   | partly  |
 | [1]  | Linux desktop as a Device-panel device (headless Mutter/GNOME Shell + capture + input)                                                                                 | planned |
 | [0]  | Rebrand as AE Code: own app id and state dir, Aperte icon                                                                                                              | done    |
 
@@ -165,6 +165,24 @@ scripted click, no T3 change), then the contract/host/proxy/client changes again
 Goal: per project with a GitHub remote, track, read, answer, update and close its issues inside T3, the way the
 pull-request views already work, without going to github.com.
 
+### Landed: read-only Issues page and Android tab (phase A, shortened)
+
+Built differently from the plan below, to stay small:
+
+- **Reads go through GitHub's REST API, not GraphQL**: `search/issues?q=repo:o/r is:issue …` for the list (GitHub's own
+  search syntax in the search box, 50 per page, "Load more") and `repos/o/r/issues/N` plus its first 100 comments for the
+  detail (`GitHubIssueProvider.ts`; no new generated `.graphql.ts`). Pull requests that the endpoints mix in are left out.
+- Contract `packages/contracts/src/issue.ts` (`IssueListInput`, `IssueSummary`, `IssueDetail`, `IssueError`), RPCs
+  `issues.list` and `issues.read` (read scope), `IssueProviderApi` as an optional `issues` field of the driver
+  instance, `IssueService` resolving the project's repository the way the pull-request service does. Other forges have no
+  `issues` and answer "unsupported".
+- **Web**: page `/issues` (project picker when several projects are on GitHub, search, Open/Closed/All, list next to
+  the issue, Markdown body and comments, "Open on GitHub"), a sidebar button and a command-palette action, both shown
+  only when a project is on GitHub. It is a page like `/pull-requests`, not a right-panel kind.
+- **Android**: an Issues tab next to Threads, Pulls and Usage. Settings → Navigation chooses which tabs show; Pulls is
+  hidden by default (the choice is saved once changed).
+- Not built: everything that writes (phase B), MCP tools (C), threads from issues (D), iOS.
+
 ### Findings in the source (`f26623febe`)
 
 - **Pull requests are the template, issues don't exist.** The PR feature is a full vertical slice: contracts
@@ -234,9 +252,8 @@ Everything new goes in new files; existing files only get registrations.
    in a worktree) with the issue's title, body and comments as the first message, and links them so the issue
    shows its threads. Second phase: it needs a thread ↔ issue link record (like `ThreadPullRequestService`) and
    therefore a migration, the biggest rebase risk in this change.
-7. **Mobile: not planned.** The store builds of the mobile app come from upstream and would never carry the fork's
-   screens unless the fork built and sideloaded its own. The web panel works in a phone browser. The contract
-   stays client-agnostic, so mobile screens can be added later.
+7. **Mobile:** the fork builds and signs its own Android app (change 9), so the Android app carries an Issues tab (see
+   above). iOS has no build of the fork. The contract stays client-agnostic.
 
 ### Phases
 
