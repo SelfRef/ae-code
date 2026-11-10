@@ -1194,9 +1194,15 @@ and `merge_push` (both commit pending changes first), plus a project-scoped sett
   branch's own checkout, which must have no tracked changes. A default branch checked out nowhere is advanced with
   `git fetch . branch:default`. A rebase conflict is aborted and reported; nothing is left half-done.
 - The push goes to the default branch's configured remote branch, or the primary remote's same-named branch.
-- When a merge fails (a rebase conflict, a dirty default checkout), the error toast offers "Merge by agent": it sends the
-  thread's agent a turn (`apps/web/src/components/mergeByAgent.ts`) with the error, asking it to rebase, resolve conflicts,
-  fast-forward the default branch and push if the action pushed. Nothing is retried automatically.
+- When a merge fails (a rebase conflict, a dirty default checkout) and the session may operate threads, the server hands it
+  to the thread's agent (`apps/server/src/git/handOffMerge.ts`, wired in `ws.ts` through `GitManager`'s `handOffMerge`
+  option). It dispatches a server-created `system` notice carrying the error and the steps (rebase, resolve conflicts,
+  fast-forward the default branch, push if the action pushed), like compaction runs as its own turn, and holds the action
+  open until that run ends, so the Merge button keeps its progress ("Merging by agent...") on web and mobile alike. The
+  result's toast only points at the thread; without operate access, when the hand-off cannot start, or with the
+  project setting `mergeByAgentEnabled` off (Settings → Source control, on by default), the failure is reported as
+  before. `mergeByAgentModelSelection` (off by default: the thread's own model) picks a coding agent for the turn. Nothing
+  is retried automatically.
 - Not cleaned up here: the existing worktree cleanup removes merged branches' worktrees.
 - Web only; mobile's Git sheet does not list the merge actions. Older servers do not know the actions, and the
   result's `merge` field is optional for the same reason.
@@ -1316,11 +1322,11 @@ tab (Android has an Issues tab), the changed-files card (Android has none), the 
 thread details card) and the action editor.
 
 - **Git logic is shared.** `buildMenuItems`, `resolveQuickAction`, `getGitActionDisabledReason`, `formatQuickActionLabel`
-  and `mergeByAgentPrompt` live in `packages/client-runtime/src/state/gitActions.ts` and carry the fork's merge, force push
+  live in `packages/client-runtime/src/state/gitActions.ts` and carry the fork's merge, force push
   and "ahead of the default branch" rules, so the web copies in `GitActionsControl.logic.ts` only re-export what moved.
 - **Git sheet and menu.** Merge, Merge & push and Force push rows; the quick action follows the project's main Git action
-  (`quickMergeAction`, Settings → Source control); a failed merge offers "Merge by agent"; force push lists the commits it
-  deletes and sends in a confirmation.
+  (`quickMergeAction`, Settings → Source control); force push lists the commits it deletes and sends in a
+  confirmation.
 - **Branches.** A branch checked out in another worktree, the project checkout included, moves the thread there instead of
   being disabled, as on web (`useSelectedThreadGitActions.onUseSelectedThreadWorktree`).
 - **Move to new worktree** is in the thread row's menu for an idle thread in the project checkout, like web's thread menu.

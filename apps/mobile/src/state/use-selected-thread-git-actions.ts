@@ -4,7 +4,6 @@ import { EnvironmentProject, EnvironmentThreadShell } from "@t3tools/client-runt
 import type { AtomCommandResult } from "@t3tools/client-runtime/state/runtime";
 import {
   createVcsStatusRevalidationAtomFamily,
-  mergeByAgentPrompt,
   type GitActionRequestInput,
   type VcsActionOperation,
   type VcsRef,
@@ -13,7 +12,6 @@ import {
   AuthOrchestrationOperateScope,
   AuthSourceControlWriteScope,
   EnvironmentAuthorizationError,
-  MessageId,
   type GitRunStackedActionResult,
 } from "@t3tools/contracts";
 import {
@@ -69,7 +67,6 @@ export function useSelectedThreadGitActions() {
     reportFailure: false,
   });
   const forcePush = useAtomCommand(vcsEnvironment.forcePush, { reportFailure: false });
-  const startTurn = useAtomCommand(threadEnvironment.startTurn, { reportFailure: false });
   const stopSession = useAtomCommand(threadEnvironment.stopSession, { reportFailure: false });
   const { selectedThread, selectedThreadProject } = useThreadSelection();
   const canWriteSourceControl = useEnvironmentScope(
@@ -181,8 +178,6 @@ export function useSelectedThreadGitActions() {
     options?: {
       readonly managedExternally?: boolean;
       readonly changesThreadBranch?: boolean;
-      /** Replaces the error toast. */
-      readonly onError?: (message: string) => void;
     },
   ): Promise<T | null> => {
     if (
@@ -215,8 +210,7 @@ export function useSelectedThreadGitActions() {
       const error = Cause.squash(result.cause);
       const message = error instanceof Error ? error.message : "Git action failed.";
       setPendingConnectionError(message);
-      if (options?.onError) options.onError(message);
-      else showGitActionResult({ type: "error", title: "Git action failed", description: message });
+      showGitActionResult({ type: "error", title: "Git action failed", description: message });
       return null;
     }
     return result.value;
@@ -408,36 +402,6 @@ export function useSelectedThreadGitActions() {
     input: GitActionRequestInput,
   ): Promise<GitRunStackedActionResult | null> => {
     const actionId = uuidv4();
-    const isMergeAction = input.action === "merge" || input.action === "merge_push";
-    const offerMergeByAgent = (message: string) => {
-      const thread = selectedThread;
-      if (!thread || !canOperateThread) {
-        showGitActionResult({ type: "error", title: "Merge failed", description: message });
-        return;
-      }
-      Dialog.confirm({
-        title: "Merge failed",
-        message,
-        confirmText: "Merge by agent",
-        onConfirm: () => {
-          void startTurn({
-            environmentId: thread.environmentId,
-            input: {
-              threadId: thread.id,
-              message: {
-                messageId: MessageId.make(uuidv4()),
-                role: "user",
-                text: mergeByAgentPrompt({ push: input.action === "merge_push", error: message }),
-                attachments: [],
-              },
-              runtimeMode: thread.runtimeMode,
-              interactionMode: "default",
-              createdAt: new Date().toISOString(),
-            },
-          });
-        },
-      });
-    };
     return await runSelectedThreadGitMutation(
       "run_change_request",
       "Running source control action",
@@ -480,7 +444,6 @@ export function useSelectedThreadGitActions() {
       {
         managedExternally: true,
         changesThreadBranch: input.featureBranch === true,
-        ...(isMergeAction ? { onError: offerMergeByAgent } : {}),
       },
     );
   };

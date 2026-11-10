@@ -1185,6 +1185,22 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["git push main master default branch prompt dialog warning feature branch pr"],
   },
   {
+    id: "merge-by-agent",
+    title: "Merge by agent",
+    to: "/settings/source-control",
+    searchTerms: ["merge conflict rebase default branch agent fix fall back"],
+    environmentOnly: true,
+    scope: "project-defaults",
+  },
+  {
+    id: "merge-by-agent-model",
+    title: "Merge by agent model",
+    to: "/settings/source-control",
+    searchTerms: ["merge conflict rebase default branch agent model override"],
+    environmentOnly: true,
+    scope: "project-defaults",
+  },
+  {
     id: "review-guides",
     title: "Review guides (beta)",
     to: "/settings/source-control",
