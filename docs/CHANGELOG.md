@@ -31,6 +31,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Changed
 
+- The main Git action defaults to merging into the default branch (it was opening a pull request), and the setting lists the pull request option last. A choice you already made is kept.
 - Settings text says Æ Code instead of T3 Code, and uses generic wording where it named the upstream server, process or home folder. T3 Connect and T3 Chat keep their names, since they are upstream services.
 - Surfaces: the "Open a surface" menu and the add-tab menu list Files, Diff, Terminal, Issues, Pull
   Request(s), Browser, Device and Side Chat, in that order and in title case.
