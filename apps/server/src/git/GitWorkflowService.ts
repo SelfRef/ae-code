@@ -442,6 +442,8 @@ export const make = Effect.gen(function* () {
             : Effect.succeed({
                 isRepo: false,
                 defaultRef: null,
+                remotes: [],
+                remote: null,
                 branches: [],
                 truncated: false,
               } satisfies VcsBranchOverviewResult),
