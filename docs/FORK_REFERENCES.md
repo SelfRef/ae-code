@@ -36,6 +36,7 @@ What is wanted, who has it, and what this fork does about it. "Planned" and "don
 | Take back a steered message, or make it interrupt a long tool call | none found (searched 2026-11-09)        | stop-and-send done for Claude, take back planned, change 18  |
 | No product analytics by default                                    | E4 Code                                 | done, change 17                                              |
 | Memory for agents                                                  | GOAT, seatedro, Scripted Alchemy, akeru | done, change 13 (modelled on GOAT)                           |
+| Skills manager: one library, per-agent switches, sync              | MT Code, upstream PRs                   | not planned yet (researched 2026-11-10; see Skills)          |
 | Project and thread switchers in the breadcrumb                     | mollymillions-code branch               | planned, change 4                                            |
 | Review surface: files, Reviewed marks, review guide                | E4 Code                                 | not planned                                                  |
 | Start, stop and monitor local model servers from the thread panel  | DeepQuantum                             | not planned yet                                              |
@@ -100,7 +101,8 @@ its comparison table when upstream ships the same, so its README table is a list
 - **Realtime voice.** A call panel where the agent answers aloud, through a ChatGPT account or an OpenAI key.
 - **Monitor toolkit.** `monitor_start` lets Codex end its turn and be woken by each line a background command prints.
 - **Plugin marketplace.** Plugins, Apps, MCPs and Skills tabs across Codex, Claude Code and Cursor with one-click
-  install; a cross-harness skills manager in Settings.
+  install; a cross-harness skills manager in Settings (read-only: a Codex and Claude inventory with the `SKILL.md` text
+  and a copy-path button, from upstream's closed PR #4630, see Skills below).
 - **Edit your last message in place.** The thread rolls back and resends; upstream's _Edit from here_ returns the text
   to the composer.
 - **Advisor model.** Claude consults a second model (fable, opus or sonnet) during a turn, set per Claude instance.
@@ -341,6 +343,33 @@ commits of their own at the check), `hlsitechio/t3code` (gone at the check; it w
 browser integration, canvas previews and a GPU terminal), and forks with only an upstream README and no
 commits of their own that could be told apart from upstream's (not all checked): `shadcn/t3code`,
 `tannerlinsley/t3code`, `aidenybai/t3code` and similar.
+
+## Skills
+
+Researched 2026-11-10; code was read for MT Code's inventory only, the rest is from PR descriptions. No fork has a
+provider-independent skill format of its own: every attempt manages each provider's own `SKILL.md` folders. Upstream
+has none merged; its open and closed PRs are the real prior art.
+
+- **Already upstream:** per-provider discovery for the composer's skill menu (Claude, Codex, Cursor, Grok, fx,
+  Antigravity, OpenCode) and the name-mention rewrite on send. The contract is `ServerProviderSkill`.
+- **#4630 (closed, the "cross-harness skill manager" in MT Code):** read-only; Codex and Claude only, one HTTP route,
+  no mutation. Its plan (`docs/architecture/skill-manager-plan.html`) sets the safety rules worth copying: opaque
+  installation ids and re-resolving the root server-side (never "delete this absolute path"), trash with undo, and
+  system, plugin and catalog roots read-only.
+- **#15823 discussion, #17513 to #17515 (closed over size), #24377 (open):** the fullest design. Skills live once in a
+  shared folder (`.agents/skills` project, `~/.agents/skills` global); an agent that reads another folder gets a
+  symlink or junction; an agent that reads the shared folder gets its own switch (Claude `skillOverrides`, Codex
+  `[[skills.config]]`, OpenCode `permission.skill`, Pi settings; Cursor, Grok and Antigravity have none). Never replaces
+  a real folder, link removed only when provably its own. #24377 adds instruction files and one-way sync between
+  environments.
+- **#17101, now #21815, #21816, #21817 (open, maintainer-owned):** skills and MCP servers in Settings with environment
+  and project scope, applied to every session at start. Overlaps this fork's change 16.
+- **#28492 (open):** nine bundled workflow skills with install, update and remove for Codex and Claude. **#27123:**
+  per-model skill variants and usage tracking (19k lines). **#26526:** per-Codex-session skill config.
+- **Outside T3:** `npx skills` (vercel-labs/skills, MIT) is the cross-agent installer: a table of each agent's project
+  and global skills folder, copy or symlink install, a lock file, `list` and `remove`, and an importable API. The
+  format is the open Agent Skills specification (agentskills.io). `yappologistic/t3code` (CUT3) had a different idea:
+  a `.cut3/skills` folder of repo-local instructions that the composer attaches to the next turn for any provider.
 
 ## Refreshing this list
 
