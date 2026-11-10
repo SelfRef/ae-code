@@ -42,6 +42,9 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
   context menu. It can be hidden like the card's other rows.
 - When a merge fails, for example on a rebase conflict, its error offers "Merge by agent": the thread's agent
   rebases, resolves the conflicts and finishes the merge.
+- Branches: a page (sidebar, command palette) lists a project's branches and worktrees
+  with what each has to push, pull and merge, highlight the ones with commits the default branch lacks and
+  link to the thread working on them.
 - Issues open in the right panel.
 - Releases: a project on GitHub lists its releases with their notes and assets, on a Releases page
   (sidebar, command palette), in the right panel and in a Releases tab in the Android app.
