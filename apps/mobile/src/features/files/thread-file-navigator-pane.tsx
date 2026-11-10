@@ -10,6 +10,7 @@ import { useEnvironmentQuery } from "../../state/query";
 import { useEnvironmentPresentation } from "../../state/presentation";
 import { useAppearancePreferences } from "../settings/appearance/AppearancePreferencesProvider";
 import { FileTreeBrowser } from "./FileTreeBrowser";
+import { useFileEntryActions } from "./useFileEntryActions";
 import { useFileTreeEntries } from "./useFileTreeEntries";
 import { preloadWorkspaceFileContents } from "./preload-workspace-file";
 
@@ -37,6 +38,13 @@ export function ThreadFileNavigatorPane(props: {
     environmentId: props.environmentId,
     cwd: canReadFiles ? props.cwd : null,
     searchQuery,
+  });
+  const entryActions = useFileEntryActions({
+    environmentId: props.environmentId,
+    cwd: canReadFiles ? props.cwd : null,
+    entries: entriesQuery.entries,
+    refresh: entriesQuery.refresh,
+    setExpandedPaths: entriesQuery.setExpandedPaths,
   });
   const handlePreviewFile = (relativePath: string) => {
     preloadWorkspaceFileContents({
@@ -69,6 +77,7 @@ export function ThreadFileNavigatorPane(props: {
       searchTruncated={entriesQuery.searchTruncated}
       selectedPath={props.selectedPath ?? entriesQuery.selectedPath}
       onPreviewFile={handlePreviewFile}
+      entryActions={entryActions}
       onRefresh={entriesQuery.refresh}
       onSelectFile={(path) => {
         entriesQuery.selectPath(path);
@@ -90,6 +99,7 @@ export function ThreadFileNavigatorPane(props: {
           placeholder: "Search files",
         }}
         refresh={{ accessibilityLabel: "Refresh files", onPress: entriesQuery.refresh }}
+        menus={entryActions.createMenu ? [entryActions.createMenu] : undefined}
       />
     </View>
   );

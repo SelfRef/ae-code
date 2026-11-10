@@ -1,6 +1,6 @@
 import { expect, it } from "vite-plus/test";
 
-import { buildFileTree, flattenFileTree } from "./fileTree";
+import { buildFileTree, flattenFileTree, uniqueCopyName } from "./fileTree";
 
 it("flattens a wide expanded directory without exceeding argument limits", () => {
   const children = Array.from({ length: 200_000 }, (_, index) => ({
@@ -58,4 +58,11 @@ it("prunes unmatched subtrees without losing adjacent rows or their depths", () 
     "root",
     "tail.txt",
   ]);
+});
+
+it("names a copy after the first free slot, keeping the extension", () => {
+  expect(uniqueCopyName("a.ts", ["b.ts"])).toBe("a.ts");
+  expect(uniqueCopyName("a.ts", ["A.TS"])).toBe("a copy.ts");
+  expect(uniqueCopyName("a.ts", ["a.ts", "a copy.ts"])).toBe("a copy 2.ts");
+  expect(uniqueCopyName(".env", [".env"])).toBe(".env copy");
 });
