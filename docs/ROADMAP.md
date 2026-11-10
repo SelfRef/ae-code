@@ -10,7 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| [36] | GitHub Releases: read-only list and detail per project on the web (`/releases`, right panel)                                                                           | done    |
+| [36] | GitHub Releases: read-only list and detail per project on the web (`/releases`, right panel) and in the Android app                                                    | done    |
 | [35] | Android catch-up: tinted Input, Done and draft threads; merge, force push and worktree switching in Git                                                                | done    |
 | [34] | A "Thread actions" section in the thread details card: Settle thread, and the thread's context menu under an arrow                                                     | done    |
 | [33] | Saved environments follow you: a browser signed in to a server shows the environments saved on any other browser signed in to it (kept on that server)                 | done    |
@@ -1247,6 +1247,9 @@ Read-only; nothing writes (no create, edit or publish).
   shown only when a project is on GitHub. The right panel has a "Releases" tab (key `R`), offered when the thread's
   project is on GitHub. Components in `apps/web/src/components/releases/`; the queries sit with the issue ones
   (`issueEnvironment.releaseList` / `releaseDetail`).
+- **Android**: a Releases tab after Issues (a page that swaps between the list and a release; the notes use the pull
+  request Markdown view, assets open in the browser). Settings → Navigation lists it like the other tabs; it shows by
+  default, so with Pulls hidden the four phone tabs are Threads, Issues, Releases and Usage.
 - No data migration.
 
 ## Android catch-up (change 35)
