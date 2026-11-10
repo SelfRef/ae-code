@@ -282,6 +282,11 @@ describe("merging into the default branch", () => {
       action: "merge",
     });
     assert.equal(resolveQuickAction(ahead, false, false, true).action, "create_pr");
+    assert.deepInclude(resolveQuickAction(status(), false, false, true, "merge_push"), {
+      label: "Merge & push",
+      disabled: true,
+      kind: "show_hint",
+    });
     assert.notEqual(
       resolveQuickAction(ahead, false, true, true, "merge").action,
       "merge",
@@ -359,6 +364,14 @@ describe("formatQuickActionLabel", () => {
     assert.equal(
       formatQuickActionLabel(resolveQuickAction(one, false, true, true), one),
       "Push 1 commit",
+    );
+  });
+
+  it("names the commits a Merge action takes", () => {
+    const ahead = status({ refName: "feature/x", aheadCount: 1, aheadOfDefaultCount: 3 });
+    assert.equal(
+      formatQuickActionLabel(resolveQuickAction(ahead, false, false, true, "merge_push"), ahead),
+      "Merge 3 commits & push",
     );
   });
 
