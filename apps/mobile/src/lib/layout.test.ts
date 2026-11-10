@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   alignListPaneToHinge,
+  constrainSidebarWidth,
   deriveLayout,
   deriveThreadArrangementSizing,
   deriveThreadWorkLogSizing,
@@ -220,5 +221,14 @@ describe("alignListPaneToHinge", () => {
     };
     expect(alignListPaneToHinge(narrowList)).toBe(layout);
     expect(alignListPaneToHinge(narrowDetail)).toBe(layout);
+  });
+});
+
+describe("constrainSidebarWidth", () => {
+  it("keeps a dragged sidebar between its minimum and the room the content needs", () => {
+    expect(constrainSidebarWidth({ preferredWidth: 100, availableWidth: 1000 })).toBe(280);
+    expect(constrainSidebarWidth({ preferredWidth: 450, availableWidth: 1000 })).toBe(450);
+    expect(constrainSidebarWidth({ preferredWidth: 900, availableWidth: 1000 })).toBe(560);
+    expect(constrainSidebarWidth({ preferredWidth: 900, availableWidth: 720 })).toBe(400);
   });
 });

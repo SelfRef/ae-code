@@ -124,6 +124,7 @@ describe("mobile connection storage", () => {
         navigationTabOrder: ["usage", null, 4, "threads"],
         hiddenNavigationTabs: ["home", null],
         baseFontSize: 18,
+        androidSidebarWidth: 420,
       }),
       1,
     );
@@ -131,6 +132,7 @@ describe("mobile connection storage", () => {
       navigationTabOrder: ["usage", "threads"],
       hiddenNavigationTabs: ["home"],
       baseFontSize: 18,
+      androidSidebarWidth: 420,
     });
   });
 
