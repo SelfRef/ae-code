@@ -12,6 +12,8 @@ const SPLIT_LAYOUT_MIN_HEIGHT = 600;
 
 const SPLIT_SIDEBAR_MIN_WIDTH = 280;
 const SPLIT_SIDEBAR_DEFAULT_MAX_WIDTH = 380;
+const SPLIT_SIDEBAR_MAX_WIDTH = 560;
+const SPLIT_CONTENT_MIN_WIDTH = 320;
 
 export const CHAT_CONTENT_MAX_WIDTH = 960;
 // Limit Android reading width for wide foldables and keyboard-open split views.
@@ -155,6 +157,18 @@ export function deriveLayout(input: {
     ...(division ? { listPaneGap: division.width } : {}),
     shellPadding: 0,
   };
+}
+
+/** A dragged sidebar width, kept between the default minimum and room for the content beside it. */
+export function constrainSidebarWidth(input: {
+  readonly preferredWidth: number;
+  readonly availableWidth: number;
+}): number {
+  const max = Math.max(
+    SPLIT_SIDEBAR_MIN_WIDTH,
+    Math.min(SPLIT_SIDEBAR_MAX_WIDTH, input.availableWidth - SPLIT_CONTENT_MIN_WIDTH),
+  );
+  return clamp(Math.round(input.preferredWidth), SPLIT_SIDEBAR_MIN_WIDTH, max);
 }
 
 export interface VerticalHinge {
