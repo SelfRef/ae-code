@@ -887,15 +887,21 @@ function DeviceIntegrationControls({
       }),
     );
     setPending(null);
-    const failed = environments.filter((_, index) => {
+    const failures = environments.flatMap((environment, index) => {
       const result = results[index];
-      return result?.status !== "fulfilled" || result.value._tag === "Failure";
+      if (result?.status === "rejected") {
+        const reason = result.reason instanceof Error ? result.reason.message : "Failed";
+        return [`${environment.label}: ${reason}`];
+      }
+      return result?.status === "fulfilled" && result.value._tag === "Failure"
+        ? [`${environment.label}: ${formatEnvironmentQueryError(result.value.cause)}`]
+        : [];
     });
-    if (failed.length > 0) {
+    if (failures.length > 0) {
       toastManager.add({
         type: "error",
         title: "Device settings not saved on all environments",
-        description: `Could not update ${failed.map((environment) => environment.label).join(", ")}.`,
+        description: failures.join("; "),
       });
     }
   };
