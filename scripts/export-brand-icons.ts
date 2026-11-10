@@ -221,38 +221,6 @@ const ICON_VARIANTS = [
       windowsIco: BRAND_ASSET_PATHS.developmentWindowsIconIco,
     },
   },
-  {
-    label: "preview",
-    source: BRAND_ASSET_PATHS.nightlyIconComposerProject,
-    outputs: {
-      ios: BRAND_ASSET_PATHS.nightlyIosIconPng,
-      macos: BRAND_ASSET_PATHS.nightlyMacIconPng,
-      universal: BRAND_ASSET_PATHS.nightlyLinuxIconPng,
-      appleTouch: BRAND_ASSET_PATHS.nightlyWebAppleTouchIconPng,
-      webIcon192: BRAND_ASSET_PATHS.nightlyWebIcon192Png,
-      webIcon512: BRAND_ASSET_PATHS.nightlyWebIcon512Png,
-      favicon16: BRAND_ASSET_PATHS.nightlyWebFavicon16Png,
-      favicon32: BRAND_ASSET_PATHS.nightlyWebFavicon32Png,
-      faviconIco: BRAND_ASSET_PATHS.nightlyWebFaviconIco,
-      windowsIco: BRAND_ASSET_PATHS.nightlyWindowsIconIco,
-    },
-  },
-  {
-    label: "production",
-    source: BRAND_ASSET_PATHS.productionIconComposerProject,
-    outputs: {
-      ios: BRAND_ASSET_PATHS.productionIosIconPng,
-      macos: BRAND_ASSET_PATHS.productionMacIconPng,
-      universal: BRAND_ASSET_PATHS.productionLinuxIconPng,
-      appleTouch: BRAND_ASSET_PATHS.productionWebAppleTouchIconPng,
-      webIcon192: BRAND_ASSET_PATHS.productionWebIcon192Png,
-      webIcon512: BRAND_ASSET_PATHS.productionWebIcon512Png,
-      favicon16: BRAND_ASSET_PATHS.productionWebFavicon16Png,
-      favicon32: BRAND_ASSET_PATHS.productionWebFavicon32Png,
-      faviconIco: BRAND_ASSET_PATHS.productionWebFaviconIco,
-      windowsIco: BRAND_ASSET_PATHS.productionWindowsIconIco,
-    },
-  },
 ] as const satisfies ReadonlyArray<IconVariant>;
 
 const RepositoryRoot = Effect.service(Path.Path).pipe(
@@ -778,11 +746,7 @@ export const exportBrandIconsCommand = Command.make(
     ),
   },
   ({ check }) => exportBrandIcons(check).pipe(Effect.scoped),
-).pipe(
-  Command.withDescription(
-    "Export development, preview, and production assets from Icon Composer projects.",
-  ),
-);
+).pipe(Command.withDescription("Export the app icon assets from the Icon Composer project."));
 
 if (import.meta.main) {
   Command.run(exportBrandIconsCommand, { version: "0.0.0" }).pipe(

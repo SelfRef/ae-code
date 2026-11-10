@@ -19,13 +19,7 @@ const APP_BUNDLE_ID = isDevelopment
   : "dev.aperte.AECode";
 const APP_PROTOCOL_SCHEMES = isDevelopment ? ["t3code-dev"] : ["t3code"];
 const LAUNCHER_VERSION = 20;
-const developmentMacIconPngPath = NodePath.join(
-  repoRoot,
-  "assets",
-  "dev",
-  "blueprint-macos-1024.png",
-);
-const productionMacIconPngPath = NodePath.join(repoRoot, "assets", "prod", "black-macos-1024.png");
+const macIconPngPath = NodePath.join(repoRoot, "assets", "dev", "blueprint-macos-1024.png");
 // oxlint-disable-next-line t3code/no-global-process-runtime -- Standalone launcher script has no Effect runtime.
 const hostPlatform = NodeOS.platform();
 
@@ -201,13 +195,10 @@ function registerMacLauncherBundle(appBundlePath) {
 }
 
 // Bundle-internal paths are macOS paths whatever host builds them.
-function resolveMacLauncherIconPaths(runtimeDir, development = isDevelopment) {
+function resolveMacLauncherIconPaths(runtimeDir) {
   return {
-    sourceIconPath: development ? developmentMacIconPngPath : productionMacIconPngPath,
-    generatedIconPath: NodePath.posix.join(
-      runtimeDir,
-      development ? "icon-dev.icns" : "icon-prod.icns",
-    ),
+    sourceIconPath: macIconPngPath,
+    generatedIconPath: NodePath.posix.join(runtimeDir, "icon-dev.icns"),
   };
 }
 

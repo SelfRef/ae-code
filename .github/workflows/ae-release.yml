@@ -127,7 +127,7 @@ jobs:
         run: cargo build --locked --release --manifest-path native/resource-monitor/Cargo.toml --target "$RUST_TARGET"
 
       - name: Apply web client branding
-        run: node scripts/apply-web-brand-assets.ts production apps/server/dist/client
+        run: node scripts/apply-web-brand-assets.ts apps/server/dist/client
 
       - name: Build the single executable
         run: node apps/server/scripts/cli.ts build-exe --verbose

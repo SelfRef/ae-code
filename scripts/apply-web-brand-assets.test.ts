@@ -23,7 +23,7 @@ it.layer(NodeServices.layer)("apply-web-brand-assets", (it) => {
         prefix: "apply-web-brand-assets-",
       });
 
-      yield* applyWebBrandAssets("production", targetDirectory);
+      yield* applyWebBrandAssets(targetDirectory);
 
       assert.deepStrictEqual(
         (yield* fs.readDirectory(targetDirectory)).toSorted(),
@@ -55,7 +55,7 @@ it.layer(NodeServices.layer)("apply-web-brand-assets", (it) => {
         ),
       );
 
-      yield* applyWebBrandAssets("production", "");
+      yield* applyWebBrandAssets("");
 
       for (const destination of destinations) {
         assert.isTrue(yield* fs.exists(destination));
