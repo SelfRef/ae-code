@@ -15,7 +15,7 @@ type IconVariant = "dev" | "nightly" | "prod";
 
 const ADAPTIVE_CANVAS = 432;
 const SPLASH_CANVAS = 1152;
-const TEXT = { x: 15.53, y: 37, width: 94.5, height: 57 };
+const TEXT = { x: 16.8, y: 29.6, width: 94.4, height: 71.8 };
 const WORDMARK_FRACTION = 0.48;
 const COMPOSER_CANVAS_PT = 1024;
 const SVG_DENSITY = 300;
@@ -88,10 +88,16 @@ const renderForeground = Effect.fn("androidIcons.renderForeground")(function* (
   size: number,
 ) {
   const text = yield* readLayerSource(repositoryRoot, "prod", "text.svg");
-  const paths = text.match(/<path[^>]*\/>/g) ?? [];
+  // Keep the defs and the glyph's own group: its fill is a gradient.
+  // Lighter than the desktop glyph: it sits on the blue blueprint tile, where the original reads dull.
+  const inner = text
+    .replace(/^[\s\S]*?<svg[^>]*>/, "")
+    .replace(/<\/svg>\s*$/, "")
+    .replace("#C5D2E0", "#F5F9FD")
+    .replace("#81A1C1", "#D2E0EF");
   return yield* rasterize(
     "foreground",
-    canvasSvg(size, `<g transform="${wordmarkTransform(size)}">${paths.join("")}</g>`),
+    canvasSvg(size, `<g transform="${wordmarkTransform(size)}">${inner}</g>`),
     size,
   );
 });
@@ -199,7 +205,6 @@ const exportAndroidIcons = Effect.gen(function* () {
     ],
     ["android-splash-icon-dev.png", yield* renderSplashIcon(repositoryRoot, "dev")],
     ["android-splash-icon-nightly.png", yield* renderSplashIcon(repositoryRoot, "nightly")],
-    ["android-splash-icon-prod.png", yield* renderSplashIcon(repositoryRoot, "prod")],
   ] as const;
   for (const [name, contents] of outputs) {
     yield* fs.writeFile(path.join(repositoryRoot, OUTPUT_DIRECTORY, name), contents);

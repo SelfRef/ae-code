@@ -373,9 +373,14 @@ disabled.
   with the fork's key
   (Expo's template signs release builds with the public debug key). The version name is `YYYY.MMDD.N`, the version code
   `YYMMDDNN`. The production Android package is `dev.aperte.aecode` and the name AE Code (`apps/mobile/app.config.ts`),
-  so it installs beside upstream's app; the `t3code` URL scheme is kept. Not rebranded yet: the Android launcher icon,
-  splash and notification glyph are still the T3 mark, and thread links on `app.t3.codes` open a chooser because that
-  domain only lists upstream's package.
+  so it installs beside upstream's app; the `t3code` URL scheme is kept. There is one Android icon for every build: the blueprint tile with the Aperte glyph
+  (adaptive, monochrome, splash and notification glyph; the production build uses the dev assets). The release build has
+  no suffix and no badge; the dev and preview builds are named AE Code Dev and AE Code Preview and show the same
+  word as a badge in the header (`resolveMobileStageLabel`). `icons:export:android` renders the foreground
+  and splashes from the same `text.svg` as the other icons. The app's own name in its screens, permission prompts,
+  widgets and notifications says AE Code ("T3 Connect" and "T3 Account" keep upstream's names: they are its hosted
+  service). Saved images go to `Pictures/AE Code`. Thread links on
+  `app.t3.codes` still open a chooser because that domain only lists upstream's package.
 - **Secrets for Android:** `ANDROID_KEYSTORE` (base64 of a PKCS12 keystore; its first key is used, whatever the alias)
   and `ANDROID_KEYSTORE_PASSWORD` (store and key share it in PKCS12). Create the key once and keep it: an update must be
   signed with the same key as the installed app.
