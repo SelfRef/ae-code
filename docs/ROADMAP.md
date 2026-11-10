@@ -1180,6 +1180,9 @@ and `merge_push` (both commit pending changes first), plus a project-scoped sett
   branch's own checkout, which must have no tracked changes. A default branch checked out nowhere is advanced with
   `git fetch . branch:default`. A rebase conflict is aborted and reported; nothing is left half-done.
 - The push goes to the default branch's configured remote branch, or the primary remote's same-named branch.
+- When a merge fails (a rebase conflict, a dirty default checkout), the error toast offers "Merge by agent": it sends the
+  thread's agent a turn (`apps/web/src/components/mergeByAgent.ts`) with the error, asking it to rebase, resolve conflicts,
+  fast-forward the default branch and push if the action pushed. Nothing is retried automatically.
 - Not cleaned up here: the existing worktree cleanup removes merged branches' worktrees.
 - Web only; mobile's Git sheet does not list the merge actions. Older servers do not know the actions, and the
   result's `merge` field is optional for the same reason.

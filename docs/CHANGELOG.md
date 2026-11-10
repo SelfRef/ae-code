@@ -22,6 +22,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
   the thread menu (the control used to lock after the first message).
 - The Git actions menu merges a thread's branch into the default branch, with or without pushing;
   it can also be a project's main action.
+- When a merge fails, for example on a rebase conflict, its error offers "Merge by agent": the thread's agent
+  rebases, resolves the conflicts and finishes the merge.
 - Issues open in the right panel.
 - Sidebar: Done and Input threads are tinted, a draft shows a Draft status, and a thread without a
   worktree shows a branch icon before its branch name.
