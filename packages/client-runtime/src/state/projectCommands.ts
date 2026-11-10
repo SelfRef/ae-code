@@ -1,5 +1,6 @@
 import {
   type EnvironmentId,
+  type ProjectEntryOperation,
   ProjectId,
   type ProjectReadFileResult,
   type ScopedProjectRef,
@@ -67,6 +68,18 @@ function writtenFilePaths(
       resolveWorkspaceFilePath(path, input.cwd),
     ),
   );
+}
+
+function modifiedEntryPaths(operation: ProjectEntryOperation) {
+  switch (operation.type) {
+    case "create":
+    case "delete":
+      return [operation.relativePath];
+    case "move":
+      return [operation.from, operation.to];
+    case "copy":
+      return [operation.to];
+  }
 }
 
 export class ScratchProjectNotLoadedError extends Schema.TaggedError<ScratchProjectNotLoadedError>()(
@@ -222,6 +235,26 @@ export function createProjectEnvironmentAtoms<R, E>(
       tag: WS_METHODS.projectsCreateFromThread,
       scheduler: projectScheduler,
       concurrency: { mode: "serial", key: ({ environmentId }) => environmentId },
+    }),
+    modifyEntry: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:projects:modify-entry",
+      tag: WS_METHODS.projectsModifyEntry,
+      scheduler: fileScheduler,
+      concurrency: {
+        mode: "serial",
+        key: ({ environmentId, input }) => `${environmentId}:${input.cwd}`,
+      },
+      execute: (input) =>
+        requestGuarded(WS_METHODS.projectsModifyEntry, input).pipe(
+          Effect.tap(() =>
+            Effect.forEach(
+              modifiedEntryPaths(input.operation).map((path) =>
+                resolveWorkspaceFilePath(path, input.cwd),
+              ),
+              fileMetadata.invalidate,
+            ),
+          ),
+        ),
     }),
     writeFile: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:projects:write-file",

@@ -19,6 +19,7 @@ import * as KnownWorkspaces from "./KnownWorkspaces.ts";
 import * as WorkspaceEntries from "./WorkspaceEntries.ts";
 import * as WorkspaceFileSystem from "./WorkspaceFileSystem.ts";
 import * as WorkspacePaths from "./WorkspacePaths.ts";
+import type { ProjectEntryOperation } from "@t3tools/contracts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import { symlinksSupported } from "@t3tools/shared/testing/symlinks";
 import { vi } from "vite-plus/test";
@@ -82,6 +83,9 @@ const makeTempDir = Effect.gen(function* () {
     prefix: "t3code-workspace-files-",
   });
 });
+
+const conflictReason = (error: { readonly _tag: string; readonly reason?: string }) =>
+  error._tag === "WorkspaceEntryConflictError" ? error.reason : error._tag;
 
 const writeTextFile = Effect.fn("writeTextFile")(function* (
   cwd: string,
@@ -569,6 +573,81 @@ it.layer(layerTest, { excludeTestServices: true })("WorkspaceFileSystemLive", (i
         });
         expect("cause" in error).toBe(false);
         expect("contents" in error).toBe(false);
+      }),
+    );
+  });
+
+  describe("modifyEntry", () => {
+    it.effect("creates, renames, copies and deletes entries without overwriting", () =>
+      Effect.gen(function* () {
+        const service = yield* WorkspaceFileSystem.WorkspaceFileSystem;
+        const fileSystem = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const cwd = yield* makeTempDir;
+        yield* writeTextFile(cwd, "src/a.ts", "a");
+        const modify = (operation: ProjectEntryOperation) =>
+          service.modifyEntry({ cwd, operation });
+
+        yield* modify({ type: "create", kind: "directory", relativePath: "docs" });
+        yield* modify({ type: "create", kind: "file", relativePath: "docs/new.md" });
+        expect(yield* fileSystem.readFileString(path.join(cwd, "docs/new.md"))).toBe("");
+        const exists = yield* modify({
+          type: "create",
+          kind: "file",
+          relativePath: "src/a.ts",
+        }).pipe(Effect.flip);
+        expect(exists).toMatchObject({
+          _tag: "WorkspaceEntryConflictError",
+          reason: "already_exists",
+        });
+
+        yield* modify({ type: "move", from: "src/a.ts", to: "docs/b.ts" });
+        expect(yield* fileSystem.exists(path.join(cwd, "src/a.ts"))).toBe(false);
+        yield* modify({ type: "copy", from: "docs", to: "docs-copy" });
+        expect(yield* fileSystem.readFileString(path.join(cwd, "docs-copy/b.ts"))).toBe("a");
+        yield* modify({ type: "delete", relativePath: "docs" });
+        expect(yield* fileSystem.exists(path.join(cwd, "docs"))).toBe(false);
+        expect(yield* fileSystem.exists(path.join(cwd, "docs-copy/b.ts"))).toBe(true);
+      }),
+    );
+
+    it.effect("refuses a folder into itself, a missing source and the Git folder", () =>
+      Effect.gen(function* () {
+        const service = yield* WorkspaceFileSystem.WorkspaceFileSystem;
+        const cwd = yield* makeTempDir;
+        yield* writeTextFile(cwd, "dir/f.txt", "f");
+        yield* writeTextFile(cwd, ".git/HEAD", "ref: refs/heads/main\n");
+        const fail = (operation: ProjectEntryOperation) =>
+          service.modifyEntry({ cwd, operation }).pipe(Effect.flip);
+
+        expect(conflictReason(yield* fail({ type: "move", from: "dir", to: "dir/inner" }))).toBe(
+          "invalid_target",
+        );
+        expect(conflictReason(yield* fail({ type: "copy", from: "nope", to: "x" }))).toBe(
+          "not_found",
+        );
+        expect(yield* fail({ type: "delete", relativePath: ".git/HEAD" })).toBeInstanceOf(
+          WorkspaceFileSystem.WorkspaceFilePathEscapeError,
+        );
+        expect(yield* fail({ type: "delete", relativePath: "../outside" })).toBeInstanceOf(
+          WorkspacePaths.WorkspacePathOutsideRootError,
+        );
+      }),
+    );
+
+    it.effect.skipIf(!symlinksSupported)("deletes a symlink without touching its target", () =>
+      Effect.gen(function* () {
+        const service = yield* WorkspaceFileSystem.WorkspaceFileSystem;
+        const fileSystem = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const cwd = yield* makeTempDir;
+        yield* writeTextFile(cwd, "real/keep.txt", "keep");
+        yield* fileSystem.symlink(path.join(cwd, "real"), path.join(cwd, "link"));
+
+        yield* service.modifyEntry({ cwd, operation: { type: "delete", relativePath: "link" } });
+
+        expect(yield* fileSystem.readFileString(path.join(cwd, "real/keep.txt"))).toBe("keep");
+        expect(yield* fileSystem.exists(path.join(cwd, "link"))).toBe(false);
       }),
     );
   });

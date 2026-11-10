@@ -6,6 +6,8 @@ import type {
   FilesystemEntryMetadata,
   FilesystemGetMetadataInput,
   FilesystemGetMetadataResult,
+  ProjectModifyEntryInput,
+  ProjectModifyEntryResult,
   ProjectReadFileInput,
   ProjectReadFileResult,
   ProjectWriteFileInput,
@@ -102,6 +104,26 @@ export class WorkspaceBinaryFileError extends Schema.TaggedError<WorkspaceBinary
   }
 }
 
+export class WorkspaceEntryConflictError extends Schema.TaggedError<WorkspaceEntryConflictError>()(
+  "WorkspaceEntryConflictError",
+  {
+    workspaceRoot: Schema.String,
+    relativePath: Schema.String,
+    reason: Schema.Literals(["already_exists", "not_found", "invalid_target"]),
+  },
+) {
+  override get message(): string {
+    switch (this.reason) {
+      case "already_exists":
+        return `'${this.relativePath}' already exists.`;
+      case "not_found":
+        return `'${this.relativePath}' no longer exists.`;
+      case "invalid_target":
+        return `'${this.relativePath}' cannot be a folder's own destination.`;
+    }
+  }
+}
+
 export const WorkspaceFileSystemError = Schema.Union([
   WorkspaceFileSystemOperationError,
   WorkspaceFilePathEscapeError,
@@ -129,6 +151,16 @@ export class WorkspaceFileSystem extends Context.Service<
     ) => Effect.Effect<
       ProjectWriteFileResult,
       | WorkspaceFileSystemError
+      | WorkspacePaths.WorkspacePathOutsideRootError
+      | KnownWorkspaces.UnknownWorkspaceError
+    >;
+    /** Creates, moves, copies or deletes inside a known workspace; never overwrites. */
+    readonly modifyEntry: (
+      input: ProjectModifyEntryInput,
+    ) => Effect.Effect<
+      ProjectModifyEntryResult,
+      | WorkspaceFileSystemError
+      | WorkspaceEntryConflictError
       | WorkspacePaths.WorkspacePathOutsideRootError
       | KnownWorkspaces.UnknownWorkspaceError
     >;
@@ -493,8 +525,10 @@ export const make = Effect.gen(function* () {
   });
 
   // Resolve existing ancestors and reject dangling links so creation cannot follow symlinks outside root.
+  // keepFinalLink resolves the parent only, so a symlink entry is acted on itself, not its target.
   const resolveWriteTarget = Effect.fn("WorkspaceFileSystem.resolveWriteTarget")(function* (
-    input: ProjectWriteFileInput,
+    input: Pick<ProjectWriteFileInput, "cwd" | "relativePath">,
+    options?: { readonly keepFinalLink?: boolean },
   ) {
     const target = yield* workspacePaths.resolveRelativePathWithinRoot({
       workspaceRoot: input.cwd,
@@ -518,7 +552,7 @@ export const make = Effect.gen(function* () {
     const segments = path.relative(input.cwd, target.absolutePath).split(path.sep);
     const realTargetPath = yield* Effect.tryPromise({
       try: async () => {
-        for (let depth = segments.length; depth > 0; depth--) {
+        for (let depth = segments.length - (options?.keepFinalLink ? 1 : 0); depth > 0; depth--) {
           const candidate = path.join(realWorkspaceRoot, ...segments.slice(0, depth));
           try {
             return path.join(await NodeFSP.realpath(candidate), ...segments.slice(depth));
@@ -632,7 +666,114 @@ export const make = Effect.gen(function* () {
     return { relativePath: target.relativePath };
   });
 
-  return WorkspaceFileSystem.of({ getMetadata, readFile, writeFile });
+  const modifyEntry: WorkspaceFileSystem["Service"]["modifyEntry"] = Effect.fn(
+    "WorkspaceFileSystem.modifyEntry",
+  )(function* (input) {
+    yield* knownWorkspaces.assertContains(input.cwd);
+    const operation = input.operation;
+    const conflict = (relativePath: string, reason: WorkspaceEntryConflictError["reason"]) =>
+      new WorkspaceEntryConflictError({ workspaceRoot: input.cwd, relativePath, reason });
+    const resolve = (relativePath: string) =>
+      resolveWriteTarget({ cwd: input.cwd, relativePath }, { keepFinalLink: true });
+    const run = (
+      target: { relativePath: string; realTargetPath: string },
+      attempt: () => Promise<unknown>,
+    ) =>
+      Effect.tryPromise({
+        try: attempt,
+        catch: (cause) =>
+          new WorkspaceFileSystemOperationError({
+            workspaceRoot: input.cwd,
+            relativePath: target.relativePath,
+            resolvedPath: target.realTargetPath,
+            operationPath: target.realTargetPath,
+            operation: "write-file",
+            cause,
+          }),
+      });
+    // lstat: a dangling link still occupies its name.
+    const entryType = (target: { realTargetPath: string }) =>
+      Effect.promise(() =>
+        NodeFSP.lstat(target.realTargetPath).then(
+          (stat) => (stat.isDirectory() ? "directory" : "file"),
+          () => null,
+        ),
+      );
+    const requireFree = Effect.fnUntraced(function* (target: {
+      relativePath: string;
+      realTargetPath: string;
+    }) {
+      if ((yield* entryType(target)) !== null)
+        return yield* conflict(target.relativePath, "already_exists");
+    });
+    const requirePresent = Effect.fnUntraced(function* (target: {
+      relativePath: string;
+      realTargetPath: string;
+    }) {
+      const type = yield* entryType(target);
+      if (type === null) return yield* conflict(target.relativePath, "not_found");
+      return type;
+    });
+
+    switch (operation.type) {
+      case "create": {
+        const target = yield* resolve(operation.relativePath);
+        yield* requireFree(target);
+        yield* run(target, () =>
+          operation.kind === "directory"
+            ? NodeFSP.mkdir(target.realTargetPath, { recursive: true })
+            : NodeFSP.mkdir(path.dirname(target.realTargetPath), { recursive: true }).then(() =>
+                // wx: a file created after the check is not overwritten.
+                NodeFSP.writeFile(target.realTargetPath, "", { flag: "wx" }),
+              ),
+        );
+        yield* workspaceEntries.refresh(input.cwd);
+        return { relativePath: target.relativePath };
+      }
+      case "delete": {
+        const target = yield* resolve(operation.relativePath);
+        yield* requirePresent(target);
+        yield* run(target, () => NodeFSP.rm(target.realTargetPath, { recursive: true }));
+        yield* workspaceEntries.refresh(input.cwd);
+        return { relativePath: target.relativePath };
+      }
+      case "move":
+      case "copy": {
+        const source = yield* resolve(operation.from);
+        const destination = yield* resolve(operation.to);
+        const sourceType = yield* requirePresent(source);
+        // A folder cannot go into itself, and an entry cannot replace itself.
+        if (
+          destination.realTargetPath === source.realTargetPath ||
+          (sourceType === "directory" &&
+            destination.realTargetPath.startsWith(`${source.realTargetPath}${path.sep}`))
+        ) {
+          return yield* conflict(destination.relativePath, "invalid_target");
+        }
+        yield* requireFree(destination);
+        const destinationParent = path.dirname(destination.realTargetPath);
+        yield* run(destination, () =>
+          NodeFSP.stat(destinationParent).then((stat) => {
+            if (!stat.isDirectory()) throw new Error("Destination parent is not a folder.");
+          }),
+        );
+        yield* run(destination, () =>
+          operation.type === "move"
+            ? NodeFSP.rename(source.realTargetPath, destination.realTargetPath)
+            : NodeFSP.cp(source.realTargetPath, destination.realTargetPath, {
+                recursive: true,
+                errorOnExist: true,
+                force: false,
+                verbatimSymlinks: true,
+              }),
+        );
+        yield* workspaceEntries.refresh(input.cwd);
+        return { relativePath: destination.relativePath };
+      }
+    }
+  });
+
+  return WorkspaceFileSystem.of({ getMetadata, readFile, writeFile, modifyEntry });
 });
 
 export const layer = Layer.effect(WorkspaceFileSystem, make);
