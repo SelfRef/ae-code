@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [26] | Pull requests and issues come from a project's `origin`, not `upstream`, unless `gh repo set-default` marks another remote (a fork listed upstream's)                  | done    |
 | [25] | The Docker image updates in place from the fork's GitHub releases when `T3CODE_SELF_UPDATE=true` (Settings → About); one update channel, no Stable/Nightly picker      | done    |
 | [24] | The changed-files card under an answer says when that run committed and pushed (read from its successful `git commit` / `git push` commands)                           | done    |
 | [23] | Force push for a diverged branch (Git menu → "Force push..."), with a modal listing the commits it deletes and sends                                                   | done    |
@@ -59,6 +60,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 [22]: #uncommitted-changes-first-change-22
 [23]: #force-push-change-23
 [24]: #commit-and-push-on-the-changed-files-card-change-24
+[26]: #pull-requests-from-the-fork-change-26
 [25]: #in-place-updates-of-the-docker-image-change-25
 
 `done` means it is a commit on `main`; the commit is found by subject (`git log --grep`), not by hash, because every
@@ -826,6 +828,19 @@ only way to know was to scroll through the commands.
   commands, not the repository: a commit made some other way, or whose command output was never loaded, is not shown,
   and neither is the push state the repository is in now.
 - Web only; mobile has no changed-files card. No data migration, no contract change.
+
+## Pull requests from the fork (change 26)
+
+`RepositoryIdentityResolver` named a checkout's repository after its `upstream` remote when it had one, then `origin`,
+so a project cloned from this fork listed upstream's pull requests (and grouped with upstream's other checkouts).
+
+- `origin` now comes first, then `upstream`, then the first remote by name. The identity's `origin` field (the fork next
+  to its upstream) is therefore empty for a checkout that has both: the identity already is the fork.
+- gh's default-repository mark (`gh repo set-default`, stored as `remote.<name>.gh-resolved`) still wins over that
+  order, as upstream implements it: a checkout marked on `upstream` lists upstream's pull requests, issues and
+  releases until `gh repo set-default <owner>/<fork>` marks the fork. The fork does not override the mark.
+- gh's own repository choice in the GitHub provider (`upstream`, `github`, `origin`) is left as is: it only mirrors what
+  `gh pr create` does in the checkout.
 
 ## In-place updates of the Docker image (change 25)
 

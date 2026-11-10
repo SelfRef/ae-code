@@ -13,10 +13,11 @@ connections are local to a client profile; the server's identity and state are
 not. A repository identity can correlate clones across environments, but never
 routes work between them. A project and its threads belong to one environment;
 an agent reaches another environment's threads only through a peer link.
-The canonical key follows the `upstream` remote when one exists, so pull request
-features target the repository a fork tracks. A fork also reports its own
-`origin`, and clients group and label by that, so a fork never collapses into a
-checkout of its upstream.
+The canonical key follows the `origin` remote, then `upstream`, so pull request
+and issue features target the repository the checkout was cloned from: a fork's
+own, not the one it tracks. Only a checkout with no `origin` falls back to
+`upstream`. When the key and `origin` differ, the identity also reports `origin`,
+and clients group and label by that.
 
 [Environment ID initialization](../../apps/server/src/environment/ServerEnvironment.ts)
 must publish a complete ID atomically. Repair of an empty ID file retains a
