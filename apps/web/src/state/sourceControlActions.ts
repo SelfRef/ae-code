@@ -5,6 +5,8 @@ import type {
   AtomCommandSuccess,
 } from "@t3tools/client-runtime/state/runtime";
 import {
+  beginVcsActionState,
+  EMPTY_VCS_ACTION_STATE,
   VcsActionUnavailableError,
   type VcsActionOperation,
   type RunVcsStackedActionInput,
@@ -242,7 +244,23 @@ export function useGitStackedAction(scope: SourceControlActionScope) {
         ),
       );
     }
-    return runStackedAction(input);
+    // The server's first progress event lags the click; show the action running at once.
+    const stateAtom = vcsActionManager.stateAtom(scope);
+    appAtomRegistry.set(
+      stateAtom,
+      beginVcsActionState({
+        operation: "run_change_request",
+        label: "Running source control action",
+        actionId: input.actionId,
+      }),
+    );
+    const result = await runStackedAction(input);
+    const current = appAtomRegistry.get(stateAtom);
+    // A command that failed before it started never clears the state it did not set.
+    if (current.actionId === input.actionId && current.isRunning) {
+      appAtomRegistry.set(stateAtom, EMPTY_VCS_ACTION_STATE);
+    }
+    return result;
   };
 
   return useAction({
