@@ -3101,7 +3101,8 @@ export const layerWsRpc = (
         [WS_METHODS.vcsPull]: (input) =>
           gitWorkflow.pullCurrentBranch(input.cwd).pipe(
             Effect.matchCauseEffect({
-              onFailure: (cause) => Effect.failCause(cause),
+              onFailure: (cause) =>
+                refreshGitStatus(input.cwd).pipe(Effect.andThen(Effect.failCause(cause))),
               onSuccess: (result) =>
                 refreshGitStatus(input.cwd).pipe(Effect.ignore({ log: true }), Effect.as(result)),
             }),
@@ -3110,7 +3111,8 @@ export const layerWsRpc = (
         [WS_METHODS.vcsForcePush]: (input) =>
           gitWorkflow.forcePushCurrentBranch(input.cwd, input.expectedUpstreamSha).pipe(
             Effect.matchCauseEffect({
-              onFailure: (cause) => Effect.failCause(cause),
+              onFailure: (cause) =>
+                refreshGitStatus(input.cwd).pipe(Effect.andThen(Effect.failCause(cause))),
               onSuccess: (result) =>
                 refreshGitStatus(input.cwd).pipe(Effect.ignore({ log: true }), Effect.as(result)),
             }),
@@ -3126,7 +3128,9 @@ export const layerWsRpc = (
               })
               .pipe(
                 Effect.matchCauseEffect({
-                  onFailure: (cause) => Queue.failCause(queue, cause),
+                  // A failed action can still have moved refs or committed, so the status is stale.
+                  onFailure: (cause) =>
+                    refreshGitStatus(input.cwd).pipe(Effect.andThen(Queue.failCause(queue, cause))),
                   onSuccess: (result) =>
                     (input.threadId === undefined
                       ? Effect.void
