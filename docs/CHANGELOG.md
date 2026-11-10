@@ -10,6 +10,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Added
 
+- Actions: the Command field lists the variables a command can use (`T3CODE_PROJECT_ROOT`,
+  `T3CODE_WORKTREE_PATH`).
 - Saved environments are shared between browsers: the environments you add in one browser signed in to a
   server show in every other browser signed in to it (the browser needs the `access:write` permission there).
 - Source control: the Commit action names how many files it commits, next to the Push action's commit
