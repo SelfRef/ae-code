@@ -103,10 +103,8 @@ import { serverEnvironment } from "~/state/server";
 import { sourceControlEnvironment } from "~/state/sourceControl";
 import { threadEnvironment } from "~/state/threads";
 import { useAtomCommand } from "~/state/use-atom-command";
-import { useOrchestrationCommand } from "~/state/use-orchestration-command";
 import { vcsActionManager, vcsEnvironment, vcsStatusRevalidation } from "~/state/vcs";
-import { newMessageId, randomUUID } from "~/lib/utils";
-import { mergeByAgentPrompt } from "./mergeByAgent";
+import { randomUUID } from "~/lib/utils";
 import { resolvePathLinkTarget } from "@t3tools/shared/fileLinks";
 import { type DraftId, useComposerDraftStore } from "~/composerDraftStore";
 import {
@@ -962,7 +960,6 @@ export default function GitActionsControl({
     threadEnvironment.updateMetadata,
     "thread branch metadata update",
   );
-  const startThreadTurn = useOrchestrationCommand(threadEnvironment.startTurn, "merge by agent");
   const activeEnvironmentId = activeThreadRef?.environmentId ?? null;
   const successScopeKey = `${activeEnvironmentId ?? ""}\u0000${gitCwd ?? ""}`;
   const canWriteSourceControl = useEnvironmentScope(
@@ -1258,47 +1255,13 @@ export default function GitActionsControl({
       }
 
       const error = squashAtomCommandFailure(result);
-      const errorMessage = error instanceof Error ? error.message : "An error occurred.";
       const errorToastTiming = resolveGitActionResultToastTiming("error");
-      const canMergeByAgent =
-        (action === "merge" || action === "merge_push") &&
-        activeServerThread !== null &&
-        activeEnvironmentId !== null &&
-        canOperateThread;
-      const toastId = toastManager.add(
+      toastManager.add(
         stackedThreadToast({
           type: "error",
           title: "Action failed",
-          description: errorMessage,
+          description: error instanceof Error ? error.message : "An error occurred.",
           timeout: errorToastTiming.timeout,
-          ...(canMergeByAgent
-            ? {
-                actionProps: {
-                  children: "Merge by agent",
-                  onClick: () => {
-                    toastManager.close(toastId);
-                    void startThreadTurn({
-                      environmentId: activeEnvironmentId,
-                      input: {
-                        threadId: activeServerThread.id,
-                        message: {
-                          messageId: newMessageId(),
-                          role: "user",
-                          text: mergeByAgentPrompt({
-                            push: action === "merge_push",
-                            error: errorMessage,
-                          }),
-                          attachments: [],
-                        },
-                        runtimeMode: activeServerThread.runtimeMode,
-                        interactionMode: "default",
-                        createdAt: new Date().toISOString(),
-                      },
-                    });
-                  },
-                },
-              }
-            : {}),
           ...(scopedToastData !== undefined ? { data: scopedToastData } : {}),
         }),
       );

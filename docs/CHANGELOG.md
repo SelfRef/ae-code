@@ -15,9 +15,9 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 - Issues and Releases hide while GitHub isn't signed in on any connected environment, and Pull requests while no
   source-control provider is (sidebar, command palette, Android tabs). Settings → Navigation tabs marks them "Not signed in".
 - Android: Input, Done and draft threads are tinted in the list, and an unsent draft reads "Draft".
-- Android: the Git sheet and menu merge into the default branch, force push (listing what it deletes) and offer
-  "Merge by agent" when a merge fails; the main Git action follows the project's setting. Their headers
-  count a feature branch's "ahead" commits against the default branch, not its upstream.
+- Android: the Git sheet and menu merge into the default branch and force push (listing what it deletes); the
+  main Git action follows the project's setting. Their headers count a feature branch's "ahead" commits against
+  the default branch, not its upstream.
 - Android: choosing a branch checked out in another worktree, such as `main`, moves the thread there.
 - Android: a started thread can be moved into a new worktree from its menu.
 - Android: Settings → Source control sets the main Git action and whether pushing to the default branch asks first.
@@ -42,8 +42,11 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
   it can also be a project's main action.
 - The thread details card ends with a Thread actions section: Settle thread, and an arrow with the thread's
   context menu. It can be hidden like the card's other rows.
-- When a merge fails, for example on a rebase conflict, its error offers "Merge by agent": the thread's agent
-  rebases, resolves the conflicts and finishes the merge.
+- When a merge fails, for example on a rebase conflict, the thread's agent takes over on its own: the Merge
+  action stays in progress ("Merging by agent...") while the agent rebases, resolves the conflicts and finishes
+  the merge, and the thread shows a system notice instead of a message.
+  Settings → Source control turns this off and can pick a different model for it; the section's Advanced group is
+  now a flat list.
 - Branches: a page (sidebar, command palette) and an Android tab list a project's branches and worktrees
   with what each has to push, pull and merge, highlight the ones with commits the default branch lacks and
   link to the thread working on them.

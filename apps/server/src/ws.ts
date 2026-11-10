@@ -41,6 +41,8 @@ import {
   type FileManagerRevealKind,
   type OrchestrationV2Command,
   type GitActionProgressEvent,
+  type GitRunStackedActionInput,
+  type ModelSelection,
   type GitManagerServiceError,
   type MessageId,
   type AcpRegistryImportSessionInput,
@@ -218,6 +220,7 @@ import * as VcsStatusBroadcaster from "./vcs/VcsStatusBroadcaster.ts";
 import * as VcsProvisioningService from "./vcs/VcsProvisioningService.ts";
 import * as GitWorkflowService from "./git/GitWorkflowService.ts";
 import { refreshPushedPullRequests } from "./git/refreshPushedPullRequests.ts";
+import { handOffMerge } from "./git/handOffMerge.ts";
 import { linkCreatedPullRequest } from "./git/linkCreatedPullRequest.ts";
 import * as ReviewService from "./review/ReviewService.ts";
 import * as ProjectEnrichmentService from "./project/ProjectEnrichmentService.ts";
@@ -1495,6 +1498,31 @@ export const layerWsRpc = (
           Effect.orDie,
           Effect.map((id) => CommandId.make(`server:${tag}:${id}`)),
         );
+      // A failed merge starts an agent turn, which source control access alone may not.
+      const mergeHandOff = ({ threadId, action }: GitRunStackedActionInput) =>
+        threadId === undefined ||
+        (action !== "merge" && action !== "merge_push") ||
+        !currentSession.scopes.includes(AuthOrchestrationOperateScope)
+          ? {}
+          : {
+              handOffMerge: (error: string, modelSelection: ModelSelection | undefined) =>
+                random.uuidV4().pipe(
+                  Effect.orDie,
+                  Effect.flatMap((uuid) =>
+                    handOffMerge({
+                      threadId,
+                      push: action === "merge_push",
+                      error,
+                      modelSelection,
+                      uuid,
+                    }),
+                  ),
+                  Effect.provideService(
+                    ThreadManagementService.ThreadManagementService,
+                    threadManagement,
+                  ),
+                ),
+            };
       const resolvePullRequestSyncKey = (reference: PullRequestRef) =>
         reference.host !== undefined && reference.repository.includes("/")
           ? Effect.succeed(pullRequestSyncKey(reference))
@@ -3261,6 +3289,7 @@ export const layerWsRpc = (
                 progressReporter: {
                   publish: (event) => Queue.offer(queue, event).pipe(Effect.asVoid),
                 },
+                ...mergeHandOff(input),
               })
               .pipe(
                 Effect.matchCauseEffect({
