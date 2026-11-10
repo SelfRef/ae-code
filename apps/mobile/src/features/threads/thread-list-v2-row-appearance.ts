@@ -1,5 +1,6 @@
 import type { ViewStyle } from "react-native";
 import type { MobileThemeVariables } from "../../lib/mobileTheme";
+import type { ThreadListV2RowTint } from "./thread-list-v2-row-tint";
 
 export const THREAD_LIST_V2_MONO_FONT = "Menlo";
 export const THREAD_LIST_V2_ROW_CONTENT_CLASS_NAME = "px-5 py-2.5";
@@ -29,6 +30,7 @@ export function getThreadListV2RowAppearance(
   theme: MobileThemeVariables,
   sidebarPane: boolean,
   selected: boolean,
+  _tint: ThreadListV2RowTint | null = null,
 ) {
   const selectedBackgroundColor = theme["--color-thread-selected"];
   const style: ViewStyle | undefined = sidebarPane
