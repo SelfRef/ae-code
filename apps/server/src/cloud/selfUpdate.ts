@@ -209,7 +209,6 @@ export const make = Effect.fn("cloud.server_self_update.make")(function* () {
       );
     }
     if (capability === "respawn") {
-      const targetVersion = input.targetVersion.trim();
       if (yield* Ref.getAndSet(inFlight, true)) {
         return yield* failWith("A server update is already in progress.");
       }
@@ -218,11 +217,8 @@ export const make = Effect.fn("cloud.server_self_update.make")(function* () {
         const release = yield* fetchLatestRelease().pipe(
           Effect.mapError((error) => failWith(error.reason, error)),
         );
-        if (release.version !== targetVersion) {
-          return yield* failWith(
-            `${targetVersion} is not the newest release (${release.version}); check for updates again.`,
-          );
-        }
+        // The client's version is only a hint: a local build's version is no release, so the newest one is installed.
+        const targetVersion = release.version;
         if (compareSemverVersions(release.version, packageJson.version) <= 0) {
           return yield* failWith(`This server already runs ${packageJson.version}.`);
         }

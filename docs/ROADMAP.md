@@ -1006,7 +1006,8 @@ in a container, so none of that applied.
 - **Check:** `server.npmRelease` (the RPC keeps upstream's name) answers `latest` from
   `api.github.com/repos/SelfRef/ae-code/releases/latest`, tag `v2026.11.09` read as version `2026.1109.0`. Anonymous
   GitHub requests are limited to 60 an hour per address; the answer is cached for a minute.
-- **Install:** About → Install calls the existing `server.updateServer`. The server only accepts the newest release,
+- **Install:** About → Install calls the existing `server.updateServer`. The server ignores the client's `targetVersion` (a local build's
+  version is no release) and installs the newest release: it
   downloads `ae-code-linux-x64.tar.gz`, checks it against the digest GitHub lists for the asset, unpacks it into
   `<home>/updates/<version>`, runs its `ae-code --version`, points `<home>/updates/current` at it and stops itself as a
   SIGTERM would. The entrypoint then starts the server again from `current`. It keeps the image's own binary unless the
