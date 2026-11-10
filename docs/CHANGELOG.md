@@ -46,6 +46,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Fixed
 
+- The Session and Weekly usage bars are as bright as the Context bar on the dark theme.
 - Linux: opening AE Code from a pinned dock icon uses that icon instead of adding a second one (the
   launcher now names the window class the app really uses).
 - Compact counts and token numbers follow the browser's locale.
