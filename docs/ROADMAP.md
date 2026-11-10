@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| 41   | Floating preview: window-style buttons in its top-right corner, shown while the pointer is over it, instead of a dot that opens a pill                                 | done    |
 | [40] | Other ways to run the Android emulator in the Device panel: investigate Cuttlefish and scrcpy; a Google Play image and foldable support are required                   | planned |
 | [39] | File operations in the Files panel: create files and folders, rename, move, copy and delete from a row's or the empty area's menu, on the web and in the Android app   | done    |
 | [38] | Branches: every branch and worktree of a project with what to push, pull and merge, on the web (`/branches`) and in the Android app                                    | done    |
