@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [28] | Worktree defaults for parallel feature work: semantic branch names, no start from the remote, cleanup of merged, deleted, unchanged and settled (3 days) worktrees     | done    |
 | [27] | Skills manager: every provider's skills in one list, then a shared library with per-provider switches                                                                  | done    |
 | [26] | Pull requests and issues come from a project's `origin`, not `upstream`, unless `gh repo set-default` marks another remote (a fork listed upstream's)                  | done    |
 | [25] | The Docker image updates in place from the fork's GitHub releases when `T3CODE_SELF_UPDATE=true` (Settings → About); one update channel, no Stable/Nightly picker      | done    |
@@ -983,6 +984,17 @@ in a container, so none of that applied.
 - **Update track removed:** the Stable/Nightly picker, its dialog and the hosted-app channel switch are gone, because the
   fork has one channel. The track-switch planning in the sidebar's "update everything" code is left in place to keep
   rebases small.
+
+## Worktree defaults (change 28)
+
+Defaults for working on several features at once, one worktree per thread. Only the decoding defaults in
+`packages/contracts/src/settings.ts` changed; a value already saved in `settings.json` wins.
+
+- Branch naming: semantic prefix (`feat/`, `fix/`), not `t3/`.
+- Start from remote: off, so a worktree branches from the local base branch, which can be ahead of `origin`.
+- Cleanup: delete worktrees of merged pull requests, of deleted threads and with no commits beyond the default branch, and
+  3 days after a thread settles. Worktrees with uncommitted changes are kept; branches and thread history always are.
+- No data migration: no key was renamed.
 
 ## Keeping the fork up to date with upstream
 

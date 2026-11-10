@@ -111,10 +111,10 @@ describe("serverSettings helpers", () => {
       }).storageCleanup,
     ).toEqual({
       worktreeAfterDays: null,
-      worktreeSettledAfterDays: null,
+      worktreeSettledAfterDays: 3,
       worktreeOnMerge: true,
-      worktreeOnDelete: false,
-      worktreeUnchanged: false,
+      worktreeOnDelete: true,
+      worktreeUnchanged: true,
       worktreeKeepWhen: "uncommitted-changes",
       browserArtifactsAfterDays: null,
       logsAfterDays: 30,

@@ -383,7 +383,13 @@ describe("scoped settings writes", () => {
   it("keeps each project's other cleanup rules when changing one rule across machines", () => {
     const machine = environment("Laptop", {
       settings: {
-        storageCleanup: { ...DEFAULT_SERVER_SETTINGS.storageCleanup, worktreeAfterDays: 30 },
+        storageCleanup: {
+          ...DEFAULT_SERVER_SETTINGS.storageCleanup,
+          worktreeAfterDays: 30,
+          worktreeOnMerge: false,
+          worktreeSettledAfterDays: null,
+          worktreeUnchanged: false,
+        },
       },
     });
     const customized = environment("Server", {

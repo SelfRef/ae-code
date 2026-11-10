@@ -429,7 +429,7 @@ describe("resolveWorktreeCleanup", () => {
       worktreeSettledAfterDays: 0,
       worktreeOnDelete: true,
       worktreeOnMerge: true,
-      worktreeUnchanged: false,
+      worktreeUnchanged: true,
       worktreeKeepWhen: "uncommitted-changes",
     });
     expect(
