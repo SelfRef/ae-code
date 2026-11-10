@@ -5679,8 +5679,9 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
           key: branchBaseConfigKey(newRefName),
           value: base.branchName,
         });
-        if (base.baseRef.startsWith("refs/remotes/")) {
-          // The base key names a branch on the host; this one keeps the remote it came from.
+        if (base.baseRef.startsWith("refs/remotes/") || base.baseRef.startsWith("refs/heads/")) {
+          // The base key names a branch on the host; this one keeps the ref it came from, so a
+          // local base ahead of its remote does not count its own commits as the branch's.
           yield* writeConfigValue({
             cwd: input.cwd,
             key: `branch.${newRefName}.t3-merge-base-ref`,

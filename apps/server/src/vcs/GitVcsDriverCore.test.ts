@@ -6510,6 +6510,40 @@ it.layer(layerTest)("GitVcsDriver core integration", (it) => {
       }),
     );
 
+    it.effect(
+      "counts a worktree branch against its local base, not the remote the base is ahead of",
+      () =>
+        Effect.gen(function* () {
+          const cwd = yield* makeTmpDir();
+          const remote = yield* makeTmpDir();
+          const { initialBranch } = yield* initRepoWithCommit(cwd);
+          yield* git(remote, ["init", "--bare"]);
+          yield* git(cwd, ["remote", "add", "origin", remote]);
+          yield* git(cwd, ["push", "origin", initialBranch]);
+          yield* git(cwd, ["fetch", "origin"]);
+          yield* writeTextFile(cwd, "unpushed.txt", "local only\n");
+          yield* git(cwd, ["add", "."]);
+          yield* git(cwd, ["commit", "-m", "unpushed on the base"]);
+          const path = yield* Path.Path;
+          const worktreePath = path.join(yield* makeTmpDir("git-worktrees-"), "local-base");
+          const driver = yield* GitVcsDriver.GitVcsDriver;
+
+          yield* driver.createWorktree({
+            cwd,
+            path: worktreePath,
+            refName: initialBranch,
+            newRefName: "feature/local-base",
+            baseRefName: initialBranch,
+          });
+          assert.equal((yield* driver.statusDetails(worktreePath)).aheadCount, 0);
+
+          yield* writeTextFile(worktreePath, "own.txt", "thread work\n");
+          yield* git(worktreePath, ["add", "."]);
+          yield* git(worktreePath, ["commit", "-m", "thread work"]);
+          assert.equal((yield* driver.statusDetails(worktreePath)).aheadCount, 1);
+        }),
+    );
+
     // regression: #27749 hooks inherited the driver's forced LC_ALL=C
     it.effect("runs post-checkout hooks under the server's own locale", () =>
       Effect.gen(function* () {
