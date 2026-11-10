@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [29] | Appearance defaults: Dev artwork, 100 ms panel animations, composer context on, a version in the sidebar header; Nightly artwork removed                               | done    |
 | [28] | Worktree defaults for parallel feature work: semantic branch names, no start from the remote, cleanup of merged, deleted, unchanged and settled (3 days) worktrees     | done    |
 | [27] | Skills manager: every provider's skills in one list, then a shared library with per-provider switches                                                                  | done    |
 | [26] | Pull requests and issues of a project come from its own `origin` remote, not from `upstream` (a fork listed its upstream's pull requests)                              | done    |
@@ -992,6 +993,19 @@ Defaults for working on several features at once, one worktree per thread. Only 
 - Start from remote: off, so a worktree branches from the local base branch, which can be ahead of `origin`.
 - Cleanup: delete worktrees of merged pull requests, of deleted threads and with no commits beyond the default branch, and
   3 days after a thread settles. Worktrees with uncommitted changes are kept; branches and thread history always are.
+- No data migration: no key was renamed.
+
+## Appearance defaults (change 29)
+
+Decoding defaults in `packages/contracts/src/settings.ts`; a saved value wins.
+
+- Environment identification: `dev-artwork` (was `artwork`, which shows art only on Dev builds). The Nightly artwork (the
+  `nightly-artwork` mode, its picker entry and its SVG) is gone, since the fork has one channel. A stored
+  `nightly-artwork` value no longer decodes, so reset it to a current mode. The Nightly version pill stays.
+- Panel animations: 100 ms (was 0).
+- Composer context: on (was off).
+- New client setting `showVersionInHeader` (Settings → Appearance → Advanced, on by default): the server version beside
+  the name in the sidebar header.
 - No data migration: no key was renamed.
 
 ## Keeping the fork up to date with upstream
