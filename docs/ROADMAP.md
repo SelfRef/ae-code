@@ -378,8 +378,10 @@ disabled.
   upstream commits (`pingdotgg/t3code`) and the fork patches that release did not have. A patch counts as new by its
   subject, because every rebase rewrites the hashes, so a fixup that keeps the subject is not listed (`fixup!` commits
   are left out). The first release lists every patch. The full list is the table above. Entries go under
-  `[Unreleased]` in the commit that lands a user-visible change; before starting a release, a commit moves them under
-  the tag's heading (`## [vYYYY.MM.DD] - date`).
+  `[Unreleased]` in the commit that lands a user-visible change; the `release` job moves them under the tag's
+  heading (`## [vYYYY.MM.DD] - date`, `scripts/changelog-release.sh`), commits that to `main` as `chore(release): <tag>` and
+  tags that commit, then publishes. The commit is not in your checkout until you pull: rebase onto it before the next push.
+  Fork patches named `chore(release): ...` are left out of the "Full changelog" list.
 - **Contents:** `ae-code-linux-x64.tar.gz`, the Linux x64 server: the single executable `ae-code` with the web client,
   the resource monitor and its own libatomic (`ae-code serve`). Upstream's archive is `t3-<version>-linux-x64.tar.gz`
   holding `t3`; the workflow renames both after the smoke test, because the server's update and install code looks for
