@@ -36,7 +36,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 | [9]  | Android app: AE Code package id, built and signed by the release workflow                                                                                              | done    |
 | [8]  | Docker image of the release server on GHCR                                                                                                                             | done    |
 | [7]  | Date-versioned releases (`vYYYY.MM.DD`): the Linux x64 server archive                                                                                                  | done    |
-| [6]  | Daily sync: a workflow rebased the patch stack onto upstream and force-pushed `main` (removed: conflicts almost every run, the rebase is done by hand)                | dropped |
+| [6]  | Daily sync: a workflow rebased the patch stack onto upstream and force-pushed `main` (removed: conflicts almost every run, the rebase is done by hand)                 | dropped |
 | [5]  | Claude usage limits for a setup-token session: let `rate_limit_event` stream updates fill the bars when `get_usage` is unsupported                                     | done    |
 | [4]  | Project and thread switchers in the chat breadcrumb (ported from a community branch, below)                                                                            | done    |
 | [2]  | GitHub Issues: read-only list and detail per project on the web (`/issues`) and in the Android app; comment, edit, label, close/reopen still planned                   | partly  |
@@ -357,10 +357,14 @@ disabled.
 - **Versions:** tag and title `vYYYY.MM.DD`, then `vYYYY.MM.DD.1`, `.2` for later releases the same day. The apps need a
   semver, so the packages (and the updater feed) carry `YYYY.MMDD.N`: `2026.1109.0` for `v2026.11.09`. It increases
   with every release, which is all the updater needs.
-- **Release notes:** the upstream commit the release sits on, then what changed since the previous release: a compare
-  link between the two upstream commits (`pingdotgg/t3code`), and the fork patches that release did not have. A patch
-  counts as new by its subject, because every rebase rewrites the hashes, so a fixup that keeps the subject is not
-  listed. The first release lists every patch. The full list is the table above.
+- **Release notes:** `docs/CHANGELOG.md` (Keep a Changelog), the section named after the release's tag, else
+  `[Unreleased]` (`scripts/release-notes-section.sh`); the `prepare` job fails before building when both are empty.
+  Under it: the upstream commit the release sits on, and a collapsed "Full changelog": a compare link between the two
+  upstream commits (`pingdotgg/t3code`) and the fork patches that release did not have. A patch counts as new by its
+  subject, because every rebase rewrites the hashes, so a fixup that keeps the subject is not listed (`fixup!` commits
+  are left out). The first release lists every patch. The full list is the table above. Entries go under
+  `[Unreleased]` in the commit that lands a user-visible change; before starting a release, a commit moves them under
+  the tag's heading (`## [vYYYY.MM.DD] - date`).
 - **Contents:** `ae-code-linux-x64.tar.gz`, the Linux x64 server: the single executable `ae-code` with the web client,
   the resource monitor and its own libatomic (`ae-code serve`). Upstream's archive is `t3-<version>-linux-x64.tar.gz`
   holding `t3`; the workflow renames both after the smoke test, because the server's update and install code looks for
