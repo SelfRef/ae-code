@@ -1015,6 +1015,56 @@ describe("forcePush", () => {
   );
 });
 
+describe("branchOverview", () => {
+  it.effect("counts what each branch holds beyond the default and its upstream", () =>
+    Effect.gen(function* () {
+      const driver = yield* GitVcsDriver.GitVcsDriver;
+      const path = yield* Path.Path;
+      const cwd = yield* makeTmpDir();
+      const remote = yield* makeTmpDir("git-vcs-driver-remote-");
+      const updater = yield* makeTmpDir("git-vcs-driver-updater-");
+      const { initialBranch } = yield* initRepoWithCommit(cwd);
+      yield* git(remote, ["init", "--bare"]);
+      yield* git(cwd, ["remote", "add", "origin", remote]);
+      yield* git(cwd, ["push", "-u", "origin", initialBranch]);
+      yield* git(cwd, ["switch", "-c", "feature"]);
+      yield* writeTextFile(cwd, "feature.txt", "feature\n");
+      yield* git(cwd, ["add", "feature.txt"]);
+      yield* git(cwd, ["commit", "-m", "feature work"]);
+      yield* git(cwd, ["switch", initialBranch]);
+      const worktreePath = path.join(yield* makeTmpDir("git-worktrees-"), "wt");
+      yield* git(cwd, ["worktree", "add", worktreePath, "-b", "in-worktree"]);
+      yield* git(updater, ["clone", remote, "."]);
+      yield* git(updater, ["config", "user.email", "test@test.com"]);
+      yield* git(updater, ["config", "user.name", "Test"]);
+      yield* git(updater, ["switch", "-c", "elsewhere"]);
+      yield* writeTextFile(updater, "elsewhere.txt", "elsewhere\n");
+      yield* git(updater, ["add", "elsewhere.txt"]);
+      yield* git(updater, ["commit", "-m", "pushed by someone else"]);
+      yield* git(updater, ["push", "origin", "elsewhere"]);
+      yield* git(cwd, ["fetch", "origin"]);
+
+      const overview = yield* driver.branchOverview({ cwd });
+
+      const byName = new Map(overview.branches.map((branch) => [branch.name, branch]));
+      assert.equal(overview.branches[0]?.name, initialBranch);
+      assert.isTrue(byName.get(initialBranch)?.isDefault);
+      assert.deepInclude(byName.get("feature"), {
+        aheadOfDefault: 1,
+        behindDefault: 0,
+        upstream: null,
+        worktreePath: null,
+        isRemoteOnly: false,
+        lastCommitSubject: "feature work",
+      });
+      assert.equal(byName.get("in-worktree")?.aheadOfDefault, 0);
+      assert.isNotNull(byName.get("in-worktree")?.worktreePath);
+      assert.isNull(byName.get(initialBranch)?.worktreePath);
+      assert.deepInclude(byName.get("origin/elsewhere"), { isRemoteOnly: true, aheadOfDefault: 1 });
+    }).pipe(Effect.provide(layerTest)),
+  );
+});
+
 describe("pullCurrentBranch", () => {
   // A fast-forward that prints over 1 MB takes thousands of files, so the real pull's output is
   // padded past the cap instead.
