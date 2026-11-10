@@ -3129,6 +3129,15 @@ export const layerWsRpc = (
                 refreshGitStatus(input.cwd).pipe(Effect.ignore({ log: true }), Effect.as(result)),
             }),
           ),
+        [WS_METHODS.vcsForcePushPreview]: (input) => gitWorkflow.forcePushPreview(input.cwd),
+        [WS_METHODS.vcsForcePush]: (input) =>
+          gitWorkflow.forcePushCurrentBranch(input.cwd, input.expectedUpstreamSha).pipe(
+            Effect.matchCauseEffect({
+              onFailure: (cause) => Effect.failCause(cause),
+              onSuccess: (result) =>
+                refreshGitStatus(input.cwd).pipe(Effect.ignore({ log: true }), Effect.as(result)),
+            }),
+          ),
         [WS_METHODS.gitRunStackedAction]: (input) =>
           Stream.callback<GitActionProgressEvent, GitManagerServiceError>((queue) =>
             gitWorkflow

@@ -37,6 +37,8 @@ vi.mock("~/state/sourceControlActions", () => ({
   useSourceControlActionRunning: vi.fn(),
   useVcsInitAction: vi.fn(),
   useVcsPullAction: vi.fn(),
+  useVcsForcePushAction: vi.fn(),
+  useVcsForcePushPreviewAction: vi.fn(),
   useSourceControlPublishRepositoryAction: () => ({
     isAllowed: true,
     isPending: false,

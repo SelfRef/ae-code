@@ -7,10 +7,10 @@ import { type ChangeRequestTerminology, sourceControlClients } from "../sourceCo
 
 export type GitActionIconName = "commit" | "push" | "pr";
 
-export type GitDialogAction = "commit" | "push" | "create_pr";
+export type GitDialogAction = "commit" | "push" | "force_push" | "create_pr";
 
 export interface GitActionMenuItem {
-  id: "commit" | "push" | "pr";
+  id: "commit" | "push" | "force_push" | "pr";
   label: string;
   disabled: boolean;
   icon: GitActionIconName;
