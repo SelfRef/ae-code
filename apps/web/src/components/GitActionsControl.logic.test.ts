@@ -254,7 +254,7 @@ describe("merging into the default branch", () => {
       [
         {
           id: "merge",
-          label: "Merge into default branch",
+          label: "Merge",
           disabled: false,
           icon: "merge",
           kind: "open_dialog",
@@ -262,7 +262,7 @@ describe("merging into the default branch", () => {
         },
         {
           id: "merge_push",
-          label: "Merge into default branch & push",
+          label: "Merge & push",
           disabled: false,
           icon: "merge",
           kind: "open_dialog",
@@ -276,7 +276,7 @@ describe("merging into the default branch", () => {
     const items = buildMenuItems(status({ hasWorkingTreeChanges: true }), false, false);
     assert.deepEqual(
       items.filter((item) => item.id.startsWith("merge")).map((item) => item.label),
-      ["Commit & merge into default branch"],
+      ["Commit & merge"],
     );
   });
 

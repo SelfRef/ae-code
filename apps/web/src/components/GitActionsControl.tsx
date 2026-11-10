@@ -1722,7 +1722,12 @@ export default function GitActionsControl({
                     className={THREAD_DETAILS_PANEL_CHEVRON_CLASS}
                   />
                 </MenuTrigger>
-                <MenuPopup align="end" anchor={panelAnchorRef} className="w-(--anchor-width)">
+                <MenuPopup
+                  align="end"
+                  anchor={panelAnchorRef}
+                  width="content"
+                  className="min-w-(--anchor-width)"
+                >
                   {gitItems}
                 </MenuPopup>
               </Menu>
