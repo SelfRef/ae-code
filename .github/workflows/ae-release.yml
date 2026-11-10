@@ -159,6 +159,9 @@ jobs:
           mv stage/t3-* stage/ae-code-linux-x64
           mv stage/ae-code-linux-x64/t3 stage/ae-code-linux-x64/ae-code
           stage/ae-code-linux-x64/ae-code --version
+          # What a bare host needs to run the server as a systemd user service.
+          cp packaging/systemd/install.sh packaging/systemd/ae-code.service stage/ae-code-linux-x64/
+          cp packaging/systemd/README.md stage/ae-code-linux-x64/INSTALL.md
           mkdir release-assets
           tar --hard-dereference -C stage -czf release-assets/ae-code-linux-x64.tar.gz ae-code-linux-x64
 
