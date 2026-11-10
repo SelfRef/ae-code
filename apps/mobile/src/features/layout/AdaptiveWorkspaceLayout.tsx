@@ -14,7 +14,7 @@ import {
 import { threadSelectionDeferral } from "./deferred-navigation";
 import { uuidv4 } from "../../lib/uuid";
 import { EnvironmentId, ThreadId, type SidebarProjectGroupingMode } from "@t3tools/contracts";
-import { useAtomValue } from "@effect/atom-react";
+import { useAtomSet, useAtomValue } from "@effect/atom-react";
 import { NavigationContext, NavigationRouteContext, useNavigation } from "@react-navigation/native";
 import {
   use,
@@ -46,6 +46,7 @@ import { AsyncResult } from "effect/reactivity";
 import {
   deriveFileInspectorPaneLayout,
   alignListPaneToHinge,
+  constrainSidebarWidth,
   deriveLayout,
   type VerticalHinge,
   deriveWorkspacePaneLayout,
@@ -58,7 +59,7 @@ import { appAtomRegistry } from "../../state/atom-registry";
 import { useProjects } from "../../state/entities";
 import { environmentThreadShells } from "../../state/threads";
 import { withKnownPullRequestSummary } from "../../state/use-thread-pr";
-import { mobilePreferencesAtom } from "../../state/preferences";
+import { mobilePreferencesAtom, updateMobilePreferencesAtom } from "../../state/preferences";
 import {
   DEFAULT_MOBILE_PROJECT_GROUPING_SETTINGS,
   resolveMobileProjectGroupingSettings,
@@ -87,6 +88,7 @@ import { newTaskDestination } from "../threads/new-task-project-selection";
 import { RenderErrorBoundary, RenderFailureView } from "../../components/RenderErrorBoundary";
 import { PaneContext } from "../../components/ui/Pane";
 import { WORKSPACE_PANE_TIMING } from "./workspace-pane-animation";
+import { WorkspacePaneDivider } from "./workspace-pane-divider";
 import { WorkspaceInspectorPane } from "./workspace-inspector-pane";
 import { WorkspaceInspectorSheet } from "./workspace-inspector-sheet";
 import type { InspectorContent } from "./inspector-panes";
@@ -240,6 +242,7 @@ export function AdaptiveWorkspaceLayout(props: {
       {...props}
       projectGroupingMode={groupingSettings.sidebarProjectGroupingMode}
       savedThreadListFilters={preferencesResult.value.threadListFilters}
+      savedSidebarWidth={preferencesResult.value.androidSidebarWidth}
     />
   );
 }
@@ -253,6 +256,7 @@ function AdaptiveWorkspaceLayoutContent(
   } & {
     readonly projectGroupingMode: SidebarProjectGroupingMode;
     readonly savedThreadListFilters?: ThreadListFilters | undefined;
+    readonly savedSidebarWidth?: number | undefined;
   },
 ) {
   const floatingTabsEnabled = useAndroidFloatingTabs();
@@ -282,6 +286,13 @@ function AdaptiveWorkspaceLayoutContent(
   const [fileInspectorPreferredWidth, setFileInspectorPreferredWidth] = useState<number | null>(
     null,
   );
+  const [sidebarPreferredWidth, setSidebarPreferredWidth] = useState<number | null>(
+    props.savedSidebarWidth ?? null,
+  );
+  const savePreferences = useAtomSet(updateMobilePreferencesAtom);
+  const [sidebarResizing, setSidebarResizing] = useState(false);
+  const sidebarResizeStart = useRef(0);
+  const sidebarResizeLast = useRef<number | null>(null);
   const [primarySidebarSearchQuery, setPrimarySidebarSearchQuery] = useState("");
   const [railOverlay, setRailOverlay] = useState(false);
   // The compiler can't memoize these derivations: they stay live across later hook calls. Fresh
@@ -340,12 +351,27 @@ function AdaptiveWorkspaceLayoutContent(
     setWindowHinge(nextWindow);
   };
   const layout = useMemo(() => {
-    const aligned = alignListPaneToHinge({
+    let aligned = alignListPaneToHinge({
       layout: baseLayout,
       hinge,
       viewportWidth,
       leadingWidth: navigationRailWidth,
     });
+    // A hinge fixes the split; otherwise Android lets the user drag it.
+    if (
+      Platform.OS === "android" &&
+      sidebarPreferredWidth !== null &&
+      aligned.usesSplitView &&
+      aligned.listPaneGap === undefined
+    ) {
+      aligned = {
+        ...aligned,
+        listPaneWidth: constrainSidebarWidth({
+          preferredWidth: sidebarPreferredWidth,
+          availableWidth: viewportWidth - navigationRailWidth,
+        }),
+      };
+    }
     if (
       !floatingTabsEnabled ||
       !aligned.usesSplitView ||
@@ -360,6 +386,7 @@ function AdaptiveWorkspaceLayoutContent(
     baseLayout,
     hinge,
     navigationRailWidth,
+    sidebarPreferredWidth,
     viewportWidth,
     floatingTabs.row,
     floatingTabsEnabled,
@@ -774,12 +801,16 @@ function AdaptiveWorkspaceLayoutContent(
       : 0;
     // The content beside it already took its final width when the page closed.
     renderedSidebarWidth.set(
-      withTiming(targetWidth, snap ? { duration: 0 } : WORKSPACE_PANE_TIMING, (finished) => {
-        // Only a hinge resize widens the list's span; a toggle has nothing to settle.
-        if (finished && Platform.OS === "android" && listPaneFloor !== listPaneCeiling) {
-          runOnJS(settleListPane)(listPaneRevision);
-        }
-      }),
+      withTiming(
+        targetWidth,
+        snap || sidebarResizing ? { duration: 0 } : WORKSPACE_PANE_TIMING,
+        (finished) => {
+          // Only a hinge resize widens the list's span; a toggle has nothing to settle.
+          if (finished && Platform.OS === "android" && listPaneFloor !== listPaneCeiling) {
+            runOnJS(settleListPane)(listPaneRevision);
+          }
+        },
+      ),
     );
   }, [
     nativeWorkspace,
@@ -793,6 +824,7 @@ function AdaptiveWorkspaceLayoutContent(
     listPaneFloor,
     listPaneCeiling,
     listPaneRevision,
+    sidebarResizing,
     workspacePage,
   ]);
   const railAnimatedStyle = useAnimatedStyle(() => ({ width: renderedRailWidth.value }));
@@ -1026,6 +1058,31 @@ function AdaptiveWorkspaceLayoutContent(
             ) : null}
           </Animated.View>
         </Animated.View>
+      ) : null}
+      {stripSidebar && panes.primarySidebarVisible && layout.listPaneGap === undefined ? (
+        <WorkspacePaneDivider
+          accessibilityLabel="Resize sessions pane"
+          currentWidth={sidebarSlotWidth}
+          resizeDirection={1}
+          onResizeStart={() => {
+            sidebarResizeStart.current = sidebarSlotWidth;
+            sidebarResizeLast.current = null;
+            setSidebarResizing(true);
+          }}
+          onResizeBy={(delta) => {
+            sidebarResizeLast.current = constrainSidebarWidth({
+              preferredWidth: sidebarResizeStart.current + delta,
+              availableWidth: viewportWidth - navigationRailWidth,
+            });
+            setSidebarPreferredWidth(sidebarResizeLast.current);
+          }}
+          onResizeEnd={() => {
+            setSidebarResizing(false);
+            if (sidebarResizeLast.current !== null) {
+              savePreferences({ androidSidebarWidth: sidebarResizeLast.current });
+            }
+          }}
+        />
       ) : null}
       <Animated.View
         className={

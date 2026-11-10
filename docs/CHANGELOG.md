@@ -17,6 +17,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 - Android: choosing a branch checked out in another worktree, such as `main`, moves the thread there.
 - Android: a started thread can be moved into a new worktree from its menu.
 - Android: Settings → Source control sets the main Git action and whether pushing to the default branch asks first.
+- Android: on wide screens, drag the edge of the sessions pane to resize it; the width is remembered.
 - Actions: the Command field lists the variables a command can use (`T3CODE_PROJECT_ROOT`,
   `T3CODE_WORKTREE_PATH`).
 - Saved environments are shared between browsers: the environments you add in one browser signed in to a
