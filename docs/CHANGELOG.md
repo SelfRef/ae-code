@@ -72,6 +72,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Fixed
 
+- Android: pushing from the default branch on a new-thread draft asks to confirm instead of refusing with "Choose a feature branch".
 - Done, Input and draft chats in the sidebar have a more visible tint on the dark theme.
 - The Session and Weekly usage bars are as bright as the Context bar on the dark theme.
 - Editing a queued message holds the queue until you save or cancel, so the message no longer starts
