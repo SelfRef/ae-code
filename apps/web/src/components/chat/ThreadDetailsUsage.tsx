@@ -121,8 +121,7 @@ export function ThreadDetailsContext({ usage }: { readonly usage: ContextWindowS
               </span>
               {maxTokens !== null ? (
                 <span className="text-muted-foreground">
-                  {usage.usedTokens.toLocaleString("en-US")} of {maxTokens.toLocaleString("en-US")}{" "}
-                  tokens
+                  {usage.usedTokens.toLocaleString()} of {maxTokens.toLocaleString()} tokens
                 </span>
               ) : null}
               {threshold !== null && threshold > 0 ? (
