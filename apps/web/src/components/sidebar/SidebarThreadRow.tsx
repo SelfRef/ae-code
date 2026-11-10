@@ -453,7 +453,7 @@ type SortableThreadRowBag = Pick<
 >;
 
 export const draftSurfaceClassName = "bg-warning/4 hover:bg-warning/8";
-export const draftPenClassName = "size-3 shrink-0 text-warning-foreground";
+const draftPenClassName = "size-3 shrink-0 text-warning-foreground";
 
 // useSortable memoizes on its `disabled` object, so a fresh one per render
 // re-renders every row and marker on each sidebar update.
@@ -543,7 +543,15 @@ const TOP_STATUS_ICONS = {
   failed: CircleAlertIcon,
   done: CircleCheckIcon,
   woke: AlarmClockIcon,
+  draft: SquarePenIcon,
 } as const;
+
+// Tints the rows that wait on the user; drafts are warning, Done green, Input purple.
+const TOP_STATUS_SURFACES: Partial<Record<keyof typeof TOP_STATUS_ICONS, string>> = {
+  draft: draftSurfaceClassName,
+  done: "bg-success/4 hover:bg-success/8",
+  input: "bg-question/6 hover:bg-question/12",
+};
 
 function TopStatusIcon(props: { icon: keyof typeof TOP_STATUS_ICONS; className: string }) {
   const Icon = TOP_STATUS_ICONS[props.icon];
@@ -780,7 +788,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
             ? {
                 label: "Input",
                 icon: "input" as const,
-                className: "text-indigo-600 dark:text-indigo-300",
+                className: "text-question-foreground",
               }
             : status === "request"
               ? {
@@ -812,8 +820,15 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                           icon: "done" as const,
                           className: "text-success-foreground",
                         }
-                      : null;
+                      : hasUnsentDraft
+                        ? {
+                            label: "Draft",
+                            icon: "draft" as const,
+                            className: "text-warning-foreground",
+                          }
+                        : null;
   const isWokeStatus = topStatus?.icon === "woke";
+  const topStatusSurface = topStatus ? TOP_STATUS_SURFACES[topStatus.icon] : undefined;
 
   const branchMismatch = resolveLocalCheckoutBranchMismatch({
     effectiveEnvMode: thread.worktreePath === null ? "local" : "worktree",
@@ -988,8 +1003,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
       ? "bg-sidebar-row-active text-sidebar-foreground light:ring-1 light:ring-inset light:ring-sidebar-border/70"
       : isSelected || props.sweepAction !== null
         ? "bg-sidebar-row-selected text-sidebar-foreground light:ring-1 light:ring-inset light:ring-sidebar-border/70"
-        : hasUnsentDraft
-          ? cn(draftSurfaceClassName, "text-sidebar-foreground")
+        : topStatusSurface
+          ? cn(topStatusSurface, "text-sidebar-foreground")
           : shouldRecede
             ? "text-sidebar-muted-foreground/75 hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
             : "bg-transparent text-sidebar-foreground hover:bg-sidebar-row-hover",
@@ -1108,23 +1123,24 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
       onThreadActivate={onThreadActivate}
     />
   );
-  const draftIndicator = hasUnsentDraft ? (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <span
-            role="img"
-            aria-label="Unsent draft"
-            data-testid={`sidebar-draft-indicator-${thread.id}`}
-            className="inline-flex shrink-0 items-center"
-          />
-        }
-      >
-        <SquarePenIcon aria-hidden className={draftPenClassName} />
-      </TooltipTrigger>
-      <TooltipPopup side="top">Unsent draft</TooltipPopup>
-    </Tooltip>
-  ) : null;
+  const draftIndicator =
+    hasUnsentDraft && topStatus?.icon !== "draft" ? (
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <span
+              role="img"
+              aria-label="Unsent draft"
+              data-testid={`sidebar-draft-indicator-${thread.id}`}
+              className="inline-flex shrink-0 items-center"
+            />
+          }
+        >
+          <SquarePenIcon aria-hidden className={draftPenClassName} />
+        </TooltipTrigger>
+        <TooltipPopup side="top">Unsent draft</TooltipPopup>
+      </Tooltip>
+    ) : null;
   const showPin =
     props.isPinned && (!sortable?.isDragging || (props.dragOverPinned && props.dropVerb === null));
   const pinIndicator = showPin ? (
