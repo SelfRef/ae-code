@@ -25,7 +25,10 @@ import {
   selectIssueProject,
 } from "@t3tools/client-runtime/issue-projects";
 
-const STATES: ReadonlyArray<{ readonly value: IssueListState; readonly label: string }> = [
+export const ISSUE_STATES: ReadonlyArray<{
+  readonly value: IssueListState;
+  readonly label: string;
+}> = [
   { value: "open", label: "Open" },
   { value: "closed", label: "Closed" },
   { value: "all", label: "All" },
@@ -71,7 +74,7 @@ function IssueRow({
   );
 }
 
-function IssueListPage({
+export function IssueListPage({
   environmentId,
   projectId,
   state,
@@ -230,7 +233,7 @@ export function IssuesPage() {
               />
             </form>
             <div className="flex gap-1" role="tablist" aria-label="State">
-              {STATES.map((entry) => (
+              {ISSUE_STATES.map((entry) => (
                 <Button
                   key={entry.value}
                   size="compact"

@@ -23,6 +23,7 @@ import { pullRequestPanelContext } from "../pullRequest/pullRequestDetail.logic"
 import { PullRequestDetailPanel } from "../pullRequest/PullRequestDetailPanel";
 import { PullRequestDetailGhost } from "../pullRequest/PullRequestGhosts";
 import { PullRequestsUnavailableState } from "../pullRequest/PullRequestsUnavailableState";
+import { ThreadIssuesPanel } from "../issue/ThreadIssuesPanel";
 import { ThreadPullRequestsPanel } from "../pullRequest/ThreadPullRequestsPanel";
 
 const PreviewPanel = lazy(() =>
@@ -173,6 +174,14 @@ export function RightPanelSurfaceContent(props: {
     }
     case "pull-requests":
       return <ThreadPullRequestsPanel threadRef={threadRef} />;
+    case "issues":
+      return props.files.projectId && props.files.workspaceRoot ? (
+        <ThreadIssuesPanel
+          environmentId={props.environmentId}
+          projectId={props.files.projectId}
+          workspaceRoot={props.files.workspaceRoot}
+        />
+      ) : null;
     case "side-chat":
       // Not lazy: revealing a suspended tiptap editor tears down its view and crashes the composer.
       return (
