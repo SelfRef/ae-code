@@ -1,8 +1,11 @@
 // @effect-diagnostics nodeBuiltinImport:off -- The service launcher starts before the CLI runtime.
 import * as NodeModule from "node:module";
+import * as NodeOS from "node:os";
 import * as NodeSea from "node:sea";
 import * as NodeURL from "node:url";
 
+import packageJson from "../package.json" with { type: "json" };
+import { wantsUpdateSupervisor } from "./cloud/updateSupervisor.ts";
 import { isEntrypoint } from "./entrypoint.ts";
 
 // Loads the CLI outside the launcher's module graph. Packaged builds embed it as a raw asset.
@@ -53,6 +56,16 @@ if (
   const launcherOptions = launcher?.parseServiceLauncherArgs(process.argv.slice(3));
   if (launcher !== undefined && launcherOptions !== undefined) {
     await launcher.runServiceLauncherCli(launcherOptions);
+  } else if (NodeSea.isSea() && process.argv[2] === "serve" && wantsUpdateSupervisor(process.env)) {
+    // T3CODE_SELF_UPDATE: stay up as the parent, so the server can stop itself for an update.
+    const { runUpdateSupervisor, resolveSupervisedBaseDir } =
+      await import("./cloud/updateSupervisor.ts");
+    process.exitCode = await runUpdateSupervisor({
+      executable: process.execPath,
+      args: process.argv.slice(2),
+      bakedVersion: packageJson.version,
+      baseDir: resolveSupervisedBaseDir(process.argv.slice(2), process.env, NodeOS.homedir()),
+    });
   } else {
     const { runCliCommand } = await loadCliMain();
     await runCliCommand();

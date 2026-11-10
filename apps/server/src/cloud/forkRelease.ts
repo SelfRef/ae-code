@@ -11,9 +11,8 @@ import * as Stream from "effect/Stream";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http";
 
 import * as ProcessRunner from "../processRunner.ts";
+import { UPDATE_SUPERVISED_ENV } from "./updateSupervisor.ts";
 
-/** The image's switch, read by its entrypoint (packaging/docker/entrypoint.sh), not by the server. */
-export const SELF_UPDATE_ENV = "T3CODE_SELF_UPDATE";
 const RELEASE_ARCHIVE = "ae-code-linux-x64.tar.gz";
 const LOOKUP_TIMEOUT = Duration.seconds(15);
 const DOWNLOAD_STALL_TIMEOUT = Duration.minutes(1);
@@ -31,10 +30,11 @@ export class ForkReleaseError extends Schema.TaggedError<ForkReleaseError>()("Fo
 const isForkReleaseError = Schema.is(ForkReleaseError);
 
 /**
- * Set by the image's entrypoint when SELF_UPDATE_ENV is on: it starts the server again from the
- * newest release in `updates/`. Without it, a server that stopped itself would stay stopped.
+ * Set by whatever supervises the server (the image's entrypoint, or `ae-code serve` itself when
+ * T3CODE_SELF_UPDATE is on): it starts the server again from the newest release in `updates/`.
+ * Without it, a server that stopped itself would stay stopped.
  */
-export const selfUpdateEnabled = Config.Boolean("T3CODE_UPDATE_SUPERVISED").pipe(
+export const selfUpdateEnabled = Config.Boolean(UPDATE_SUPERVISED_ENV).pipe(
   Config.withDefault(false),
 );
 
@@ -99,7 +99,7 @@ function updatesDir(path: Path.Path, baseDir: string): string {
 
 /**
  * Downloads and unpacks `release` into `<baseDir>/updates/<version>`, checks that its server runs,
- * and points `<baseDir>/updates/current` at it, which the container entrypoint reads when it
+ * and points `<baseDir>/updates/current` at it, which the supervisor reads when it
  * starts the server. Older unpacked releases are removed.
  */
 export const installRelease = Effect.fn("cloud.fork_release.install")(function* (input: {

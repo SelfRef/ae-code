@@ -15,7 +15,7 @@ import { SettingsRow } from "./settingsLayout";
 import { searchableSetting } from "./settingsSearch";
 
 const UPDATES_OFF =
-  "Updates from the app are off. In the Docker image, set T3CODE_SELF_UPDATE=true to turn them on.";
+  "Updates from the app are off. In the Docker image or a plain ae-code serve, set T3CODE_SELF_UPDATE=true to turn them on.";
 
 /** The version row of a browser tab: the server that serves this page, updated in place. */
 export function ServerVersionRow() {
