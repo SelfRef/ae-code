@@ -60,6 +60,14 @@ describe("GitHubIssueProvider", () => {
         page: 1,
         pageSize: 50,
       });
+      yield* provider.listIssues({
+        host: "github.com",
+        repository: "o/r",
+        state: "open",
+        sort: "oldest",
+        page: 1,
+        pageSize: 50,
+      });
       assert.deepStrictEqual(
         page.issues.map((entry) => [entry.number, entry.state, entry.stateReason]),
         [
@@ -75,6 +83,10 @@ describe("GitHubIssueProvider", () => {
       assert.strictEqual(
         decodeURIComponent(paths[0] ?? ""),
         "search/issues?q=repo:o/r is:issue is:closed crash&sort=updated&order=desc&per_page=50&page=1",
+      );
+      assert.strictEqual(
+        decodeURIComponent(paths[1] ?? ""),
+        "search/issues?q=repo:o/r is:issue is:open&sort=created&order=asc&per_page=50&page=1",
       );
     }).pipe(Effect.provide(api));
   });

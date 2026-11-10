@@ -93,6 +93,7 @@ const make = Effect.gen(function* () {
           host,
           repository,
           state: input.state,
+          sort: input.sort,
           query: input.query,
           page: input.page ?? 1,
           pageSize: ISSUE_LIST_PAGE_SIZE,
