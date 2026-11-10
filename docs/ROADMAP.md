@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [35] | Android catch-up: tinted Input, Done and draft threads; merge, force push and worktree switching in Git                                                                | done    |
 | [34] | A "Thread actions" section in the thread details card: Settle thread, and the thread's context menu under an arrow                                                     | done    |
 | [33] | Saved environments follow you: a browser signed in to a server shows the environments saved on any other browser signed in to it (kept on that server)                 | done    |
 | [32] | Merge a thread's branch into the default branch (with or without pushing) from the Git actions menu, optionally as a project's main action                             | done    |
@@ -72,6 +73,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 [27]: #skills-manager-change-27
 [30]: #synced-drafts-change-30
 [33]: #saved-environments-shared-through-the-server-change-33
+[35]: #android-catch-up-change-35
 [26]: #pull-requests-from-the-fork-change-26
 [25]: #in-place-updates-of-the-docker-image-and-a-bare-host-change-25
 
@@ -1225,6 +1227,28 @@ default for server threads at full card density; **Thread actions** in the card'
 - The menu's Rename starts the header's inline rename through the `threadRename` registry (`apps/web/src/threadRename.ts`),
   so it does nothing when no header is mounted.
 - No data migration: a new key in the sparse `threadDetailsItems` setting, absent meaning the default.
+
+## Android catch-up (change 35)
+
+Web-only changes the Android app lacked. What does not qualify stays web: the breadcrumb switchers, the right-panel Issues
+tab (Android has an Issues tab), the changed-files card (Android has none), the Thread actions section (Android has no
+thread details card) and the action editor.
+
+- **Git logic is shared.** `buildMenuItems`, `resolveQuickAction`, `getGitActionDisabledReason`, `formatQuickActionLabel`
+  and `mergeByAgentPrompt` live in `packages/client-runtime/src/state/gitActions.ts` and carry the fork's merge, force push
+  and "ahead of the default branch" rules, so the web copies in `GitActionsControl.logic.ts` only re-export what moved.
+- **Git sheet and menu.** Merge, Merge & push and Force push rows; the quick action follows the project's main Git action
+  (`quickMergeAction`, Settings → Source control); a failed merge offers "Merge by agent"; force push lists the commits it
+  deletes and sends in a confirmation.
+- **Branches.** A branch checked out in another worktree, the project checkout included, moves the thread there instead of
+  being disabled, as on web (`useSelectedThreadGitActions.onUseSelectedThreadWorktree`).
+- **Move to new worktree** is in the thread row's menu for an idle thread in the project checkout, like web's thread menu.
+  Not in the Branches sheet, which has its own New worktree form.
+- **Tints.** Input, Done and draft rows tint on Android with the web's colors and light/dark strengths
+  (`thread-list-v2-row-tint.ts`); an unsent composer draft shows "Draft". iOS is not tinted: this fork builds Android only.
+- **Confirm pushing to the default branch** is a device preference on Android (web keeps it in the browser): Settings →
+  Source control → This device.
+- No data migration: one new optional key, `confirmPushToDefaultBranch`, in the Android preferences (absent means on).
 
 ## Keeping the fork up to date with upstream
 

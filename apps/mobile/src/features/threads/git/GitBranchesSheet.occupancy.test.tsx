@@ -55,7 +55,7 @@ vi.mock("../../../state/vcs", () => ({ vcsEnvironment: { branch: () => null } })
 
 import { GitBranchesSheet } from "./GitBranchesSheet";
 
-it("recognizes both the main checkout and a linked worktree as this thread's checkout", () => {
+it("recognizes the main checkout and a linked worktree as this thread's checkout, and offers the other", () => {
   const directory = "/repo";
   const linked = "/repo-linked";
   checkout.projectRoot = directory;
@@ -85,7 +85,11 @@ it("recognizes both the main checkout and a linked worktree as this thread's che
     checkout.worktreePath = null;
     expect(rows()).toEqual([
       { name: "feature/available", subtitle: "Local branch", disabled: false },
-      { name: "feature/linked", subtitle: "Checked out in another worktree", disabled: true },
+      {
+        name: "feature/linked",
+        subtitle: "Checked out in another worktree. Opens it in this thread.",
+        disabled: false,
+      },
       { name: "main", subtitle: "Checked out in this thread", disabled: false },
     ]);
 
@@ -93,7 +97,11 @@ it("recognizes both the main checkout and a linked worktree as this thread's che
     expect(rows()).toEqual([
       { name: "feature/available", subtitle: "Local branch", disabled: false },
       { name: "feature/linked", subtitle: "Checked out in this thread", disabled: false },
-      { name: "main", subtitle: "Checked out in another worktree", disabled: true },
+      {
+        name: "main",
+        subtitle: "Checked out in another worktree. Opens it in this thread.",
+        disabled: false,
+      },
     ]);
   } finally {
     act(() => root.unmount());
