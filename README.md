@@ -90,7 +90,7 @@ The image is Ubuntu with `git` and `ssh` and runs as a non-root user; state live
 
 ### Android
 
-Install `ae-code-<tag>.apk` from the [latest release](https://github.com/SelfRef/ae-code/releases/latest) and pair it with a running server. With [Obtainium](https://obtainium.imranr.dev/) it updates itself from the releases.
+Install `ae-code-<tag>-arm64-v8a.apk` (phones; `-x86_64` is for emulators) from the [latest release](https://github.com/SelfRef/ae-code/releases/latest) and pair it with a running server. With [Obtainium](https://obtainium.imranr.dev/) it updates itself from the releases; set its APK filter regex to `arm64-v8a` so it skips the emulator build.
 
 <p align="center">
   <a href="https://github.com/SelfRef/ae-code/releases/latest"><img src="https://raw.githubusercontent.com/Kunzisoft/Github-badge/main/get-it-on-github.png" alt="Get it on GitHub" height="60"></a>
