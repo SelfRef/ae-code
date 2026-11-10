@@ -152,6 +152,7 @@ function LimitRow({
     <UsageRow
       label={window.label}
       fill={left}
+      muted
       tone={left <= 10 ? "error" : left <= 20 ? "warning" : null}
       value={`${left}%`}
       ariaValue={`${left}% left`}
