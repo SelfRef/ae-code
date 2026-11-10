@@ -497,7 +497,8 @@ describe("VcsStatusBroadcaster", () => {
       const refreshed = yield* broadcaster.refreshStatus("/repo", { localOnly: true });
       assert.equal(refreshed.refName, "main");
       assert.isNull(refreshed.pr);
-      assert.equal(state.localInvalidationCalls, 1);
+      // One from the subscriber's snapshot reread, one from the explicit refresh.
+      assert.equal(state.localInvalidationCalls, 2);
       assert.equal(state.remoteStatusCalls, 1);
       assert.equal(state.remoteInvalidationCalls, 1);
       assert.deepStrictEqual((yield* Fiber.join(events)).slice(1), [
@@ -2076,6 +2077,30 @@ it.effect("detail join during invalidation must get fresh totals", () => {
     );
   }).pipe(Effect.provide(layerTestFor(state)));
 });
+it.effect(
+  "a new subscriber's snapshot rereads local status that changed while nobody watched",
+  () => {
+    const state = newState();
+    return Effect.gen(function* () {
+      const b = yield* VcsStatusBroadcaster.VcsStatusBroadcaster;
+      const oldScope = yield* Scope.make();
+      const old = yield* Stream.toPull(b.streamStatus({ cwd: "/repo", includeRemote: false })).pipe(
+        Scope.provide(oldScope),
+      );
+      yield* old;
+      yield* Scope.close(oldScope, Exit.void);
+      // Same branch, but e.g. the default branch moved after a push from elsewhere.
+      state.currentLocalStatus = {
+        ...baseLocalStatus,
+        workingTree: { files: [], insertions: 42, deletions: 0 },
+      };
+      assert.deepEqual(
+        yield* Stream.runHead(b.streamStatus({ cwd: "/repo", includeRemote: false })),
+        Option.some({ _tag: "snapshot" as const, local: state.currentLocalStatus, remote: null }),
+      );
+    }).pipe(Effect.provide(layerTestFor(state)), Effect.scoped);
+  },
+);
 it.effect("serializes branch reads with detailed refresh publication", () => {
   const state = newState();
   return Effect.gen(function* () {
