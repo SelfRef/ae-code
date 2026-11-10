@@ -88,7 +88,21 @@ cd ae-code-linux-x64
 docker run -d -p 3773:3773 -v ae-code:/home/ae/.ae ghcr.io/selfref/ae-code:latest
 ```
 
-The image is Ubuntu with `git` and `ssh` and runs as a non-root user; state lives in the `/home/ae/.ae` volume. It contains no agent CLIs: derive an image to add the ones you use. Add `-e T3CODE_SELF_UPDATE=true` to let Settings → About install newer releases in place (the server restarts, the container does not); otherwise pull a newer image.
+The image is Ubuntu with `git`, `ssh` and the source-control CLIs `gh`, `glab`, `fj` and `gt`, and runs as a non-root user; state lives in the `/home/ae/.ae` volume. It is a base image meant to be extended, so it has no agent CLIs (install them from Settings → Providers, or bake them in), no language toolchains and no Android SDK. Derive an image to add what your projects need, for example:
+
+```dockerfile
+FROM ghcr.io/selfref/ae-code:latest
+USER root
+# Toolchains and build tools for the projects your agents work on: Node.js, Rust, Python, Go, a C compiler, make, jq, ripgrep.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends build-essential nodejs npm python3 golang-go jq ripgrep \
+ && rm -rf /var/lib/apt/lists/*
+# Agent CLIs you want ready at the first start: Claude Code, Codex, OpenCode.
+RUN npm install -g @anthropic-ai/claude-code @openai/codex opencode-ai
+USER ae
+```
+
+Other things worth adding the same way: an Android SDK (with `/dev/kvm` passed to the container for an emulator), a Docker CLI, Playwright's browsers, a CLI for another forge such as `az` for Azure DevOps, and your own SSH keys or git config. Add `-e T3CODE_SELF_UPDATE=true` to let Settings → About install newer releases in place (the server restarts, the container does not); otherwise pull a newer image.
 
 ### Desktop app (Arch Linux)
 

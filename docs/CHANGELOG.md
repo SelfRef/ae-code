@@ -10,6 +10,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Added
 
+- Docker image: carries the `gh`, `glab`, `fj` and `gt` source-control CLIs. The README now describes the image as a base to
+  extend and shows a derived image with toolchains and agent CLIs.
 - Files panel (web and Android): create files and folders, rename, move, copy and delete from a row's menu or the
   empty area of the tree (right-click on the web, long-press or the "+" menu on Android). Needs the write permission.
 - Issues and Releases hide while GitHub isn't signed in on any connected environment, and Pull requests while no

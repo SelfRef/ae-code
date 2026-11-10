@@ -429,8 +429,10 @@ disabled.
 The `image` job of `ae-release.yml` wraps the release's Linux x64 server archive in `packaging/docker/Dockerfile` and
 pushes `ghcr.io/selfref/ae-code:<YYYY.MM.DD[.N]>` and `:latest`. Nothing is built from source in the image: it is Ubuntu
 24.04 (the archive is built on that glibc), `git`, `ssh` and the archive in `/opt/ae-code`, a non-root user (uid 1000),
-state in `/home/ae/.ae` (a volume), port 3773, started with `ae-code serve`. Agent CLIs are not included; derive an
-image to add the ones you use.
+state in `/home/ae/.ae` (a volume), port 3773, started with `ae-code serve`. It also carries the source-control CLIs
+`gh`, `glab`, `fj` and `gt`, fetched as pinned release binaries in a build stage (`ARG`s at the top of the Dockerfile;
+`gh`, `glab` and `gt` are checked against their published checksums, `fj` publishes none). It is a base image meant to be
+extended: agent CLIs, toolchains and the Android SDK are left out, and the README shows a derived image.
 
 A package GitHub creates starts private: after the first push, make `ae-code` public in the package settings (Package
 settings, Change visibility). Checked locally by building it around an upstream archive and starting the server.
