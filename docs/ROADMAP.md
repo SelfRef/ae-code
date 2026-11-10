@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [24] | The changed-files card under an answer says when that run committed and pushed (read from its successful `git commit` / `git push` commands)                           | done    |
 | [23] | Force push for a diverged branch (Git menu → "Force push..."), with a modal listing the commits it deletes and sends                                                   | done    |
 | [22] | Git panel and Diff panel start on uncommitted changes; "Not pushed" is the old branch diff; Push shows how many commits it sends                                       | done    |
 | [21] | Setting to turn off the "Push to default ref?" confirmation (Settings → Source control, on by default)                                                                 | done    |
@@ -57,6 +58,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 [21]: #default-branch-push-confirmation-change-21
 [22]: #uncommitted-changes-first-change-22
 [23]: #force-push-change-23
+[24]: #commit-and-push-on-the-changed-files-card-change-24
 
 `done` means it is a commit on `main`; the commit is found by subject (`git log --grep`), not by hash, because every
 rebase onto upstream changes the hashes. The history rules and the sync procedure are in the last section.
@@ -809,6 +811,17 @@ first", which is wrong after a deliberate rewrite.
   Pull, and the server rechecks that too.
 - Needs the source control write scope, like Pull. Web only: mobile's Git actions don't list it.
 - No data migration: two new RPCs and one new action operation.
+
+## Commit and push on the changed-files card (change 24)
+
+The card under an answer listed the files a run changed but not whether the agent then committed or pushed them, so the
+only way to know was to scroll through the commands.
+
+- The card header adds "Committed", "N commits", "Committed, pushed" or "Pushed" when the run's work log holds a
+  successful `git commit` or `git push` command (lifecycle completed, no failure marker, not `--dry-run`). It reads the
+  commands, not the repository: a commit made some other way, or whose command output was never loaded, is not shown,
+  and neither is the push state the repository is in now.
+- Web only; mobile has no changed-files card. No data migration, no contract change.
 
 ## Keeping the fork up to date with upstream
 
