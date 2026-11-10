@@ -3,15 +3,32 @@ import type {
   ContextMenuItem as TreeContextMenuItem,
   ContextMenuOpenContext as TreeContextMenuOpenContext,
 } from "@pierre/trees";
-import type { EnvironmentId, ProjectEntry } from "@t3tools/contracts";
+import type {
+  ContextMenuItem,
+  EnvironmentId,
+  ProjectEntry,
+  ProjectEntryOperation,
+} from "@t3tools/contracts";
+import { useAtomValue } from "@effect/atom-react";
+import {
+  entryName,
+  entryParent,
+  isSameOrInside,
+  joinEntryPath,
+} from "@t3tools/client-runtime/file-entry-paths";
 import { FileTree, useFileTree, useFileTreeSearch, useFileTreeSelector } from "@pierre/trees/react";
-import { settlePromise } from "@t3tools/client-runtime/state/runtime";
+import {
+  isAtomCommandInterrupted,
+  settlePromise,
+  squashAtomCommandFailure,
+} from "@t3tools/client-runtime/state/runtime";
 import { serializeComposerFileLink } from "@t3tools/shared/composerTrigger";
 import * as AsyncResult from "effect/reactivity/AsyncResult";
 import * as Cause from "effect/Cause";
 import { ChevronsDownUp, ChevronsUpDown } from "lucide";
-import { useEffect, useRef, useState } from "react";
+import { type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from "react";
 
+import { requestConfirmDialog } from "~/confirmDialog";
 import { Button } from "~/components/ui/button";
 import { InputGroup, InputGroupInput } from "~/components/ui/input-group";
 import { MorphIcon } from "~/components/MorphIcon";
@@ -20,6 +37,8 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { useComposerHandleContext } from "~/composerHandleContext";
 import { writeTextToClipboard } from "~/hooks/useCopyToClipboard";
 import { useStableCallback } from "~/hooks/useStableCallback";
+import { projectEnvironment } from "~/state/projects";
+import { useAtomCommand } from "~/state/use-atom-command";
 import { useTheme } from "~/hooks/useTheme";
 import { useWorkspaceMutationRefresh } from "~/hooks/useWorkspaceMutationRefresh";
 import { useFileContextMenu, type FileContextMenuAction } from "~/fileContextMenu";
@@ -27,6 +46,7 @@ import { readLocalApi } from "~/localApi";
 import { T3_PIERRE_ICONS } from "~/pierre-icons";
 import { PIERRE_TREE_UNSAFE_CSS, pierreTreeStyle } from "~/pierre-tree-theme";
 
+import { EntryDestinationDialog, EntryNameDialog } from "./FileEntryDialogs";
 import { joinHostPath } from "./filePath";
 import { createFileTreeDragMentionController } from "./fileTreeDragMention";
 import { areAllDirectoriesExpanded, setAllDirectoriesExpanded } from "./fileTreeExpansion";
@@ -48,6 +68,36 @@ interface FileBrowserPanelProps {
   onRefreshSelectedFile?: () => void;
   workspaceMutationId: string | null;
 }
+
+type EntryDialog =
+  | { type: "create"; kind: ProjectEntry["kind"]; parent: string }
+  | { type: "rename"; path: string }
+  | { type: "transfer"; mode: "move" | "copy"; path: string; kind: ProjectEntry["kind"] };
+
+type EntryMenuAction = "new-file" | "new-folder" | "rename" | "move" | "copy" | "delete";
+
+const ENTRY_MENU_ACTIONS: ReadonlySet<string> = new Set<EntryMenuAction>([
+  "new-file",
+  "new-folder",
+  "rename",
+  "move",
+  "copy",
+  "delete",
+]);
+
+const NEW_ENTRY_MENU_ITEMS: readonly ContextMenuItem<EntryMenuAction>[] = [
+  { id: "new-file", label: "New file" },
+  { id: "new-folder", label: "New folder" },
+];
+
+const ROW_ENTRY_MENU_ITEMS: readonly ContextMenuItem<EntryMenuAction>[] = [
+  { ...NEW_ENTRY_MENU_ITEMS[0]!, separatorBefore: true },
+  NEW_ENTRY_MENU_ITEMS[1]!,
+  { id: "rename", label: "Rename…", separatorBefore: true },
+  { id: "move", label: "Move to…" },
+  { id: "copy", label: "Copy to…" },
+  { id: "delete", label: "Delete", destructive: true, separatorBefore: true },
+];
 
 function treePath(entry: ProjectEntry): string {
   return entry.kind === "directory" ? `${entry.path}/` : entry.path;
@@ -160,6 +210,10 @@ export default function FileBrowserPanel({
   } = useDirectoryEntries(environmentId, cwd);
   const [query, setQuery] = useState("");
   const [expandAll, setExpandAll] = useState(false);
+  const [entryDialog, setEntryDialog] = useState<EntryDialog | null>(null);
+  const modifyEntry = useAtomCommand(projectEnvironment.modifyEntry, { reportFailure: false });
+  const canModifyEntries =
+    useAtomValue(projectEnvironment.modifyEntry.permissionAtom(environmentId)) && !hostFolder;
   const pathSearch = useProjectPathSearch(
     { environmentId, cwd: hostFolder ? null : cwd, query: query.slice(0, 256) },
     200,
@@ -174,6 +228,61 @@ export default function FileBrowserPanel({
 
   // Shadow-DOM row rects are unreliable; capture the composed contextmenu event's viewport position.
   const contextMenuPointerRef = useRef<{ x: number; y: number; at: number } | null>(null);
+
+  const applyOperation = async (operation: ProjectEntryOperation): Promise<string | null> => {
+    const result = await modifyEntry({ environmentId, input: { cwd, operation } });
+    if (result._tag !== "Success") {
+      if (isAtomCommandInterrupted(result)) return "The change was interrupted.";
+      const failure = squashAtomCommandFailure(result);
+      return failure instanceof Error ? failure.message : "The change could not be made.";
+    }
+    refresh();
+    if (query.trim()) pathSearch.refresh();
+    if (operation.type === "move" && selectedPath && isSameOrInside(selectedPath, operation.from)) {
+      onOpenFile(operation.to + selectedPath.slice(operation.from.length));
+    }
+    return null;
+  };
+
+  async function deleteEntry(path: string, isDirectory: boolean) {
+    const confirmed = await requestConfirmDialog(
+      `Delete “${entryName(path)}”?\n${
+        isDirectory
+          ? "The folder and everything in it will be deleted."
+          : "The file will be deleted."
+      }`,
+      { variant: "destructive" },
+    );
+    if (!confirmed) return;
+    const failure = await applyOperation({ type: "delete", relativePath: path });
+    if (failure !== null) {
+      toastManager.add({ type: "error", title: "Could not delete", description: failure });
+    }
+  }
+
+  const runEntryMenuAction = (action: EntryMenuAction, path: string, isDirectory: boolean) => {
+    const kind = isDirectory ? "directory" : "file";
+    switch (action) {
+      case "new-file":
+      case "new-folder":
+        setEntryDialog({
+          type: "create",
+          kind: action === "new-file" ? "file" : "directory",
+          parent: isDirectory ? path : entryParent(path),
+        });
+        return;
+      case "rename":
+        setEntryDialog({ type: "rename", path });
+        return;
+      case "move":
+      case "copy":
+        setEntryDialog({ type: "transfer", mode: action, path, kind });
+        return;
+      case "delete":
+        void deleteEntry(path, isDirectory);
+        return;
+    }
+  };
 
   const showEntryContextMenu = useStableCallback(
     (item: TreeContextMenuItem, context: TreeContextMenuOpenContext) => {
@@ -192,6 +301,7 @@ export default function FileBrowserPanel({
         : { x: anchorRect.left, y: anchorRect.bottom };
       const fileTarget = { environmentId, filePath: relativePath, workspaceRoot: cwd };
       const fileMenuItems = fileContextMenu.buildItems(fileTarget);
+      const isDirectory = item.path.endsWith("/");
       // The app menu owns focus; the tree's outside-click handler would dismiss it before click.
       context.close({ restoreFocus: !pointerIsFresh });
       void settlePromise(async () => {
@@ -200,10 +310,15 @@ export default function FileBrowserPanel({
             ...fileMenuItems,
             { id: "copy-mention", label: "Copy mention" },
             { id: "add-to-chat", label: "Add to chat" },
+            ...(canModifyEntries ? ROW_ENTRY_MENU_ITEMS : []),
           ],
           position,
         );
         if (clicked === null) return;
+        if (ENTRY_MENU_ACTIONS.has(clicked)) {
+          runEntryMenuAction(clicked as EntryMenuAction, relativePath, isDirectory);
+          return;
+        }
         // Open-with submenu ids are absent from the top-level item list.
         const isFileMenuAction =
           fileMenuItems.some((entry) => entry.id === clicked) || clicked.startsWith("editor:");
@@ -296,6 +411,41 @@ export default function FileBrowserPanel({
     onSearchChange: (value) => setQuery(value ?? ""),
     unsafeCSS: PIERRE_TREE_UNSAFE_CSS,
   });
+  const submitOperation = async (operation: ProjectEntryOperation) => {
+    const failure = await applyOperation(operation);
+    if (failure !== null || operation.type === "delete") return failure;
+    // Open the destination's ancestors so the new entry is visible.
+    const target = operation.type === "create" ? operation.relativePath : operation.to;
+    let ancestor = "";
+    for (const segment of entryParent(target).split("/").filter(Boolean)) {
+      ancestor = joinEntryPath(ancestor, segment);
+      const item = model.getItem(`${ancestor}/`);
+      if (item && "expand" in item) item.expand();
+    }
+    return null;
+  };
+
+  const siblingNames = (parent: string, except?: string) =>
+    directoryEntries
+      .filter((entry) => entryParent(entry.path) === parent && entry.path !== except)
+      .map((entry) => entryName(entry.path));
+
+  const showRootContextMenu = (event: ReactMouseEvent) => {
+    // Rows prevent default when they open their own menu.
+    if (event.nativeEvent.defaultPrevented || !canModifyEntries) return;
+    event.preventDefault();
+    const api = readLocalApi();
+    if (!api) return;
+    const position = { x: event.clientX, y: event.clientY };
+    void settlePromise(async () => {
+      const clicked = await api.contextMenu.show(NEW_ENTRY_MENU_ITEMS, position);
+      if (clicked === null) return;
+      runEntryMenuAction(clicked, "", true);
+    }).then((result) => {
+      if (!AsyncResult.isSuccess(result)) throw Cause.squash(result.cause);
+    });
+  };
+
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- makes the Pierre tree model re-render row decorations when loading directories change
   useEffect(() => {
     if (loadingDirectoriesRef.current === loadingDirectories) return;
@@ -557,13 +707,58 @@ export default function FileBrowserPanel({
           </div>
         ) : null
       ) : (
-        <FileTree
-          model={model}
-          aria-label={`${projectName} files`}
-          className="min-h-0 flex-1 overflow-hidden"
-          style={pierreTreeStyle(resolvedTheme)}
-        />
+        <div className="flex min-h-0 flex-1 flex-col" onContextMenu={showRootContextMenu}>
+          <FileTree
+            model={model}
+            aria-label={`${projectName} files`}
+            className="min-h-0 flex-1 overflow-hidden"
+            style={pierreTreeStyle(resolvedTheme)}
+          />
+        </div>
       )}
+      {entryDialog?.type === "create" ? (
+        <EntryNameDialog
+          title={entryDialog.kind === "directory" ? "New folder" : "New file"}
+          confirmLabel="Create"
+          initialName=""
+          siblingNames={siblingNames(entryDialog.parent)}
+          onSubmit={(name) =>
+            submitOperation({
+              type: "create",
+              kind: entryDialog.kind,
+              relativePath: joinEntryPath(entryDialog.parent, name),
+            })
+          }
+          onClose={() => setEntryDialog(null)}
+        />
+      ) : null}
+      {entryDialog?.type === "rename" ? (
+        <EntryNameDialog
+          title="Rename"
+          confirmLabel="Rename"
+          initialName={entryName(entryDialog.path)}
+          siblingNames={siblingNames(entryParent(entryDialog.path), entryDialog.path)}
+          onSubmit={(name) =>
+            submitOperation({
+              type: "move",
+              from: entryDialog.path,
+              to: joinEntryPath(entryParent(entryDialog.path), name),
+            })
+          }
+          onClose={() => setEntryDialog(null)}
+        />
+      ) : null}
+      {entryDialog?.type === "transfer" ? (
+        <EntryDestinationDialog
+          environmentId={environmentId}
+          cwd={cwd}
+          rootLabel={projectName}
+          mode={entryDialog.mode}
+          source={{ path: entryDialog.path, kind: entryDialog.kind }}
+          onSubmit={(to) => submitOperation({ type: entryDialog.mode, from: entryDialog.path, to })}
+          onClose={() => setEntryDialog(null)}
+        />
+      ) : null}
     </div>
   );
 }
