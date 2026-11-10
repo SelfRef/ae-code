@@ -454,4 +454,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.prepare.outputs.tag }}
+          ABI: ${{ matrix.abi }}
         run: gh release upload "$TAG" "dist/ae-code-$TAG-$ABI.apk"
