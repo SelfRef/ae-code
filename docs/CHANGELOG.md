@@ -8,6 +8,14 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+### Added
+
+- Branches, Issues and Releases (web): the title row is the thread header's project switcher followed by the page name, and it
+  clears the sidebar toggle when the sidebar is hidden. The pages open on the project of the chat you opened last.
+- Branches and Issues (web): Sort and Filters menus and a refresh button that spins while it reloads, like Pull requests.
+  Branches filters by merge state, kind and remote and searches by name; Issues sorts by update, creation or comments
+  and filters by state and "created by me" / "assigned to me".
+
 ### Changed
 
 - The Git button of a branch pushes by default instead of pushing and creating a pull request (and commits and pushes
@@ -18,6 +26,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
   **Merge & push** and **Push n commits** (the default branch as it is) under the arrow; with nothing to merge, the push is
   the button. Android: the Git menu and sheet list the same actions under "Default branch". The project setting now only
   picks between Merge and Merge & push as the main action.
+- Branches lists the primary remote's branches by default; a fork's `upstream`, with thousands of branches, no longer fills the
+  200-branch list. The Filters menu picks another remote or all of them (Android follows the default too).
 
 ### Fixed
 
