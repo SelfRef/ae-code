@@ -46,6 +46,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Fixed
 
+- Done, Input and draft chats in the sidebar have a more visible tint on the dark theme.
 - The Session and Weekly usage bars are as bright as the Context bar on the dark theme.
 - Linux: opening AE Code from a pinned dock icon uses that icon instead of adding a second one (the
   launcher now names the window class the app really uses).

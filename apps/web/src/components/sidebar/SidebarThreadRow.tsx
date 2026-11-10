@@ -453,7 +453,8 @@ type SortableThreadRowBag = Pick<
   "listeners" | "setNodeRef" | "transform" | "transition" | "isDragging"
 >;
 
-export const draftSurfaceClassName = "bg-warning/4 hover:bg-warning/8";
+export const draftSurfaceClassName =
+  "bg-warning/4 hover:bg-warning/8 dark:bg-warning/10 dark:hover:bg-warning/16";
 const draftPenClassName = "size-3 shrink-0 text-warning-foreground";
 
 // useSortable memoizes on its `disabled` object, so a fresh one per render
@@ -557,8 +558,8 @@ const TOP_STATUS_ICONS = {
 // Tints the rows that wait on the user; drafts are warning, Done green, Input purple.
 const TOP_STATUS_SURFACES: Partial<Record<keyof typeof TOP_STATUS_ICONS, string>> = {
   draft: draftSurfaceClassName,
-  done: "bg-success/4 hover:bg-success/8",
-  input: "bg-question/6 hover:bg-question/12",
+  done: "bg-success/4 hover:bg-success/8 dark:bg-success/10 dark:hover:bg-success/16",
+  input: "bg-question/6 hover:bg-question/12 dark:bg-question/12 dark:hover:bg-question/18",
 };
 
 function TopStatusIcon(props: { icon: keyof typeof TOP_STATUS_ICONS; className: string }) {
