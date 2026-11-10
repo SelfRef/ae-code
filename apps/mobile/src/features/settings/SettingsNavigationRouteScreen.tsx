@@ -4,6 +4,7 @@ import { useAdaptiveWorkspaceLayout } from "../layout/adaptive-workspace-context
 import { Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
+  DEFAULT_HIDDEN_NAVIGATION_TABS,
   moveNavigationTab,
   navigationCustomizationAvailable,
   toggleNavigationTabVisibility,
@@ -45,7 +46,7 @@ export function SettingsNavigationRouteScreen() {
       >
         <Text className="px-2 text-sm text-foreground-muted">
           {customizable
-            ? "Phones show the first four enabled sections; Android tablet rails show all enabled sections. Remaining sections appear at the top of Settings. Hidden sections appear only here. Settings always stays last. Saved on this device."
+            ? "Phones show the first four enabled sections; Android tablet rails show all enabled sections. Remaining sections appear at the top of Settings. Hidden sections appear only here. Settings always stays last. Pulls starts hidden. Saved on this device."
             : "Tab customization becomes available when there are six sections, including Settings."}
         </Text>
         <SettingsSection title="Tab order">
@@ -120,7 +121,12 @@ export function SettingsNavigationRouteScreen() {
           label="Reset tabs"
           tone="text"
           disabled={!ready}
-          onPress={() => save({ navigationTabOrder: [], hiddenNavigationTabs: [] })}
+          onPress={() =>
+            save({
+              navigationTabOrder: [],
+              hiddenNavigationTabs: DEFAULT_HIDDEN_NAVIGATION_TABS,
+            })
+          }
         />
       </ScreenScrollView>
     </SettingsScreen>
