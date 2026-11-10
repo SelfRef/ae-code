@@ -479,11 +479,9 @@ function ServerSettingsDetail(props: { readonly page: SettingsPage }) {
                     onValueChange={(value) => write({ defaultAutoPull: value })}
                   />
                 </SettingsSection>
-                {projectSelected ? null : (
-                  <SettingsSection title="This device">
-                    <ConfirmDefaultBranchPushRow />
-                  </SettingsSection>
-                )}
+                <SettingsSection title="This device">
+                  <ConfirmDefaultBranchPushRow />
+                </SettingsSection>
                 <SettingsSection title="Clones">
                   <SettingsSwitchRow
                     icon="folder"
