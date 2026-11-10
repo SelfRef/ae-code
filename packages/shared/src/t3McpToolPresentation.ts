@@ -53,6 +53,11 @@ export type T3McpToolSummaryAction =
   | "memory-recall"
   | "memory-remember"
   | "memory-forget"
+  | "skill-list"
+  | "skill-read"
+  | "skill-write"
+  | "skill-remove"
+  | "skill-link"
   | "environment-read"
   | "environment-links"
   | "environment-link"
@@ -366,6 +371,11 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
   t3_memory_recall: tool(["Recall", "Recalling", "Recalled", "saved memory"], "memory-recall"),
   t3_memory_remember: tool(["Save", "Saving", "Saved", "a memory"], "memory-remember"),
   t3_memory_forget: tool(["Forget", "Forgetting", "Forgot", "a memory"], "memory-forget"),
+  t3_skill_list: tool(["List", "Listing", "Listed", "skills"], "skill-list"),
+  t3_skill_read: tool(["Read", "Reading", "Read", "a skill"], "skill-read"),
+  t3_skill_write: tool(["Write", "Writing", "Wrote", "a skill"], "skill-write"),
+  t3_skill_remove: tool(["Remove", "Removing", "Removed", "a skill"], "skill-remove"),
+  t3_skill_link: tool(["Link", "Linking", "Linked", "a skill"], "skill-link"),
   t3_project_list: tool(["List", "Listing", "Listed", "projects"], "project-list"),
   t3_project_read: tool(["Read", "Reading", "Read", "a project"], "project-read"),
   t3_project_create: tool(["Register", "Registering", "Registered", "a project"], "project-create"),

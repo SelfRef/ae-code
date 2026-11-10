@@ -96,6 +96,7 @@ import { MessageToolkit } from "../../mcp/toolkits/message/tools.ts";
 import { EnvironmentToolkit } from "../../mcp/toolkits/environment/tools.ts";
 import { ThemeToolkit } from "../../mcp/toolkits/theme/tools.ts";
 import { MemoryToolkit } from "../../mcp/toolkits/memory/tools.ts";
+import { SkillToolkit } from "../../mcp/toolkits/skills/tools.ts";
 import { ProjectToolkit } from "../../mcp/toolkits/project/tools.ts";
 import { WorktreeToolkit } from "../../mcp/toolkits/worktree/tools.ts";
 import { ThreadToolkit } from "../../mcp/toolkits/thread/tools.ts";
@@ -831,6 +832,7 @@ describe("ClaudeAdapterV2 MCP query overrides", () => {
       ...Object.values(EnvironmentToolkit.tools),
       ...Object.values(ThemeToolkit.tools),
       ...Object.values(MemoryToolkit.tools),
+      ...Object.values(SkillToolkit.tools),
       ...Object.values(PreviewControlsToolkit.tools),
       ...Object.values(HtmlToolkit.tools),
       ...Object.values(MessageToolkit.tools),
