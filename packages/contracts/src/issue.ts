@@ -20,9 +20,14 @@ export type IssueStateReason = typeof IssueStateReason.Type;
 export const IssueListState = Schema.Literals(["open", "closed", "all"]);
 export type IssueListState = typeof IssueListState.Type;
 
+export const IssueListSort = Schema.Literals(["updated", "newest", "oldest", "comments"]);
+export type IssueListSort = typeof IssueListSort.Type;
+
 export const IssueListInput = Schema.Struct({
   projectId: ProjectId,
   state: IssueListState,
+  /** Defaults to `updated`: recently updated first. */
+  sort: Schema.optional(IssueListSort),
   /** Free text, matched by the host's own search. */
   query: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(200))),
   /** 1-based; each page holds `ISSUE_LIST_PAGE_SIZE` issues. */

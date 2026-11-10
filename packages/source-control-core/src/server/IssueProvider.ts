@@ -1,6 +1,7 @@
 import type * as Effect from "effect/Effect";
 import type {
   IssueDetail,
+  IssueListSort,
   IssueListState,
   IssueSummary,
   ReleaseDetail,
@@ -27,6 +28,7 @@ export interface IssueProviderApi {
     readonly host: string;
     readonly repository: string;
     readonly state: IssueListState;
+    readonly sort?: IssueListSort | undefined;
     readonly query?: string | undefined;
     readonly page: number;
     readonly pageSize: number;
