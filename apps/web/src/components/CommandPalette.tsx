@@ -65,6 +65,7 @@ import {
   FolderGit2Icon,
   FolderIcon,
   FolderPlusIcon,
+  GitBranchIcon,
   MessageSquareDashedIcon,
   LinkIcon,
   MessageSquareIcon,
@@ -81,6 +82,7 @@ import {
   UserPlusIcon,
 } from "lucide-react";
 import { openThreadFind } from "./chat/threadFindStore";
+import { branchProjects } from "@t3tools/client-runtime/branch-overview";
 import { issueProjects } from "@t3tools/client-runtime/issue-projects";
 import {
   useDeferredValue,
@@ -1607,6 +1609,19 @@ function OpenCommandPaletteDialog(props: {
       icon: <PullRequestGlyph.pullRequest className={ITEM_ICON_CLASS} />,
       run: async () => {
         await navigate({ to: "/pull-requests", search: readPullRequestListPreferences() });
+      },
+    });
+  }
+
+  if (branchProjects(projects).length > 0) {
+    actionItems.push({
+      kind: "action",
+      value: "action:branches",
+      searchTerms: ["branches", "worktrees", "unmerged", "ahead", "behind", "push", "pull"],
+      title: "Open branches",
+      icon: <GitBranchIcon className={ITEM_ICON_CLASS} />,
+      run: async () => {
+        await navigate({ to: "/branches", search: {} });
       },
     });
   }
