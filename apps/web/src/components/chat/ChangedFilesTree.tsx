@@ -3,13 +3,14 @@ import { type OrchestrationV2CheckpointFileTotals, type RunId } from "@t3tools/c
 import { type MouseEvent, type ReactNode, memo, useLayoutEffect, useRef, useState } from "react";
 import { type TurnDiffFileChange } from "../../types";
 import { buildTurnDiffTree, type TurnDiffTreeNode } from "../../lib/turnDiffTree";
-import { ChevronRightIcon, FileDiffIcon } from "lucide-react";
+import { ChevronRightIcon, FileDiffIcon, GitCommitHorizontalIcon } from "lucide-react";
 import { ChevronsDownUp, ChevronsUpDown, Folder, FolderClosed } from "lucide";
 import { cn } from "~/lib/utils";
 import { DiffStatLabel, hasNonZeroStat } from "./DiffStatLabel";
 import { PierreEntryIcon } from "./PierreEntryIcon";
 import { Button } from "../ui/button";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { type RunGitActivity } from "./runGitActivity";
 import { MiddleTruncate } from "../ui/middle-truncate";
 import { MorphIcon } from "~/components/MorphIcon";
 import { observeResize } from "~/lib/observeResize";
@@ -25,11 +26,18 @@ interface ChangedFileRow {
 
 type ChangedFileContextMenuHandler = (filePath: string, event: MouseEvent) => void;
 
+function gitActivitySummary({ commits, pushed }: RunGitActivity): string {
+  const committed =
+    commits === 0 ? null : commits === 1 ? "Committed" : `${commits.toLocaleString()} commits`;
+  return [committed, pushed ? "pushed" : null].filter(Boolean).join(", ").replace(/^p/, "P");
+}
+
 export const ChangedFilesCard = memo(function ChangedFilesCard(props: {
   runId: RunId;
   /** May be a prefix of the changed files; `totals` covers all of them. */
   files: ReadonlyArray<TurnDiffFileChange>;
   totals: OrchestrationV2CheckpointFileTotals;
+  gitActivity?: RunGitActivity | undefined;
   allDirectoriesExpanded: boolean;
   resolvedTheme: "light" | "dark";
   onToggleAllDirectories: () => void;
@@ -40,6 +48,7 @@ export const ChangedFilesCard = memo(function ChangedFilesCard(props: {
     runId,
     files,
     totals,
+    gitActivity,
     allDirectoriesExpanded,
     resolvedTheme,
     onToggleAllDirectories,
@@ -70,6 +79,15 @@ export const ChangedFilesCard = memo(function ChangedFilesCard(props: {
               layout="inline"
               className="text-xs leading-4"
             />
+          )}
+          {gitActivity && (
+            <span
+              data-changed-files-git=""
+              className="inline-flex items-center gap-1 font-normal text-muted-foreground"
+            >
+              <GitCommitHorizontalIcon className="size-3" />
+              {gitActivitySummary(gitActivity)}
+            </span>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-1">
