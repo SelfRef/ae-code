@@ -14,6 +14,7 @@ import {
   AlertDialogPopup,
   AlertDialogTitle,
 } from "../ui/alert-dialog";
+import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
 import { MiddleTruncate } from "../ui/middle-truncate";
@@ -127,6 +128,7 @@ function UpdateEverythingDialogContent({
   const restarting = new Set(restarts.map((machine) => machine.environmentId));
   const updating = rows.filter((row) => row.app !== null || row.providers.length > 0);
   const skipped = rows.filter((row) => row.skipped !== null);
+  const showApp = updating.some((row) => row.app !== null || row.skipped !== null);
 
   return (
     <>
@@ -159,14 +161,19 @@ function UpdateEverythingDialogContent({
           {/* Machine names truncate first. Provider lists wrap between names, never inside one. */}
           <div
             role="table"
-            className="grid grid-cols-[minmax(4rem,max-content)_max-content_minmax(min-content,1fr)_max-content] gap-x-4 text-sm"
+            className={cn(
+              "grid gap-x-4 text-sm",
+              showApp
+                ? "grid-cols-[minmax(4rem,max-content)_max-content_minmax(min-content,1fr)_max-content]"
+                : "grid-cols-[minmax(4rem,max-content)_minmax(min-content,1fr)_max-content]",
+            )}
           >
             <div
               role="row"
               className="col-span-full grid grid-cols-subgrid border-b pb-1.5 text-muted-foreground text-xs"
             >
               <span role="columnheader">Machine</span>
-              <span role="columnheader">T3 Code</span>
+              {showApp ? <span role="columnheader">AE Code</span> : null}
               <span role="columnheader">Providers</span>
               <span role="columnheader" />
             </div>
@@ -180,15 +187,17 @@ function UpdateEverythingDialogContent({
                   <span className="sr-only">{row.label}</span>
                   <MiddleTruncate value={row.label} aria-hidden />
                 </span>
-                <span role="cell">
-                  {row.app !== null ? APP_LABELS[row.app] : null}
-                  {row.app === null && row.skipped !== null ? (
-                    <span className="text-muted-foreground">Skipped</span>
-                  ) : null}
-                  {row.app === "this-app" ? (
-                    <span className="block text-muted-foreground text-xs">restarts last</span>
-                  ) : null}
-                </span>
+                {showApp ? (
+                  <span role="cell">
+                    {row.app !== null ? APP_LABELS[row.app] : null}
+                    {row.app === null && row.skipped !== null ? (
+                      <span className="text-muted-foreground">Skipped</span>
+                    ) : null}
+                    {row.app === "this-app" ? (
+                      <span className="block text-muted-foreground text-xs">restarts last</span>
+                    ) : null}
+                  </span>
+                ) : null}
                 <span role="cell">
                   {row.providers.map((provider, index) => (
                     <Fragment key={provider}>

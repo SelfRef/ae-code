@@ -359,7 +359,7 @@ function getAutoUpdateDisabledReason(args: {
     return "Automatic updates are disabled by the T3CODE_DISABLE_AUTO_UPDATE setting.";
   }
   if (args.platform === "linux" && !args.appImage && !args.isDebPackage) {
-    return "Automatic updates on Linux require the AppImage or the .deb package.";
+    return "This install is managed by your package manager, so update the app there (pacman or an AUR helper). Automatic updates need the AppImage or the .deb package.";
   }
   return null;
 }

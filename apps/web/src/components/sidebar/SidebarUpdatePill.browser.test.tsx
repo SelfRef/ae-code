@@ -1,4 +1,4 @@
-import type { DesktopUpdateState } from "@t3tools/contracts";
+import { type DesktopUpdateState, EnvironmentId } from "@t3tools/contracts";
 import { describe, expect, it, vi } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
 
@@ -40,7 +40,7 @@ vi.mock("./useUpdateEverything", () => ({
     hasUpdates: mocks.hasUpdates,
     summary: "Update everything",
     version: null,
-    providerCount: 0,
+    providerCount: mocks.rows.reduce((count, row) => count + row.providers.length, 0),
     rows: mocks.rows,
     restarts: [],
   }),
@@ -161,10 +161,59 @@ describe("SidebarUpdatePill update everything", () => {
 
     const table = page.getByRole("table");
     await expect.element(table.getByRole("columnheader", { name: "Machine" })).toBeVisible();
-    await expect.element(table.getByRole("columnheader", { name: "T3 Code" })).toBeVisible();
+    await expect.element(table.getByRole("columnheader", { name: "AE Code" })).toBeVisible();
     await expect.element(table.getByRole("columnheader", { name: "Providers" })).toBeVisible();
     const row = table.getByRole("row", { name: new RegExp(label) });
     await expect.element(row.getByRole("cell", { name: label, exact: true })).toBeVisible();
     await expect.element(row.getByRole("cell", { name: "Claude", exact: true })).toBeVisible();
+  });
+});
+
+describe("SidebarUpdatePill update everything dialog", () => {
+  const PACKAGE_MANAGED =
+    "This install is managed by your package manager, so update the app there (pacman or an AUR helper).";
+  const providerRow: UpdateEverythingRow = {
+    environmentId: null,
+    label: "This machine",
+    app: null,
+    skipped: null,
+    providers: ["Claude"],
+  };
+  const appRow: UpdateEverythingRow = { ...providerRow, app: "this-app" };
+  const serverRow: UpdateEverythingRow = {
+    ...providerRow,
+    environmentId: EnvironmentId.make("remote"),
+    label: "Remote",
+    app: "server",
+  };
+
+  async function openDialog() {
+    const screen = await render(<SidebarUpdatePill />);
+    await userEvent.click(screen.getByRole("button", { name: "Update everything" }));
+    await expect.element(page.getByRole("button", { name: "Cancel" })).toBeVisible();
+    return screen;
+  }
+
+  it("says why a package-managed desktop app cannot update and drops the AE Code column", async () => {
+    setup(
+      { ...nightlyUpdate([]), enabled: false, status: "disabled", message: PACKAGE_MANAGED },
+      { hasUpdates: true, rows: [providerRow] },
+    );
+    await using _screen = await openDialog();
+
+    await expect.element(page.getByText(PACKAGE_MANAGED)).toBeVisible();
+    await expect.element(page.getByText("Providers", { exact: true })).toBeVisible();
+    expect(page.getByText("AE Code", { exact: true }).elements()).toHaveLength(0);
+  });
+
+  it.each([
+    { name: "an updatable desktop app", update: nightlyUpdate([]), row: appRow },
+    { name: "the web client", update: null, row: serverRow },
+  ])("keeps the AE Code column and shows no note for $name", async ({ update, row }) => {
+    setup(update, { hasUpdates: true, rows: [row] });
+    await using _screen = await openDialog();
+
+    await expect.element(page.getByText("AE Code", { exact: true })).toBeVisible();
+    expect(document.body.textContent).not.toContain("package manager");
   });
 });
