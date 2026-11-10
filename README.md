@@ -35,7 +35,7 @@ The fork is kept as a linear stack of patch commits on top of upstream's `main`,
 
 ## Install
 
-Only the Linux x64 server and the Android app are built. There is no desktop installer, no iOS app and no `npx` launcher, so the desktop app's updater finds nothing. Install and sign in to at least one agent CLI on the machine that runs the server (Claude Code, Codex, Cursor, OpenCode and so on), or install Claude Code and OpenCode from Settings → Providers after the first start.
+The releases carry the Linux x64 server (archive and Docker image), the Linux x64 desktop app (through the AUR) and the Android app. There is no desktop installer (AppImage, `.deb`), no iOS app and no `npx` launcher. Install and sign in to at least one agent CLI on the machine that runs the server (Claude Code, Codex, Cursor, OpenCode and so on), or install Claude Code and OpenCode from Settings → Providers after the first start.
 
 ### Dependencies on Arch Linux
 
@@ -71,15 +71,17 @@ Optional:
 
 The iOS Simulator needs macOS, so the Device panel offers Android only on Arch.
 
-### Server archive
+### Server on a bare host
 
-Download `ae-code-linux-x64.tar.gz` from the [latest release](https://github.com/SelfRef/ae-code/releases/latest), unpack it and run:
+Download `ae-code-linux-x64.tar.gz` from the [latest release](https://github.com/SelfRef/ae-code/releases/latest) and unpack it. To try it, run `./ae-code serve` and open the printed address. To keep it running (Linux with systemd):
 
 ```bash
-./ae-code serve
+tar -xzf ae-code-linux-x64.tar.gz
+cd ae-code-linux-x64
+./install.sh
 ```
 
-Then open the printed address in a browser. The executable still calls itself `t3` in its help text. For access from a phone or another machine, see [Remote access](./docs/user/remote-access.md).
+`install.sh` runs as your user (not root). It installs a systemd user service on port 3773 that starts at boot and restarts after a crash, and links `~/.local/bin/ae-code`. `ae-code pair` prints a QR code to pair a client. State is in `~/.ae`; [INSTALL.md](./packaging/systemd/README.md) in the archive covers configuration and rollback. The service sets `T3CODE_SELF_UPDATE=true`, so Settings → About (or the update dialog of another client) installs newer releases from GitHub and restarts the server; delete that line from the unit to turn it off. Without the switch, a plain `ae-code serve` has to be updated by replacing the executable. The executable still calls itself `t3` in its help text. For access from a phone or another machine, see [Remote access](./docs/user/remote-access.md).
 
 ### Docker
 
@@ -87,7 +89,17 @@ Then open the printed address in a browser. The executable still calls itself `t
 docker run -d -p 3773:3773 -v ae-code:/home/ae/.ae ghcr.io/selfref/ae-code:latest
 ```
 
-The image is Ubuntu with `git` and `ssh` and runs as a non-root user; state lives in the `/home/ae/.ae` volume. It contains no agent CLIs: derive an image to add the ones you use.
+The image is Ubuntu with `git` and `ssh` and runs as a non-root user; state lives in the `/home/ae/.ae` volume. It contains no agent CLIs: derive an image to add the ones you use. Add `-e T3CODE_SELF_UPDATE=true` to let Settings → About install newer releases in place (the server restarts, the container does not); otherwise pull a newer image.
+
+### Desktop app (Arch Linux)
+
+The Linux x64 desktop app is packaged for the AUR: `ae-code-bin` (the release build, prebuilt), `ae-code` (the latest release built from source) and `ae-code-git` (the latest commit).
+
+```bash
+yay -S ae-code-bin
+```
+
+The app has its own server and its own state in `~/.ae`. It does not update itself: update it with your AUR helper (`yay -Syu`). The update dialog says so instead of offering an app update, and provider CLIs installed by pacman or another package manager are left to it as well.
 
 ### Android
 

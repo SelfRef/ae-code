@@ -17,7 +17,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 | [28] | Worktree defaults for parallel feature work: semantic branch names, no start from the remote, cleanup of merged, deleted, unchanged and settled (3 days) worktrees     | done    |
 | [27] | Skills manager: every provider's skills in one list, then a shared library with per-provider switches                                                                  | done    |
 | [26] | Pull requests and issues of a project come from its own `origin` remote, not from `upstream` (a fork listed its upstream's pull requests)                              | done    |
-| [25] | The Docker image updates in place from the fork's GitHub releases when `T3CODE_SELF_UPDATE=true` (Settings → About); one update channel, no Stable/Nightly picker      | done    |
+| [25] | The Docker image and a plain `ae-code serve` update in place from GitHub releases when `T3CODE_SELF_UPDATE=true`; the tarball ships a systemd unit                     | done    |
 | [24] | The changed-files card under an answer says when that run committed and pushed (read from its successful `git commit` / `git push` commands)                           | done    |
 | [23] | Force push for a diverged branch (Git menu → "Force push..."), with a modal listing the commits it deletes and sends                                                   | done    |
 | [22] | Git panel and Diff panel start on uncommitted changes; "Not pushed" is the old branch diff; Push shows how many commits it sends                                       | done    |
@@ -70,7 +70,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 [27]: #skills-manager-change-27
 [30]: #synced-drafts-change-30
 [26]: #pull-requests-from-the-fork-change-26
-[25]: #in-place-updates-of-the-docker-image-change-25
+[25]: #in-place-updates-of-the-docker-image-and-a-bare-host-change-25
 
 `done` means it is a commit on `main`; the commit is found by subject (`git log --grep`), not by hash, because every
 rebase onto upstream changes the hashes. The history rules and the sync procedure are in the last section.
@@ -417,7 +417,7 @@ image to add the ones you use.
 A package GitHub creates starts private: after the first push, make `ae-code` public in the package settings (Package
 settings, Change visibility). Checked locally by building it around an upstream archive and starting the server.
 
-In-place updates are off by default; see "In-place updates of the Docker image (change 25)".
+In-place updates are off by default; see "In-place updates of the Docker image and a bare host (change 25)".
 
 ## Self-hosted Android push (change 10)
 
@@ -964,7 +964,7 @@ so a project cloned from this fork listed upstream's pull requests (and grouped 
 - gh's own repository choice in the GitHub provider (`upstream`, `github`, `origin`) is left as is: it only mirrors what
   `gh pr create` does in the checkout.
 
-## In-place updates of the Docker image (change 25)
+## In-place updates of the Docker image and a bare host (change 25)
 
 Upstream's remote update path needs an npm package, a boot service or the desktop app, and its Settings → About offered
 a Stable/Nightly "Update track". The fork publishes one stream of GitHub releases (`vYYYY.MM.DD`) and its server runs
@@ -973,7 +973,16 @@ in a container, so none of that applied.
 - **Switch:** `T3CODE_SELF_UPDATE=true` on the image. The image's entrypoint (`packaging/docker/entrypoint.sh`) then
   sets `T3CODE_UPDATE_SUPERVISED=1` for the server, which is what makes the server report the existing `respawn`
   self-update capability. Without the switch the entrypoint `exec`s the server as before and Settings → About says
-  that updates are off. A plain server never gets the capability, because nothing would start it again.
+  that updates are off. A server nothing supervises never gets the capability, because nothing would start it again.
+- **Bare host:** with the same switch, `ae-code serve` (packaged executable only) stays up as a small parent
+  (`apps/server/src/cloud/updateSupervisor.ts`, started from `bin.ts` before the CLI loads) and runs the server as a
+  child with `T3CODE_UPDATE_SUPERVISED=1`. It does what the entrypoint does: it starts the child again only after
+  `<home>/updates/current` moved or on SIGHUP, runs the newest of its own build and the download, and falls back to its
+  own build when a download does not start. It finds `<home>` from `--base-dir`, `T3CODE_HOME` or `~/.ae`, like the
+  server. The shell loop in the entrypoint is left as is, so the image is unchanged.
+- **Tarball:** `ae-code-linux-x64.tar.gz` also holds `install.sh`, `ae-code.service` and `INSTALL.md`
+  (`packaging/systemd/`, copied in by the release workflow). `install.sh` installs a systemd user service with the switch
+  on, links `~/.local/bin/ae-code` and enables lingering; running it from a newer archive updates by hand.
 - **Check:** `server.npmRelease` (the RPC keeps upstream's name) answers `latest` from
   `api.github.com/repos/SelfRef/ae-code/releases/latest`, tag `v2026.11.09` read as version `2026.1109.0`. Anonymous
   GitHub requests are limited to 60 an hour per address; the answer is cached for a minute.

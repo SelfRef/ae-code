@@ -33,12 +33,8 @@ import { databaseMigrationHead } from "../persistence/databaseMigrationHead.ts";
 import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
 import { managedUpdateMirror, managedUpdateRefusal } from "../policy/managedUpdates.ts";
 import * as ProcessRunner from "../processRunner.ts";
-import {
-  fetchLatestRelease,
-  installRelease,
-  SELF_UPDATE_ENV,
-  selfUpdateEnabled,
-} from "./forkRelease.ts";
+import { fetchLatestRelease, installRelease, selfUpdateEnabled } from "./forkRelease.ts";
+import { SELF_UPDATE_ENV } from "./updateSupervisor.ts";
 import {
   ensurePinnedRuntimeInstalled,
   isUnpublishedRelease,
@@ -209,7 +205,7 @@ export const make = Effect.fn("cloud.server_self_update.make")(function* () {
     }
     if (capability === null) {
       return yield* failWith(
-        `Updates from the app are off. In the Docker image, set ${SELF_UPDATE_ENV}=true to turn them on.`,
+        `Updates from the app are off. In the Docker image or a plain ae-code serve, set ${SELF_UPDATE_ENV}=true to turn them on.`,
       );
     }
     if (capability === "respawn") {
