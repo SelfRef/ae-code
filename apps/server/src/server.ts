@@ -88,6 +88,7 @@ import * as ProjectSettingsOverrideSweep from "./provider/ProjectSettingsOverrid
 import * as TerminalManager from "./terminal/Manager.ts";
 import * as McpHttpServer from "./mcp/McpHttpServer.ts";
 import * as MemoryService from "./memory/MemoryService.ts";
+import * as SkillLibraryService from "./skills/SkillLibraryService.ts";
 import * as PeerForwarding from "./peer/PeerForwarding.ts";
 import * as RemoteDelegation from "./peer/RemoteDelegation.ts";
 import * as PeerLinkRequests from "./peer/PeerLinkRequests.ts";
@@ -727,6 +728,7 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   // Saved memory, shared by Settings (WebSocket) and agents (/mcp).
   Layer.provideMerge(Layer.mergeAll(ProjectStore.layer, ThreadSearch.layer, MemoryService.layer)),
   Layer.provideMerge(SecretCheck.layer),
+  Layer.provideMerge(SkillLibraryService.layer),
   Layer.provideMerge(SecretResolver.layer),
   // Above the settings it writes when a theme is applied.
   Layer.provideMerge(EnvironmentTheme.layer),

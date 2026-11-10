@@ -22,6 +22,7 @@
 - [Secrets](./user/secrets.md)
 - [Memory](./user/memory.md)
 - [MCP servers](./user/mcp-servers.md)
+- [Skills](./user/skills.md)
 - [Product usage data](./user/telemetry.md)
 - [Remote access](./user/remote-access.md)
 - [Guest links](./user/guest-links.md)

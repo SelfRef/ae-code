@@ -154,7 +154,8 @@ function SettingsRouteLayout() {
         pathname === "/settings/providers" ||
         pathname === "/settings/secrets" ||
         pathname === "/settings/memory" ||
-        pathname === "/settings/mcp-servers"
+        pathname === "/settings/mcp-servers" ||
+        pathname === "/settings/skills"
       }
       deviceOnly={SETTINGS_DEVICE_ONLY_PATHS.has(pathname)}
       onChange={(next) => {
