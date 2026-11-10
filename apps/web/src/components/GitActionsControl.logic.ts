@@ -143,7 +143,7 @@ export function buildMenuItems(
       ? [
           {
             id: "merge",
-            label: hasChanges ? "Commit & merge into default branch" : "Merge into default branch",
+            label: hasChanges ? "Commit & merge" : "Merge",
             disabled: !canMerge,
             icon: "merge",
             kind: "open_dialog",
@@ -153,9 +153,7 @@ export function buildMenuItems(
             ? [
                 {
                   id: "merge_push" as const,
-                  label: hasChanges
-                    ? "Commit, merge into default branch & push"
-                    : "Merge into default branch & push",
+                  label: hasChanges ? "Commit, merge & push" : "Merge & push",
                   disabled: !canMerge,
                   icon: "merge" as const,
                   kind: "open_dialog" as const,

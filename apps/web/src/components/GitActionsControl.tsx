@@ -1718,7 +1718,12 @@ export default function GitActionsControl({
                   </TooltipTrigger>
                   <TooltipPopup side="top">Git action options</TooltipPopup>
                 </Tooltip>
-                <MenuPopup align="end" anchor={panelAnchorRef} className="w-(--anchor-width)">
+                <MenuPopup
+                  align="end"
+                  anchor={panelAnchorRef}
+                  width="content"
+                  className="min-w-(--anchor-width)"
+                >
                   {gitItems}
                 </MenuPopup>
               </Menu>
