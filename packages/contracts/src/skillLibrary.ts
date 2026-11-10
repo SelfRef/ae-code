@@ -79,11 +79,23 @@ export type SkillLibraryTrashEntry = typeof SkillLibraryTrashEntry.Type;
 export const SkillLibraryListInput = Schema.Struct({});
 export type SkillLibraryListInput = typeof SkillLibraryListInput.Type;
 
+export const SkillLibrarySettings = Schema.Struct({
+  /**
+   * New Claude sessions load only the skills the library links into Claude's folder, so Claude's
+   * own, plugin and built-in skills are not offered to the model. Other providers are untouched.
+   */
+  claudeLibraryOnly: Schema.Boolean,
+});
+export type SkillLibrarySettings = typeof SkillLibrarySettings.Type;
+
+export const DEFAULT_SKILL_LIBRARY_SETTINGS: SkillLibrarySettings = { claudeLibraryOnly: false };
+
 export const SkillLibraryListResult = Schema.Struct({
   libraryPath: Schema.String,
   skills: Schema.Array(SkillLibrarySkill),
   targets: Schema.Array(SkillLibraryTarget),
   trash: Schema.Array(SkillLibraryTrashEntry),
+  settings: SkillLibrarySettings,
 });
 export type SkillLibraryListResult = typeof SkillLibraryListResult.Type;
 
@@ -180,6 +192,51 @@ export const SkillLibraryUpdateResult = Schema.Struct({
   status: Schema.Literals(["updated", "current"]),
 });
 export type SkillLibraryUpdateResult = typeof SkillLibraryUpdateResult.Type;
+
+export const SkillLibrarySetSettingsInput = Schema.Struct({
+  claudeLibraryOnly: Schema.optional(Schema.Boolean),
+});
+export type SkillLibrarySetSettingsInput = typeof SkillLibrarySetSettingsInput.Type;
+
+export const SkillLibrarySetSettingsResult = Schema.Struct({ settings: SkillLibrarySettings });
+export type SkillLibrarySetSettingsResult = typeof SkillLibrarySetSettingsResult.Type;
+
+export const SkillLibraryImportScanInput = Schema.Struct({});
+export type SkillLibraryImportScanInput = typeof SkillLibraryImportScanInput.Type;
+
+/** A skill folder a provider keeps in its own skills folder, as a real folder rather than a link. */
+export const SkillLibraryImportCandidate = Schema.Struct({
+  instanceId: ProviderInstanceId,
+  id: SkillLibraryId,
+  name: Schema.String,
+  description: Schema.optional(Schema.String),
+  path: Schema.String,
+  /** The library already has a skill with this id, so importing it is refused. */
+  inLibrary: Schema.Boolean,
+});
+export type SkillLibraryImportCandidate = typeof SkillLibraryImportCandidate.Type;
+
+export const SkillLibraryImportScanResult = Schema.Struct({
+  candidates: Schema.Array(SkillLibraryImportCandidate),
+});
+export type SkillLibraryImportScanResult = typeof SkillLibraryImportScanResult.Type;
+
+/**
+ * `copy` leaves the provider's folder as it is. `move` replaces it with a link into the library,
+ * so the provider keeps the skill and its files live in one place.
+ */
+export const SkillLibraryImportInput = Schema.Struct({
+  instanceId: ProviderInstanceId,
+  ids: Schema.Array(SkillLibraryId).check(Schema.isMinLength(1), Schema.isMaxLength(200)),
+  mode: Schema.Literals(["copy", "move"]),
+});
+export type SkillLibraryImportInput = typeof SkillLibraryImportInput.Type;
+
+export const SkillLibraryImportResult = Schema.Struct({
+  imported: Schema.Array(SkillLibraryId),
+  skipped: Schema.Array(Schema.Struct({ id: Schema.String, reason: Schema.String })),
+});
+export type SkillLibraryImportResult = typeof SkillLibraryImportResult.Type;
 
 export class SkillLibraryError extends Schema.TaggedError<SkillLibraryError>()(
   "SkillLibraryError",

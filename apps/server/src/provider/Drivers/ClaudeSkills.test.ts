@@ -5,7 +5,10 @@ import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 
-import { discoverClaudeSkills as discoverSkills } from "./ClaudeSkills.ts";
+import {
+  discoverClaudeSkills as discoverSkills,
+  filterClaudeSkillsToAllowlist,
+} from "./ClaudeSkills.ts";
 import { planClaudeSkillDispatch } from "./ClaudeSkillDispatch.ts";
 
 // Windows makes the managed directory fixture-controlled without reading host policy or skills.
@@ -1314,4 +1317,18 @@ it.layer(NodeServices.layer)("discoverClaudeSkills", (it) => {
       );
     }),
   );
+});
+
+it("keeps only the allowed skills in the menu, and everything when there is no allowlist", () => {
+  const skills = ["own", "tidy", "plug:thing"].map((name) => ({
+    name,
+    path: `/skills/${name}/SKILL.md`,
+    enabled: true,
+  }));
+  assert.deepEqual(
+    filterClaudeSkillsToAllowlist(skills, ["tidy"]).map((skill) => skill.name),
+    ["tidy"],
+  );
+  assert.deepEqual(filterClaudeSkillsToAllowlist(skills, []), []);
+  assert.strictEqual(filterClaudeSkillsToAllowlist(skills, undefined), skills);
 });

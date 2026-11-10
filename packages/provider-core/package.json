@@ -139,6 +139,10 @@
       "types": "./src/server/memoryPolicy.ts",
       "import": "./src/server/memoryPolicy.ts"
     },
+    "./server/skillPolicy": {
+      "types": "./src/server/skillPolicy.ts",
+      "import": "./src/server/skillPolicy.ts"
+    },
     "./server/runtimeInstructions": {
       "types": "./src/server/runtimeInstructions.ts",
       "import": "./src/server/runtimeInstructions.ts"

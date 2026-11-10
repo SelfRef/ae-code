@@ -48,6 +48,26 @@ and replaces the skill when the repository has a newer commit.
 Removing a skill moves it to a trash (`~/.agents/.skills-trash`) and takes its links away. **Recently removed** keeps it
 for 14 days: **Restore** puts it back and restores the links it had.
 
+## Import skills a provider already has
+
+**Import** lists the skills providers keep in their own folders, such as Claude's `~/.claude/skills`, so you can move
+them into the library. Links and Claude's synced or plugin skills are not listed: only real folders with a `SKILL.md`.
+
+- By default the originals stay and the library gets a copy. The provider keeps using its own folder, so the copy only
+  matters to other providers; the library's switch for that provider shows _name taken_.
+- **Replace the originals with links** moves each folder into the library (both must be on the same disk) and leaves a
+  link in its place. The provider keeps the skill, its files live in one place, and the library manages it from then on.
+
+A skill whose name the library already has is not imported.
+
+## Claude: only the library's skills
+
+**Claude uses only the library's skills** (all or nothing, like the memory switch for Claude's own memory) makes new
+Claude sessions offer only the skills linked for Claude in the library. Claude's own skills, its plugin skills and the
+ones that ship with Claude Code are then hidden from the model, and nothing is deleted: turning the switch off brings
+them back. The `$` skill menu in the chat lists the same skills. It applies to sessions that start afterwards. Import and link the skills you want first, because with the
+switch on and nothing linked Claude has no skills at all.
+
 ## Skills the library does not manage
 
 The last section lists what providers load from their own folders: plugin, built-in and synced skills, and folders made
