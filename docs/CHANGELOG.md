@@ -22,6 +22,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
   the thread menu (the control used to lock after the first message).
 - The Git actions menu merges a thread's branch into the default branch, with or without pushing;
   it can also be a project's main action.
+- The thread details card ends with a Thread actions section: Settle thread, and an arrow with the thread's
+  context menu. It can be hidden like the card's other rows.
 - When a merge fails, for example on a rebase conflict, its error offers "Merge by agent": the thread's agent
   rebases, resolves the conflicts and finishes the merge.
 - Issues open in the right panel.

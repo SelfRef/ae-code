@@ -23,6 +23,8 @@ import { Badge } from "../ui/badge";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { toastManager } from "../ui/toast";
 import { useThreadActionMenu } from "~/hooks/useThreadActionMenu";
+import { useStableCallback } from "~/hooks/useStableCallback";
+import { registerThreadRename } from "~/threadRename";
 import { readLocalApi } from "~/localApi";
 import { threadEnvironment } from "../../state/threads";
 import { canShareWithGuestAtom } from "./guestShareAvailability";
@@ -171,6 +173,9 @@ export const ChatHeader = memo(function ChatHeader({
       title: activeThreadTitle,
     });
   };
+  const startRenameStable = useStableCallback(startRename);
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- registers this header's rename in the module-level threadRename registry
+  useEffect(() => registerThreadRename(startRenameStable), [startRenameStable]);
   const commitRename = (title: string) => {
     setRenaming(null);
     if (!readEnvironmentScope(activeThreadEnvironmentId, AuthOrchestrationOperateScope)) return;
