@@ -6,6 +6,7 @@ export type ThreadActionMenuId =
   | "new-thread-on-branch"
   | "filter-by-project"
   | "turn-into-project"
+  | "move-to-worktree"
   | "project-settings"
   | "pin"
   | "unpin"
@@ -95,6 +96,8 @@ export interface ThreadActionMenuState {
   readonly canShareWithGuest?: boolean;
   /** A No project thread with its own folder, on a server that can promote it. */
   readonly canTurnIntoProject?: boolean;
+  /** An idle thread in the project checkout, on a server that can move it into a worktree. */
+  readonly canMoveToWorktree?: boolean;
 }
 
 /** Local navigation, read markers, and copying remain available to read-only clients. */
@@ -191,6 +194,9 @@ export function buildThreadActionMenuItems(
             icon: "folder-tree",
           },
         ]
+      : []),
+    ...(state.canMoveToWorktree
+      ? [{ id: "move-to-worktree" as const, label: "Move to new worktree", icon: "git-branch" }]
       : []),
     ...(state.canTurnIntoProject
       ? [

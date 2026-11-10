@@ -80,6 +80,7 @@ import * as ProviderInstanceRegistryHydration from "./provider/ProviderInstanceR
 import * as ProjectSettingsOverrideSweep from "./provider/ProjectSettingsOverrideSweep.ts";
 import * as TerminalManager from "./terminal/Manager.ts";
 import * as McpHttpServer from "./mcp/McpHttpServer.ts";
+import * as WorktreeMcpService from "./mcp/WorktreeMcpService.ts";
 import * as MemoryService from "./memory/MemoryService.ts";
 import * as SkillLibraryService from "./skills/SkillLibraryService.ts";
 import * as PeerForwarding from "./peer/PeerForwarding.ts";
@@ -1217,6 +1218,9 @@ const layerMakeServer = Layer.unwrap(
     );
 
     return layerServerApplication.pipe(
+      // The WebSocket move and the agent tool share this instance (layers memoize by reference),
+      // so one per-thread guard covers both.
+      Layer.provideMerge(WorktreeMcpService.layer),
       Layer.provide(CloudLink.layer.pipe(Layer.provideMerge(ConnectReachability.layer))),
       Layer.provideMerge(layerRuntimeServices),
       Layer.provideMerge(

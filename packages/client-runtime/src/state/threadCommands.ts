@@ -375,6 +375,12 @@ export function createThreadEnvironmentAtoms<R, E>(
           `history:${JSON.stringify([environmentId, input.threadId])}`,
       },
     }),
+    moveToWorktree: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:commands:thread:move-to-worktree",
+      tag: WS_METHODS.threadsMoveToWorktree,
+      scheduler,
+      concurrency,
+    }),
     uploadFeedback: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:commands:thread:upload-feedback",
       tag: WS_METHODS.providerUploadFeedback,
