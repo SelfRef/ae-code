@@ -77,6 +77,7 @@ import {
   PinOffIcon,
   PlugIcon,
   SquarePenIcon,
+  TagIcon,
   TextSearchIcon,
   UserPlusIcon,
 } from "lucide-react";
@@ -1646,6 +1647,16 @@ function OpenCommandPaletteDialog(props: {
       icon: <CircleDotIcon className={ITEM_ICON_CLASS} />,
       run: async () => {
         await navigate({ to: "/issues", search: { state: "open" } });
+      },
+    });
+    actionItems.push({
+      kind: "action",
+      value: "action:releases",
+      searchTerms: ["releases", "tags", "versions", "changelog", "github"],
+      title: "Open releases",
+      icon: <TagIcon className={ITEM_ICON_CLASS} />,
+      run: async () => {
+        await navigate({ to: "/releases", search: {} });
       },
     });
   }

@@ -46,6 +46,7 @@ import {
   Globe2,
   MessagesSquare,
   Plus,
+  TagIcon,
   TerminalSquare,
   Volume2Icon,
   VolumeOffIcon,
@@ -143,6 +144,8 @@ export interface RightPanelTabsProps {
   onAddPullRequests: () => void;
   /** Absent where the project has no GitHub issues. */
   onAddIssues?: (() => void) | undefined;
+  /** Absent where the project has no GitHub releases. */
+  onAddReleases?: (() => void) | undefined;
   onAddDevice: () => void;
   /** Absent where side chats are not offered. */
   onAddSideChat?: (() => void) | undefined;
@@ -182,7 +185,7 @@ const SURFACE_DISABLED_REASONS = {
   diff: "Diff is only available for server threads in Git repositories.",
   pullRequest: "This thread's branch has no pull request yet.",
   pullRequests: "No linked pull requests are available for this thread.",
-  issues: "Issues are only available for projects on GitHub.",
+  issues: "Issues and releases are only available for projects on GitHub.",
   device: "Devices are only available from a thread.",
   sideChat: "Side chats start after the first message.",
 } as const;
@@ -329,6 +332,8 @@ function RightPanelEmptyState(props: {
   onAddPullRequests: () => void;
   /** Absent where the project has no GitHub issues. */
   onAddIssues?: (() => void) | undefined;
+  /** Absent where the project has no GitHub releases. */
+  onAddReleases?: (() => void) | undefined;
   onAddDevice: () => void;
   /** Absent where side chats are not offered. */
   onAddSideChat?: (() => void) | undefined;
@@ -379,6 +384,18 @@ function RightPanelEmptyState(props: {
             available: props.issuesAvailable === true,
             disabledReason: SURFACE_UNAVAILABLE_HINTS.issues,
             onClick: props.onAddIssues,
+          },
+        ]
+      : []),
+    ...(props.onAddReleases
+      ? [
+          {
+            label: "Releases",
+            icon: TagIcon,
+            shortcut: "R",
+            available: props.issuesAvailable === true,
+            disabledReason: SURFACE_UNAVAILABLE_HINTS.issues,
+            onClick: props.onAddReleases,
           },
         ]
       : []),
@@ -613,6 +630,8 @@ function surfaceTitle(
       return "Pull requests";
     case "issues":
       return "Issues";
+    case "releases":
+      return "Releases";
     case "device":
       return surface.title ?? surface.target?.name ?? "Device";
     case "side-chat":
@@ -707,6 +726,8 @@ function SurfaceIcon({
       return <PullRequestGlyph.link className="size-3 shrink-0" />;
     case "issues":
       return <CircleDotIcon className="size-3 shrink-0" />;
+    case "releases":
+      return <TagIcon className="size-3 shrink-0" />;
     case "side-chat":
       return <SideChatTabIcon environmentId={environmentId} threadId={surface.threadId} />;
     case "device":
@@ -1156,6 +1177,18 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
           },
         ]
       : []),
+    ...(props.onAddReleases
+      ? [
+          {
+            label: "Releases",
+            icon: TagIcon,
+            shortcut: "R",
+            available: props.issuesAvailable === true,
+            disabledReason: SURFACE_DISABLED_REASONS.issues,
+            onClick: props.onAddReleases,
+          },
+        ]
+      : []),
     {
       label: "Pull Request",
       icon: PullRequestGlyph.pullRequest,
@@ -1575,6 +1608,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             onAddPullRequest={props.onAddPullRequest}
             onAddPullRequests={props.onAddPullRequests}
             onAddIssues={props.onAddIssues}
+            onAddReleases={props.onAddReleases}
             onAddDevice={props.onAddDevice}
             onAddSideChat={props.onAddSideChat}
             browserAvailable={props.browserAvailable}
