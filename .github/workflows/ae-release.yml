@@ -1,7 +1,7 @@
 name: AE release
 
 # Date-versioned releases of the fork: vYYYY.MM.DD, vYYYY.MM.DD.1 for a second
-# one the same day. Started by ae-sync.yml after each daily rebase, or by hand.
+# one the same day. Started by hand.
 # Nothing is released when main is the commit of the latest release.
 #
 # The apps need a semver, so the date is also written as YYYY.MMDD.N (the

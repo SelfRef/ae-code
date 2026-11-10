@@ -36,7 +36,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 | [9]  | Android app: AE Code package id, built and signed by the release workflow                                                                                              | done    |
 | [8]  | Docker image of the release server on GHCR                                                                                                                             | done    |
 | [7]  | Date-versioned releases (`vYYYY.MM.DD`): the Linux x64 server archive                                                                                                  | done    |
-| [6]  | Daily sync: a workflow rebases the patch stack onto upstream and force-pushes `main`                                                                                   | done    |
+| [6]  | Daily sync: a workflow rebased the patch stack onto upstream and force-pushed `main` (removed: conflicts almost every run, the rebase is done by hand)                | dropped |
 | [5]  | Claude usage limits for a setup-token session: let `rate_limit_event` stream updates fill the bars when `get_usage` is unsupported                                     | done    |
 | [4]  | Project and thread switchers in the chat breadcrumb (ported from a community branch, below)                                                                            | done    |
 | 3    | Claude reply text streams while it is written (upstream's `ClaudeAdapterV2` drops `text_delta`, issue #17270; port of the closed PR #22165 onto the 2026-11-08 `main`) | done    |
@@ -336,29 +336,23 @@ Usage → Limits showed Claude's Session and Weekly bars.
 Rebase cost: small edits in `claudeUsageLimits.ts`, `usageLimits.ts`, `managedProvider.ts` and `ClaudeDriver.ts`, and tests
 beside them. Drop the flag if upstream starts using stream updates for `unsupported` providers.
 
-## Daily sync (change 6)
+## Daily sync (change 6, dropped)
 
-`.github/workflows/ae-sync.yml` runs every day at 03:17 UTC (and on demand): it rebases `main` onto upstream's `main`
-and force-pushes it. A conflict fails the run and pushes nothing; no issue is opened, the failed run is the signal.
-Resolve it locally with the procedure in the next section and push.
+A scheduled workflow used to rebase `main` onto upstream every day. It was removed: the rebase almost never went through
+without conflicts, so the sync is done by hand with the procedure in the last section.
 
 - **Only `ae-*.yml` workflows run on this fork.** Upstream's use runners (`blacksmith-*`) and secrets a fork does not
-  have, so their jobs would queue forever. The sync run disables every active workflow that is not `ae-*`, so a workflow
-  upstream adds is switched off on the next run. A rebase never touches that setting.
-- **Secret `SYNC_TOKEN`:** a fine-grained personal access token for this repository with Contents and Workflows
-  read/write. The default `GITHUB_TOKEN` cannot push changes to `.github/workflows`, which upstream edits often.
-- **Force-push safety:** `--force-with-lease` pinned to the commit the run started from, so a push made meanwhile wins
-  and the run fails.
-- GitHub pauses scheduled workflows after 60 days without repository activity; a daily push keeps them alive, and the run
-  can be started by hand from the Actions tab.
+  have, so their jobs would queue forever. A rebase never touches the setting, so after one that brings in a new
+  upstream workflow, disable it: `gh workflow list --all`, then `gh workflow disable <id>`.
+- **Releases are started by hand** (`gh workflow run ae-release.yml --ref main`) after the push.
 
 ## Releases (changes 7 and 9)
 
-`.github/workflows/ae-release.yml` is started by the daily sync (or by hand, with `force` to release an unchanged
+`.github/workflows/ae-release.yml` is started by hand (`force` releases an unchanged
 `main`). It publishes a GitHub release when `main` is not the commit of the latest release. Upstream's `release.yml` is
 not used: it needs `blacksmith-*` runners, relay and Clerk configuration, signing secrets and the Play APK. The `cli` job
 repeats the CLI archive steps of upstream's `release-desktop.yml` (build, resource monitor, `build-cli-archive.ts`,
-smoke test) on a GitHub-hosted runner, without Electron; that workflow itself is not called, so the sync leaves it
+smoke test) on a GitHub-hosted runner, without Electron; that workflow itself is not called, so it stays
 disabled.
 
 - **Versions:** tag and title `vYYYY.MM.DD`, then `vYYYY.MM.DD.1`, `.2` for later releases the same day. The apps need a
@@ -1199,7 +1193,7 @@ current means rebasing that stack onto the newest upstream `main`, never merging
   force-push after a verified rebase onto upstream, rewrite unpushed commits freely, and ask before rewriting other
   pushed ones. A regular push is the owner's.
 
-**Sync procedure** (done daily by `ae-sync.yml`, see "Daily sync (change 6)"; by hand after a conflict)
+**Sync procedure** (by hand; see "Daily sync (change 6, dropped)")
 
 1. `git fetch upstream`, then `git log --oneline HEAD..upstream/main` to see what is coming.
 2. `git rebase upstream/main`. `git config rerere.enabled true` is set, so a conflict is resolved once and replayed on
@@ -1207,6 +1201,7 @@ current means rebasing that stack onto the newest upstream `main`, never merging
 3. Verify what the stack touches: `vp run check:changed` and the tests next to the patches, plus a dev-client pass for
    anything visible. A patch that upstream now covers is dropped from the stack and its row here is removed.
 4. Force-push `origin main` with `--force-with-lease` pinned to the `origin/main` the rebase started from.
+5. Disable any workflow the rebase added that is not `ae-*`, then start `ae-release.yml`.
 
 **Keeping conflicts small**
 
