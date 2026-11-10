@@ -392,6 +392,27 @@ import {
   MemorySetSettingsResult,
 } from "./memory.ts";
 import {
+  SkillLibraryError,
+  SkillLibraryInspectSourceInput,
+  SkillLibraryInspectSourceResult,
+  SkillLibraryInstallInput,
+  SkillLibraryInstallResult,
+  SkillLibraryListInput,
+  SkillLibraryListResult,
+  SkillLibraryReadInput,
+  SkillLibraryReadResult,
+  SkillLibraryRemoveInput,
+  SkillLibraryRemoveResult,
+  SkillLibraryRestoreInput,
+  SkillLibraryRestoreResult,
+  SkillLibrarySetLinkInput,
+  SkillLibrarySetLinkResult,
+  SkillLibraryUpdateInput,
+  SkillLibraryUpdateResult,
+  SkillLibraryWriteInput,
+  SkillLibraryWriteResult,
+} from "./skillLibrary.ts";
+import {
   ScheduledTaskDeleteInput,
   ScheduledTaskDeleteResult,
   ScheduledTaskError,
@@ -580,6 +601,15 @@ export const WS_METHODS = {
   memoryDelete: "memory.delete",
   memorySetSettings: "memory.setSettings",
   memoryImportScan: "memory.importScan",
+  skillsList: "skills.list",
+  skillsRead: "skills.read",
+  skillsWrite: "skills.write",
+  skillsRemove: "skills.remove",
+  skillsRestore: "skills.restore",
+  skillsSetLink: "skills.setLink",
+  skillsInspectSource: "skills.inspectSource",
+  skillsInstall: "skills.install",
+  skillsUpdate: "skills.update",
 
   scheduledTasksSubscribe: "scheduledTasks.subscribe",
   scheduledTasksUpsert: "scheduledTasks.upsert",
@@ -2142,6 +2172,60 @@ const WsMemoryImportScanRpc = Rpc.make(WS_METHODS.memoryImportScan, {
   error: Schema.Union([MemoryError, EnvironmentAuthorizationError]),
 });
 
+const WsSkillsListRpc = Rpc.make(WS_METHODS.skillsList, {
+  payload: SkillLibraryListInput,
+  success: SkillLibraryListResult,
+  error: Schema.Union([SkillLibraryError, EnvironmentAuthorizationError]),
+});
+
+const WsSkillsReadRpc = Rpc.make(WS_METHODS.skillsRead, {
+  payload: SkillLibraryReadInput,
+  success: SkillLibraryReadResult,
+  error: Schema.Union([SkillLibraryError, EnvironmentAuthorizationError]),
+});
+
+const WsSkillsWriteRpc = Rpc.make(WS_METHODS.skillsWrite, {
+  payload: SkillLibraryWriteInput,
+  success: SkillLibraryWriteResult,
+  error: Schema.Union([SkillLibraryError, EnvironmentAuthorizationError]),
+});
+
+const WsSkillsRemoveRpc = Rpc.make(WS_METHODS.skillsRemove, {
+  payload: SkillLibraryRemoveInput,
+  success: SkillLibraryRemoveResult,
+  error: Schema.Union([SkillLibraryError, EnvironmentAuthorizationError]),
+});
+
+const WsSkillsRestoreRpc = Rpc.make(WS_METHODS.skillsRestore, {
+  payload: SkillLibraryRestoreInput,
+  success: SkillLibraryRestoreResult,
+  error: Schema.Union([SkillLibraryError, EnvironmentAuthorizationError]),
+});
+
+const WsSkillsSetLinkRpc = Rpc.make(WS_METHODS.skillsSetLink, {
+  payload: SkillLibrarySetLinkInput,
+  success: SkillLibrarySetLinkResult,
+  error: Schema.Union([SkillLibraryError, EnvironmentAuthorizationError]),
+});
+
+const WsSkillsInspectSourceRpc = Rpc.make(WS_METHODS.skillsInspectSource, {
+  payload: SkillLibraryInspectSourceInput,
+  success: SkillLibraryInspectSourceResult,
+  error: Schema.Union([SkillLibraryError, EnvironmentAuthorizationError]),
+});
+
+const WsSkillsInstallRpc = Rpc.make(WS_METHODS.skillsInstall, {
+  payload: SkillLibraryInstallInput,
+  success: SkillLibraryInstallResult,
+  error: Schema.Union([SkillLibraryError, EnvironmentAuthorizationError]),
+});
+
+const WsSkillsUpdateRpc = Rpc.make(WS_METHODS.skillsUpdate, {
+  payload: SkillLibraryUpdateInput,
+  success: SkillLibraryUpdateResult,
+  error: Schema.Union([SkillLibraryError, EnvironmentAuthorizationError]),
+});
+
 const WsSubscribeAuthAccessRpc = Rpc.make(WS_METHODS.subscribeAuthAccess, {
   payload: Schema.Struct({}),
   success: AuthAccessStreamEvent,
@@ -2226,6 +2310,15 @@ export const WsRpcGroup = RpcGroup.make(
   WsMemoryDeleteRpc,
   WsMemorySetSettingsRpc,
   WsMemoryImportScanRpc,
+  WsSkillsListRpc,
+  WsSkillsReadRpc,
+  WsSkillsWriteRpc,
+  WsSkillsRemoveRpc,
+  WsSkillsRestoreRpc,
+  WsSkillsSetLinkRpc,
+  WsSkillsInspectSourceRpc,
+  WsSkillsInstallRpc,
+  WsSkillsUpdateRpc,
   WsScheduledTasksSubscribeRpc,
   WsScheduledTasksUpsertRpc,
   WsScheduledTasksSetEnabledRpc,
