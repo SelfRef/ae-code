@@ -20,6 +20,11 @@ import {
 import { use, type ComponentProps } from "react";
 
 import { RoutedFormSheetContext } from "../../components/ui/RoutedFormSheetContext";
+import {
+  useWideAndroidSheet,
+  WideSheetCard,
+  wideSheetHeightFraction,
+} from "../../components/ui/WideSheetCard";
 
 import {
   isPresentedRoute,
@@ -113,6 +118,7 @@ function WorkspaceStackNavigator({
     screenLayout,
     UNSTABLE_router,
   });
+  const wideSheets = useWideAndroidSheet();
   return (
     <WorkspacePresentationHostContext value>
       <NavigationContent>
@@ -127,11 +133,35 @@ function WorkspaceStackNavigator({
                 ...descriptor,
                 // Screens draw their bar in-tree; hiding the native one only after mount
                 // shows it for the first frame and leaves the page measured short.
-                options: { ...descriptor.options, headerShown: false },
+                options: {
+                  ...descriptor.options,
+                  headerShown: false,
+                  // A form sheet is stuck to the left of a wide window; see WideSheetCard.
+                  ...(wideSheets && descriptor.options.presentation === "formSheet"
+                    ? {
+                        presentation: "transparentModal" as const,
+                        animation: "slide_from_bottom" as const,
+                        contentStyle: { backgroundColor: "transparent" },
+                      }
+                    : undefined),
+                },
                 ...(descriptor.options.presentation === "formSheet"
                   ? {
                       render: () => (
-                        <RoutedFormSheetContext value>{descriptor.render()}</RoutedFormSheetContext>
+                        <RoutedFormSheetContext value>
+                          {wideSheets ? (
+                            <WideSheetCard
+                              heightFraction={wideSheetHeightFraction(
+                                descriptor.options.sheetAllowedDetents,
+                              )}
+                              onDismiss={() => descriptor.navigation.goBack()}
+                            >
+                              {descriptor.render()}
+                            </WideSheetCard>
+                          ) : (
+                            descriptor.render()
+                          )}
+                        </RoutedFormSheetContext>
                       ),
                     }
                   : undefined),
