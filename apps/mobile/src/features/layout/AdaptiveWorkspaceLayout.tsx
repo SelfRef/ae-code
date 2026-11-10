@@ -88,6 +88,7 @@ import { newTaskDestination } from "../threads/new-task-project-selection";
 import { RenderErrorBoundary, RenderFailureView } from "../../components/RenderErrorBoundary";
 import { PaneContext } from "../../components/ui/Pane";
 import { WORKSPACE_PANE_TIMING } from "./workspace-pane-animation";
+import { CompactSwipeNavigation } from "./compact-swipe-navigation";
 import { WorkspacePaneDivider } from "./workspace-pane-divider";
 import { WorkspaceInspectorPane } from "./workspace-inspector-pane";
 import { WorkspaceInspectorSheet } from "./workspace-inspector-sheet";
@@ -593,7 +594,9 @@ function AdaptiveWorkspaceLayoutContent(
   const handleOpenSettings = () => openWorkspaceTab("settings");
 
   /** The one way to show a page in the detail column; see `selectWorkspaceDetail`. */
+  const lastChat = useRef<ReactNavigation.RootParamList["Thread"] | null>(null);
   function handleSelectDetail(detail: WorkspaceDetail, sheet?: WorkspaceDetailSheet) {
+    if (detail.name === "Thread") lastChat.current = detail.params;
     threadSelectionDeferral.run(() => {
       if (Platform.OS === "android") Keyboard.dismiss();
       setFileInspectorPreferredVisible(false);
@@ -1135,11 +1138,24 @@ function AdaptiveWorkspaceLayoutContent(
                       : safeAreaInsets
                 }
               >
-                <View className="flex-1">
-                  <PaneContext value="content">
-                    <SettingsWorkspaceLayout>{children}</SettingsWorkspaceLayout>
-                  </PaneContext>
-                </View>
+                <CompactSwipeNavigation
+                  inChat={!layout.usesSplitView && props.workspaceRouteName === "Thread"}
+                  inList={
+                    !layout.usesSplitView &&
+                    pathname === "/" &&
+                    !androidSettingsOpen &&
+                    workspace?.state.selectedTab === "threads"
+                  }
+                  onOpenLastChat={() => {
+                    if (lastChat.current) handleSelectThreadRoute(lastChat.current);
+                  }}
+                >
+                  <View className="flex-1">
+                    <PaneContext value="content">
+                      <SettingsWorkspaceLayout>{children}</SettingsWorkspaceLayout>
+                    </PaneContext>
+                  </View>
+                </CompactSwipeNavigation>
               </SafeAreaInsetsContext>
               {floatingTabsEnabled &&
               (compactAndroidSettings || (layout.usesSplitView && workspacePage)) ? (
