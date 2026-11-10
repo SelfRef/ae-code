@@ -396,8 +396,8 @@ describe("VcsProcess.run", () => {
         service
           .run({
             operation: "synthetic.forge.listChangeRequests",
-            command: "tea",
-            args: ["pulls", "list"],
+            command: "gt",
+            args: ["pr", "list"],
             cwd: "/workspace",
           })
           .pipe(Effect.forkChild({ startImmediately: true })),

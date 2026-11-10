@@ -27,10 +27,10 @@ export const discovery = {
   type: "cli",
   kind: SourceControlProviderKind.make("forgejo"),
   label: "Forgejo / Gitea",
-  executable: "tea",
-  versionArgs: ["--version"],
-  authArgs: ["login", "status", "--output", "json"],
-  remoteRefinementArgs: () => ["login", "list", "--output", "json"],
+  executable: "gt",
+  versionArgs: ["version"],
+  authArgs: ["auth", "status", "--json"],
+  remoteRefinementArgs: () => ["auth", "status", "--json"],
   parseAuth: (input) => {
     const logins = ForgejoCli.parseForgejoLogins(input.stdout);
     const login = logins.find((entry) => entry.default === "true") ?? logins[0];
@@ -42,7 +42,7 @@ export const discovery = {
         })
       : providerAuth({
           status: "unauthenticated",
-          detail: "Run `tea login add` to authenticate a Forgejo or Gitea server.",
+          detail: "Run `gt auth login` to authenticate a Forgejo or Gitea server.",
         });
   },
   refineUnknownRemote: (input) => {
@@ -63,7 +63,7 @@ export const discovery = {
       : null;
   },
   installHint:
-    "Install `fj` 0.6 or later from https://codeberg.org/forgejo-contrib/forgejo-cli and run `fj --host <server-url> auth add-token`, or install `tea` 0.16 or later from https://gitea.com/gitea/tea and run `tea login add` for each Forgejo or Gitea server.",
+    "Install `fj` 0.6 or later from https://codeberg.org/forgejo-contrib/forgejo-cli and run `fj --host <server-url> auth add-token`, or install `gt` 1.0 or later from https://gitea.com/gitea/cli and run `gt auth login` for each Forgejo or Gitea server.",
 } satisfies SourceControlCliDiscoverySpec;
 
 export const makeDiscovery = Effect.gen(function* () {
@@ -129,7 +129,7 @@ export const makeDiscovery = Effect.gen(function* () {
                   : providerAuth({
                       status: "unauthenticated",
                       detail:
-                        "Authenticate this server with `fj --host <server-url> auth add-token`. For a server under a URL subpath, such as `https://example.com/forgejo`, use `tea login add` instead.",
+                        "Authenticate this server with `fj --host <server-url> auth add-token`. For a server under a URL subpath, such as `https://example.com/forgejo`, use `gt auth login` instead.",
                     }),
         },
       });
@@ -153,11 +153,11 @@ export const makeDiscovery = Effect.gen(function* () {
         }
         return fj;
       }
-      const tea = yield* probeSourceControlProvider({ cwd, process, spec: discovery });
+      const gt = yield* probeSourceControlProvider({ cwd, process, spec: discovery });
       // Discovery keeps the install hint only for an absent executable; a slow or broken fj
-      // explains itself better than tea's install advice.
+      // explains itself better than gt's install advice.
       const fjAbsent = fj.status === "missing" && fj.installHint === discovery.installHint;
-      return tea.status === "available" || fjAbsent ? tea : fj;
+      return gt.status === "available" || fjAbsent ? gt : fj;
     }),
     refineUnknownRemote: Effect.fn("ForgejoSourceControlProvider.refineUnknownRemote")(
       function* (input: {
@@ -167,7 +167,7 @@ export const makeDiscovery = Effect.gen(function* () {
         const remote = ForgejoCli.parseForgejoRemote(input.context.remoteUrl);
         if (!remote) return null;
         let failure: ForgejoCli.ForgejoCliError | undefined;
-        for (const command of ["fj", "tea"] as const) {
+        for (const command of ["fj", "gt"] as const) {
           const logins = yield* listLogins({
             cwd: input.cwd,
             command,
@@ -310,7 +310,7 @@ export const make = Effect.gen(function* () {
           Effect.mapError(
             (cause) =>
               new ForgejoCli.ForgejoCliError({
-                command: "tea",
+                command: "gt",
                 cwd: input.cwd,
                 detail: "Forgejo API returned an invalid response.",
                 reason: "invalid-response",
@@ -341,7 +341,7 @@ export const make = Effect.gen(function* () {
     const number = /(?:^#?|\/pulls\/)(\d+)(?:\/[^?#]*)?(?:[?#].*)?$/.exec(input.reference)?.[1];
     if (!number)
       return yield* new ForgejoCli.ForgejoCliError({
-        command: "tea",
+        command: "gt",
         cwd: input.cwd,
         detail: "Specify a pull request number or Forgejo pull request URL.",
       });
@@ -598,10 +598,13 @@ export const make = Effect.gen(function* () {
           yield* cli.execute({
             cwd: input.cwd,
             args: [
-              "pulls",
+              "pr",
               "checkout",
-              "--login",
-              repo.login,
+              String(pull.number),
+              "--no-input",
+              "--host",
+              repo.baseUrl,
+              ...(repo.user ? ["--user", repo.user] : []),
               "--repo",
               repo.repository,
               "--branch",
@@ -612,12 +615,12 @@ export const make = Effect.gen(function* () {
           // Non-commit server input could become git options.
           if (!/^[0-9a-f]{7,64}$/i.test(pull.head.sha))
             return yield* new ForgejoCli.ForgejoCliError({
-              command: repo.command ?? "tea",
+              command: repo.command ?? "gt",
               cwd: input.cwd,
               detail: "Forgejo reported a pull request head that is not a commit.",
               reason: "invalid-response",
             });
-          // tea leaves PR branches stale; `--keep` updates them without discarding dirty files.
+          // gt leaves an existing PR branch at its old head; `--keep` moves it without discarding dirty files.
           yield* process.run({
             operation: "ForgejoSourceControlProvider.checkoutChangeRequest",
             command: "git",
