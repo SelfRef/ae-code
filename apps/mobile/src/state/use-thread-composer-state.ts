@@ -96,6 +96,7 @@ import { mobilePreferencesAtom } from "./preferences";
 import { environmentThreadDetails } from "./threads";
 import {
   endQueuedRunEdit,
+  releaseQueuedRunEditHold,
   getQueuedRunEdit,
   queuedEditDraftKey,
   removeQueuedRunEditAttachment,
@@ -489,6 +490,7 @@ export function useThreadComposerState(input: {
     }
     // False when the edit was cancelled or begun again meanwhile; its draft is the newer edit's.
     if (finishSave(true)) {
+      releaseQueuedRunEditHold(edit);
       clearComposerDraft(queuedEditDraftKey(threadKey, edit.runId), {
         deferAttachmentCleanup: true,
       });

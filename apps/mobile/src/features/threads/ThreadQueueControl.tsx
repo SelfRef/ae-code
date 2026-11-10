@@ -130,6 +130,7 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
   const promote = useAtomCommand(threadEnvironment.promoteQueuedRun, "promote queued message");
   const cancel = useAtomCommand(threadEnvironment.cancelQueuedRun, "remove queued message");
   const resume = useAtomCommand(threadEnvironment.resumeThreadQueue, "resume queue");
+  const holdQueue = useAtomCommand(threadEnvironment.holdThreadQueue, "hold queue");
   const [resuming, setResuming] = useState(false);
   const [busyRunId, setBusyRunId] = useState<RunId | null>(null);
   const busyRef = useRef(false);
@@ -170,6 +171,12 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
             (get) => get(environmentThreadDetails.quietThreadAtom(target))?.projection.runs ?? null,
           ),
         }),
+        workflow?.isHeld === true
+          ? undefined
+          : {
+              hold: () => void holdQueue({ ...target, input: { threadId: target.threadId } }),
+              release: () => void resume({ ...target, input: { threadId: target.threadId } }),
+            },
       );
       navigation.goBack();
       return;

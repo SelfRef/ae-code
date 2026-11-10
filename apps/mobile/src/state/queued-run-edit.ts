@@ -34,6 +34,8 @@ export interface QueuedRunEdit {
   readonly context?: OrchestrationMessageContext;
   /** Removing a server attachment changes the message even when the draft looks untouched. */
   readonly removedExistingAttachment?: true;
+  /** The edit held the queue so the message cannot start while it is open; ending the edit resumes it. */
+  readonly releaseQueue?: () => void;
 }
 
 const queuedRunEdits = makeQueuedRunEditStore<QueuedRunEdit>({
@@ -71,6 +73,7 @@ export function useQueuedRunEdit(threadKey: string | null): QueuedRunEdit | null
  * way the thread says so, wherever the user is when it happens.
  */
 function exitQueuedRunEdit(threadKey: string, edit: QueuedRunEdit): void {
+  releaseQueuedRunEditHold(edit);
   const editDraftKey = queuedEditDraftKey(threadKey, edit.runId);
   const editDraft = getComposerDraftSnapshot(editDraftKey);
   const threadDraft = getComposerDraftSnapshot(threadKey);
@@ -106,13 +109,26 @@ function exitQueuedRunEdit(threadKey: string, edit: QueuedRunEdit): void {
   );
 }
 
-/** `runs` is the thread's runs; the edit ends when its run leaves the queue. */
+/** Resumes the queue an edit held; call when the edit ends, whatever the reason. */
+export function releaseQueuedRunEditHold(edit: QueuedRunEdit): void {
+  edit.releaseQueue?.();
+}
+
+/**
+ * `runs` is the thread's runs; the edit ends when its run leaves the queue.
+ * `queueHold` holds the queue so the message cannot start while it is edited, and
+ * resumes it when the edit ends; omit it when the queue is already held.
+ */
 export function beginQueuedRunEdit(
   threadKey: string,
   edit: QueuedRunEdit,
   runs: QueuedRunsAtom,
+  queueHold?: { readonly hold: () => void; readonly release: () => void },
 ): void {
   const previous = getQueuedRunEdit(threadKey);
+  // Switching edits keeps the hold the first one took.
+  const releaseQueue = previous?.releaseQueue ?? queueHold?.release;
+  if (previous?.releaseQueue === undefined) queueHold?.hold();
   if (previous !== null && previous.runId !== edit.runId) {
     clearComposerDraft(queuedEditDraftKey(threadKey, previous.runId));
   }
@@ -125,7 +141,7 @@ export function beginQueuedRunEdit(
   setComposerDraftContext(draftKey, edit.context);
   queuedRunEdits.begin(
     threadKey,
-    { ...edit, originalText },
+    { ...edit, originalText, ...(releaseQueue ? { releaseQueue } : {}) },
     { runs, onRunLeftQueue: exitQueuedRunEdit },
   );
 }
@@ -148,6 +164,7 @@ export function endQueuedRunEdit(
   if (edit === null) return;
   clearComposerDraft(queuedEditDraftKey(threadKey, edit.runId), options);
   queuedRunEdits.end(threadKey);
+  releaseQueuedRunEditHold(edit);
 }
 
 /**

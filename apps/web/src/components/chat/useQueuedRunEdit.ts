@@ -66,6 +66,8 @@ interface EditingQueuedRun {
   readonly context?: OrchestrationMessageContext | undefined;
   /** Removing a server attachment changes the message even when the draft looks untouched. */
   readonly removedExistingAttachment?: true;
+  /** The edit held the queue so the message cannot start while it is open; ending the edit resumes it. */
+  readonly heldQueue?: true;
 }
 
 // Keyed by the route thread, so an edit survives navigating away and back.
@@ -198,6 +200,10 @@ export function useQueuedRunEdit(input: {
     composerRef,
   } = input;
   const editQueuedRunCommand = useEditQueuedRunCommand();
+  const holdQueue = useAtomCommand(threadEnvironment.holdThreadQueue, { reportFailure: false });
+  const resumeQueue = useAtomCommand(threadEnvironment.resumeThreadQueue, {
+    reportFailure: false,
+  });
   const editKey = scopedThreadKey(routeThreadRef);
   const storedEdit = useAtomValue(queuedRunEdits.atom)[editKey] ?? null;
   const editing = activeThreadId === null ? null : storedEdit;
@@ -228,6 +234,12 @@ export function useQueuedRunEdit(input: {
       .getState()
       .clearComposerContent(queuedEditDraftTarget(routeThreadRef, runId));
 
+  const releaseQueue = (edit: EditingQueuedRun) => {
+    if (edit.heldQueue === true) {
+      void resumeQueue({ environmentId, input: { threadId: edit.threadId } });
+    }
+  };
+
   const beginEdit = useStableCallback((request: EditQueuedRunRequest) => {
     if (activeThreadId === null) return;
     if (editing !== null && editing.runId !== request.runId) clearEditDraft(editing.runId);
@@ -237,6 +249,14 @@ export function useQueuedRunEdit(input: {
     store.clearComposerContent(target);
     store.setPrompt(target, text);
     const threadRef = { environmentId, threadId: activeThreadId };
+    // A queue the user already holds stays theirs; switching edits keeps this edit's hold.
+    const heldQueue =
+      editing?.heldQueue === true ||
+      serverProjection?.runs.some((run) => run.status === "queued" && run.queueHeld === true) !==
+        true;
+    if (heldQueue && editing?.heldQueue !== true) {
+      void holdQueue({ environmentId, input: { threadId: activeThreadId } });
+    }
     queuedRunEdits.begin(
       editKey,
       {
@@ -247,6 +267,7 @@ export function useQueuedRunEdit(input: {
         existingAttachments: request.attachments,
         context: serverProjection?.messages.find((message) => message.id === request.messageId)
           ?.context,
+        ...(heldQueue ? { heldQueue: true as const } : {}),
       },
       {
         runs: makeQueuedRunsAtom({
@@ -263,6 +284,7 @@ export function useQueuedRunEdit(input: {
         // otherwise it is dropped. Edits outlive navigation, so the toast is
         // unscoped and names the thread: the user may be anywhere by now.
         onRunLeftQueue: (_, edit) => {
+          releaseQueue(edit);
           const recovery = recoverQueuedMessageEdit({
             editTarget: queuedEditDraftTarget(routeThreadRef, edit.runId),
             threadTarget: threadDraftTarget,
@@ -293,6 +315,7 @@ export function useQueuedRunEdit(input: {
     if (editing === null) return;
     clearEditDraft(editing.runId);
     queuedRunEdits.end(editKey);
+    releaseQueue(editing);
     focusComposerSoon();
   });
   const removeEditingAttachment = useStableCallback((attachmentId: string) => {
@@ -344,6 +367,7 @@ export function useQueuedRunEdit(input: {
     releaseDraftAttachments(newAttachments);
     // The edit was cancelled or begun again while this save ran; its drafts are the newer edit's.
     if (!current) return;
+    releaseQueue(editing);
     promptRef.current = "";
     clearEditDraft(editing.runId);
     composerRef.current?.resetCursorState();
