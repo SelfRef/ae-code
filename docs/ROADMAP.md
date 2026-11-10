@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [37] | Forgejo and Gitea use the `gt` CLI (Gitea 28+) instead of `tea`; `fj` stays preferred                                                                                  | done    |
 | [36] | GitHub Releases: read-only list and detail per project on the web (`/releases`, right panel) and in the Android app                                                    | done    |
 | [35] | Android catch-up: tinted Input, Done and draft threads; merge, force push and worktree switching in Git                                                                | done    |
 | [34] | A "Thread actions" section in the thread details card: Settle thread, and the thread's context menu under an arrow                                                     | done    |
