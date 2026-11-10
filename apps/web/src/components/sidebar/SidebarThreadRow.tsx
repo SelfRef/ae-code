@@ -107,7 +107,7 @@ import {
   ThreadSearchPullRequestNumber,
 } from "../ThreadStatusIndicators";
 import { pickSnoozePreset, resolveSnoozePresets, type SnoozePreset } from "../Sidebar.snooze";
-import { useThreadShell } from "../../state/entities";
+import { useRunningSubagentCount, useThreadShell } from "../../state/entities";
 import { ProjectFavicon, type ProjectFaviconProject } from "../ProjectFavicon";
 import { ThreadSearchMatchExcerpt } from "../ThreadSearchMatch";
 import { makeWorkspaceFileDropHandlers } from "../chat/workspaceFileDrop";
@@ -744,8 +744,10 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
     isActive: props.isActive,
     isSelected,
   });
+  const runningSubagents = useRunningSubagentCount(threadRef);
+  // While the turn runs, the pending list is empty: its subagents are the live child threads.
   const subagentCount =
-    thread.runtime?.status === "running" ? 0 : pendingSubagentTasks(thread).length;
+    thread.runtime?.status === "running" ? runningSubagents : pendingSubagentTasks(thread).length;
   const topStatus =
     status === "preparing" || status === "working"
       ? {

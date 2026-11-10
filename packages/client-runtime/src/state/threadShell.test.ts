@@ -313,6 +313,45 @@ describe("v2 thread shell lists", () => {
     registry.dispose();
   });
 
+  it("counts live subagents, nested ones included, on the thread that lists a row", () => {
+    const { registry, threads, snapshotAtom } = makeHarness();
+    const child = {
+      ...v2ThreadShell,
+      id: ThreadId.make("review"),
+      status: "running" as const,
+      activityRunStatus: "running" as const,
+      lineage: {
+        ...v2ThreadShell.lineage,
+        parentThreadId: v2ThreadShell.id,
+        relationshipToParent: "subagent" as const,
+      },
+    };
+    const grandchild = {
+      ...child,
+      id: ThreadId.make("review-helper"),
+      lineage: { ...child.lineage, parentThreadId: child.id },
+    };
+    const count = threads.runningSubagentCountAtom({ environmentId, threadId: v2ThreadShell.id });
+    const dispose = registry.mount(count);
+    registry.set(snapshotAtom(environmentId), {
+      ...v2ShellSnapshot,
+      threads: [v2ThreadShell, child, grandchild],
+    });
+    expect(registry.get(count)).toBe(2);
+
+    registry.set(snapshotAtom(environmentId), {
+      ...v2ShellSnapshot,
+      threads: [
+        v2ThreadShell,
+        { ...child, status: "completed" as const, activityRunStatus: null },
+        grandchild,
+      ],
+    });
+    expect(registry.get(count)).toBe(1);
+    dispose();
+    registry.dispose();
+  });
+
   it("lists a task a linked environment runs for a listed thread under that thread", () => {
     const { registry, threads, snapshotAtom, catalogValueAtom } = makeHarness([
       environmentId,
