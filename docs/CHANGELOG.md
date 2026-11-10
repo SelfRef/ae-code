@@ -13,7 +13,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 - Saved environments are shared between browsers: the environments you add in one browser signed in to a
   server show in every other browser signed in to it (the browser needs the `access:write` permission there).
 - Source control: the Commit action names how many files it commits, next to the Push action's commit
-  count, in the quick button and the menu.
+  count, in the quick button and the menu. The Merge action names its commits too, and the quick button
+  stays locked as "Merge" while there is nothing to merge.
 - Skills: Settings has a skills manager that lists every provider's skills in one place and keeps a
   shared library with a switch per provider. A provider's skills can be imported into the library,
   Claude then uses only the library's, and agents manage skills themselves through T3's tools.

@@ -275,12 +275,16 @@ export function resolveQuickAction(
   }
 
   // A project that merges directly makes that its main action, in place of the pull request one.
-  if (
-    quickMergeAction !== "pull_request" &&
-    !isDefaultRef &&
-    (hasChanges || hasDefaultBranchDelta)
-  ) {
+  if (quickMergeAction !== "pull_request" && !isDefaultRef) {
     const push = quickMergeAction === "merge_push" && hasPrimaryRemote;
+    if (!hasChanges && !hasDefaultBranchDelta) {
+      return {
+        label: `Merge${push ? " & push" : ""}`,
+        disabled: true,
+        kind: "show_hint",
+        hint: "No commits to merge into the default branch.",
+      };
+    }
     return {
       label: `${hasChanges ? "Commit & merge" : "Merge"}${push ? " & push" : ""}`,
       disabled: false,
@@ -504,10 +508,10 @@ export function resolveLiveThreadBranchUpdate(input: {
   };
 }
 
-/** Names how many files a Commit action stages or commits a Push action sends; other labels pass through. */
+/** Names how many files a Commit action stages, or how many commits a Merge or Push action takes; other labels pass through. */
 export function formatQuickActionLabel(
   quickAction: Pick<GitQuickAction, "label" | "disabled">,
-  gitStatus: Pick<VcsStatusResult, "aheadCount" | "workingTree"> | null,
+  gitStatus: Pick<VcsStatusResult, "aheadCount" | "aheadOfDefaultCount" | "workingTree"> | null,
 ): string {
   if (quickAction.disabled || !gitStatus) return quickAction.label;
   const plural = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
@@ -515,6 +519,10 @@ export function formatQuickActionLabel(
   const commits = gitStatus.aheadCount;
   if (quickAction.label.startsWith("Commit") && files > 0) {
     return quickAction.label.replace("Commit", `Commit ${plural(files, "file")}`);
+  }
+  const mergeCommits = gitStatus.aheadOfDefaultCount ?? commits;
+  if (quickAction.label.startsWith("Merge") && mergeCommits > 0) {
+    return quickAction.label.replace("Merge", `Merge ${plural(mergeCommits, "commit")}`);
   }
   if (quickAction.label.startsWith("Push") && commits > 0) {
     return quickAction.label.replace("Push", `Push ${plural(commits, "commit")}`);
