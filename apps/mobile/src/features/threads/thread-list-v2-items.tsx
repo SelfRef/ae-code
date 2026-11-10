@@ -72,6 +72,7 @@ import { useThreadPr } from "../../state/use-thread-pr";
 import { useSwipeRowDormant } from "../home/swipe-row-activation";
 import { ThreadSwipeable } from "../home/thread-swipe-actions";
 import { buildThreadTitleRegenerationMenuItems } from "./thread-title-regeneration-menu";
+import { useThreadHasUnsentDraft } from "./useThreadHasUnsentDraft";
 import { canTurnThreadIntoProject, turnThreadIntoProject } from "./turnThreadIntoProject";
 import { threadCanArchive } from "../home/threadArchive";
 import {
@@ -145,6 +146,12 @@ const STATUS_LABEL_BY_STATUS: Partial<Record<ThreadListV2Status, StatusLabel>> =
     className: "text-warning-foreground",
     iconTintClassName: "accent-warning-foreground",
   },
+};
+const DRAFT_STATUS_LABEL: StatusLabel = {
+  label: "Draft",
+  icon: "square.and.pencil",
+  className: "text-warning-foreground",
+  iconTintClassName: "accent-warning-foreground",
 };
 const DONE_STATUS_LABEL: StatusLabel = {
   label: "Done",
@@ -773,7 +780,6 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
   const theme = useUniwindTheme();
   const sidebarPane = props.pane === "sidebar";
   const selected = props.selected === true;
-  const rowAppearance = getThreadListV2RowAppearance(theme, sidebarPane, selected);
 
   const rawStatus = resolveThreadListV2Status(thread);
   const status = resolveThreadListV2RowStatus(thread);
@@ -782,6 +788,7 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
   const showsWoke = status === "ready" && props.wokeAt !== null;
   const subagentCount =
     thread.runtime?.status === "running" ? 0 : pendingSubagentTasks(thread).length;
+  const hasUnsentDraft = useThreadHasUnsentDraft(thread) && !selected;
   const statusLabel =
     (status === "working" && workingLabel !== undefined && subagentCount > 0
       ? {
@@ -790,7 +797,14 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
         }
       : status === "working" && workingLabel !== undefined && thread.goal?.status === "active"
         ? { ...workingLabel, label: "Goal" }
-        : workingLabel) ?? (isUnread ? DONE_STATUS_LABEL : undefined);
+        : workingLabel) ??
+    (isUnread ? DONE_STATUS_LABEL : hasUnsentDraft ? DRAFT_STATUS_LABEL : undefined);
+  const rowAppearance = getThreadListV2RowAppearance(
+    theme,
+    sidebarPane,
+    selected,
+    status === "input" ? "input" : isUnread ? "done" : hasUnsentDraft ? "draft" : null,
+  );
   const recede = shouldRecedeThreadRow({ status, selected });
   const isRegeneratingTitle = thread.titleRegeneration != null;
   const timeLabel = props.timeLabel;
