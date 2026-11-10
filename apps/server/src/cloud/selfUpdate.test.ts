@@ -715,20 +715,13 @@ it.layer(NodeServices.layer)("server self update in a container", (it) => {
     }),
   );
 
-  it.effect.each([
-    {
-      name: "a target that is not the newest release",
-      target: "2099.101.5",
-      reason: "is not the newest release",
-    },
-    { name: "a target that is not newer than this server", target: "0.1.7", reason: "newest" },
-  ])("refuses $name", ({ target, reason }) =>
+  it.effect("installs the newest release for a target that is no release, like a local build", () =>
     Effect.gen(function* () {
       const { selfUpdate, restarts } = yield* makeContainerHarness({ archiveVersion: newVersion });
-      const error = yield* selfUpdate.update({ targetVersion: target }).pipe(Effect.flip);
-      expect(error.reason).toContain(reason);
+      const result = yield* selfUpdate.update({ targetVersion: "2099.101.1794350182" });
+      expect(result).toEqual({ targetVersion: newVersion, method: "respawn" });
       yield* TestClock.adjust("2 seconds");
-      expect(restarts).toEqual([]);
+      expect(restarts).toEqual(["restart"]);
     }),
   );
 

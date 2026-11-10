@@ -81,6 +81,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Fixed
 
+- Updating a Docker or bare-host server from another app (sidebar, banner) installs the newest GitHub release even when
+  the app's own version is a local build that is no release.
 - Git status stays current: opening a thread rereads it, a git action that fails refreshes it too, and a feature branch already merged into the local default branch no longer offers "Merge N commits" again.
 - Android: pushing from the default branch on a new-thread draft asks to confirm instead of refusing with "Choose a feature branch".
 - Android: Settings → Source control shows the "Confirm pushing to the default branch" switch while a project is selected too.
