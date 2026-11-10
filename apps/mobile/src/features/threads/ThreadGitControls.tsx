@@ -13,6 +13,7 @@ import {
   type GitActionRequestInput,
   formatQuickActionLabel,
   requiresDefaultBranchConfirmation,
+  resolveDefaultBranchActionDialogCopy,
   resolveQuickAction,
 } from "@t3tools/client-runtime/state/vcs";
 import { useNavigation } from "@react-navigation/native";
@@ -200,10 +201,20 @@ function useThreadGitControlModel(props: ThreadGitMenuProps) {
       requiresDefaultBranchConfirmation(input.action, isDefaultRef)
     ) {
       if (props.hasThread === false) {
-        Dialog.alert(
-          "Choose a feature branch",
-          "Switch branches before publishing changes from this draft.",
-        );
+        // A draft has no thread for the confirm sheet, so ask inline.
+        const copy = resolveDefaultBranchActionDialogCopy({
+          action: confirmableAction,
+          branchName,
+          includesCommit: input.action === "commit_push" || input.action === "commit_push_pr",
+          terminology: sourceControlClients.get(gitStatus?.sourceControlProvider?.kind)
+            .changeRequest,
+        });
+        Dialog.confirm({
+          title: copy.title,
+          message: copy.description,
+          confirmText: copy.continueLabel,
+          onConfirm: () => void onRunAction(input),
+        });
         return;
       }
       navigation.navigate("GitConfirm", {
