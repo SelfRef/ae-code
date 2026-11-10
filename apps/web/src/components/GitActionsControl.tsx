@@ -45,6 +45,7 @@ import { cn } from "~/lib/utils";
 import { useClientSettings } from "~/hooks/useSettings";
 import {
   buildMenuItems,
+  formatQuickActionLabel,
   formatGitActionElapsed,
   GIT_ACTION_SUCCESS_VISIBLE_MS,
   type GitActionProgressPresentation,
@@ -53,7 +54,6 @@ import {
   type GitQuickAction,
   type DefaultBranchConfirmableAction,
   requiresDefaultBranchConfirmation,
-  resolveChangesTotals,
   resolveDefaultBranchActionDialogCopy,
   resolveFeatureBranchUnavailableReason,
   resolveGitActionProgressPresentation,
@@ -1053,13 +1053,7 @@ export default function GitActionsControl({
   const isRepo = gitStatus?.isRepo ?? true;
   const hasPrimaryRemote = gitStatus?.hasPrimaryRemote ?? false;
   const gitStatusForActions = gitStatus;
-  const resolvedChangesTotals = resolveChangesTotals(gitStatusForActions);
-  const changesTotals = resolvedChangesTotals ?? { insertions: 0, deletions: 0 };
-  const changesBaseLabel = resolvedChangesTotals
-    ? resolvedChangesTotals.baseRef === null
-      ? "Uncommitted"
-      : `vs ${resolvedChangesTotals.baseRef}`
-    : null;
+  const changesTotals = gitStatusForActions?.workingTree ?? { insertions: 0, deletions: 0 };
 
   const allFiles = gitStatusForActions?.workingTree.files ?? [];
   // Changed-file paths are repository-relative, so they must resolve against
@@ -1117,6 +1111,7 @@ export default function GitActionsControl({
     isDefaultRef,
     hasPrimaryRemote,
   );
+  const quickActionLabel = formatQuickActionLabel(quickAction, gitStatusForActions);
   const quickActionDisabledReason = !canWriteSourceControl
     ? "This connection cannot change source control."
     : quickAction.disabled
@@ -1562,7 +1557,7 @@ export default function GitActionsControl({
                     cn("not-sr-only ml-0 truncate", THREAD_DETAILS_PANEL_LABEL_CLASS),
                   )}
                 >
-                  {quickAction.label}
+                  {quickActionLabel}
                 </span>
               </PopoverTrigger>
               <PopoverPopup tooltipStyle side="bottom" align="start">
@@ -1589,7 +1584,7 @@ export default function GitActionsControl({
                   cn("not-sr-only ml-0 truncate", THREAD_DETAILS_PANEL_LABEL_CLASS),
                 )}
               >
-                {quickAction.label}
+                {quickActionLabel}
               </span>
             </ThreadDetailsControl>
           )}
@@ -1645,41 +1640,33 @@ export default function GitActionsControl({
         >
           <FileDiffIcon className={THREAD_DETAILS_PANEL_ICON_CLASS} aria-hidden />
           <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
-            <span className="shrink-0">Changes</span>
-            {changesBaseLabel ? (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <span className="pointer-events-auto min-w-0 truncate font-normal text-muted-foreground" />
+            <span className="shrink-0">Uncommitted</span>
+            {changesTotals.insertions || changesTotals.deletions ? (
+              <span className="ml-auto flex shrink-0 items-baseline gap-2 ps-2 font-mono tabular-nums">
+                <span
+                  className={
+                    changesTotals.insertions
+                      ? "text-diff-addition-foreground"
+                      : "text-muted-foreground"
                   }
                 >
-                  {changesBaseLabel}
-                </TooltipTrigger>
-                <TooltipPopup side="top" className="max-w-96 break-words">
-                  {changesBaseLabel}
-                </TooltipPopup>
-              </Tooltip>
-            ) : null}
-            <span className="ml-auto flex shrink-0 items-baseline gap-2 ps-2 font-mono tabular-nums">
-              <span
-                className={
-                  changesTotals.insertions
-                    ? "text-diff-addition-foreground"
-                    : "text-muted-foreground"
-                }
-              >
-                +{formatDiffCount(changesTotals.insertions)}
+                  +{formatDiffCount(changesTotals.insertions)}
+                </span>
+                <span
+                  className={
+                    changesTotals.deletions
+                      ? "text-diff-deletion-foreground"
+                      : "text-muted-foreground"
+                  }
+                >
+                  -{formatDiffCount(changesTotals.deletions)}
+                </span>
               </span>
-              <span
-                className={
-                  changesTotals.deletions
-                    ? "text-diff-deletion-foreground"
-                    : "text-muted-foreground"
-                }
-              >
-                -{formatDiffCount(changesTotals.deletions)}
+            ) : (
+              <span className="ml-auto shrink-0 ps-2 font-normal text-muted-foreground">
+                No changes
               </span>
-            </span>
+            )}
           </span>
         </ThreadDetailsControl>
       ) : null}

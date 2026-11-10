@@ -4,8 +4,8 @@ import { resolveAutoFeatureBranchName } from "@t3tools/shared/git";
 import { assert, describe, it } from "vite-plus/test";
 import {
   buildMenuItems,
+  formatQuickActionLabel,
   requiresDefaultBranchConfirmation,
-  resolveChangesTotals,
   resolveDefaultBranchActionDialogCopy,
   resolveLiveThreadBranchUpdate,
   resolveQuickAction,
@@ -249,52 +249,28 @@ describe("resolveAutoFeatureBranchName", () => {
   });
 });
 
-describe("resolveChangesTotals", () => {
-  it("does not let an empty branchChanges hide a dirty working tree", () => {
-    assert.deepInclude(
-      resolveChangesTotals(
-        status({
-          hasWorkingTreeChanges: true,
-          branchChanges: { baseRef: "main", insertions: 0, deletions: 0 },
-          workingTree: {
-            files: [{ path: "a.ts", insertions: 5, deletions: 1 }],
-            insertions: 5,
-            deletions: 1,
-          },
-        }),
-      ),
-      { insertions: 5, deletions: 1 },
+describe("formatQuickActionLabel", () => {
+  it("names the commits a Push action sends", () => {
+    const ahead = status({ refName: "feature/x", hasUpstream: true, aheadCount: 3 });
+    assert.equal(
+      formatQuickActionLabel(resolveQuickAction(ahead, false, false, true), ahead),
+      "Push 3 commits & create PR",
+    );
+    const one = status({ refName: "main", hasUpstream: true, aheadCount: 1 });
+    assert.equal(
+      formatQuickActionLabel(resolveQuickAction(one, false, true, true), one),
+      "Push 1 commit",
     );
   });
 
-  it("keeps non-zero branchChanges over the working tree", () => {
-    assert.deepEqual(
-      resolveChangesTotals(
-        status({
-          branchChanges: { baseRef: "origin/master", insertions: 20, deletions: 3 },
-          workingTree: {
-            files: [{ path: "a.ts", insertions: 1, deletions: 0 }],
-            insertions: 1,
-            deletions: 0,
-          },
-        }),
-      ),
-      { insertions: 20, deletions: 3, baseRef: "origin/master" },
-    );
-  });
-
-  it("falls back to the working tree when branchChanges is omitted", () => {
-    assert.deepInclude(
-      resolveChangesTotals(
-        status({
-          workingTree: {
-            files: [{ path: "a.ts", insertions: 2, deletions: 0 }],
-            insertions: 2,
-            deletions: 0,
-          },
-        }),
-      ),
-      { insertions: 2, deletions: 0 },
+  it("leaves labels that push nothing alone", () => {
+    const synced = status({ refName: "feature/x", hasUpstream: true, aheadCount: 0 });
+    const action = resolveQuickAction(synced, false, false, true);
+    assert.equal(formatQuickActionLabel(action, synced), action.label);
+    const dirty = status({ hasWorkingTreeChanges: true, hasUpstream: true, aheadCount: 2 });
+    assert.equal(
+      formatQuickActionLabel(resolveQuickAction(dirty, false, true, true), dirty),
+      "Commit & push",
     );
   });
 });

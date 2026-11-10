@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [22] | Git panel and Diff panel start on uncommitted changes; "Not pushed" is the old branch diff; Push shows how many commits it sends                                       | done    |
 | [21] | Setting to turn off the "Push to default ref?" confirmation (Settings → Source control, on by default)                                                                 | done    |
 | [20] | Install Claude Code and OpenCode from Settings → Providers with npm into `~/.local`, and update them there (not found in any fork)                                     | done    |
 | [19] | Sidebar shows running subagents: a thread whose turn ended but whose subagents still work reads "N subagents" instead of a stalled "Waiting"                           | done    |
@@ -53,6 +54,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 [19]: #sidebar-subagent-status-change-19
 [20]: #install-claude-code-and-opencode-from-settings-change-20
 [21]: #default-branch-push-confirmation-change-21
+[22]: #uncommitted-changes-first-change-22
 
 `done` means it is a commit on `main`; the commit is found by subject (`git log --grep`), not by hash, because every
 rebase onto upstream changes the hashes. The history rules and the sync procedure are in the last section.
@@ -771,6 +773,19 @@ Upstream has no way to turn it off.
   "Push to <branch>" had been chosen.
 - Device-local like other client settings. The dialog's own buttons are unchanged.
 - No data migration: a new key with a decoding default.
+
+## Uncommitted changes first (change 22)
+
+Upstream (#15005) made the Diff panel open on all branch changes against the base and made the thread details
+"Changes" row count the same, so work that was committed but not pushed looked like pending edits.
+
+- The thread details row reads "Uncommitted" and counts the working tree only (local checkout or worktree); a clean
+  tree reads "No changes" instead of +0 -0.
+- The Diff panel selector lists "Uncommitted" first and opens on it; the old "Changes" scope is "Not pushed" (same diff
+  and base picker). The server still sends `branchChanges`; the client no longer reads it.
+- The Push quick action reads "Push N commits" (ahead of the upstream, or of the base ref when there is no upstream).
+  A click marks the action running at once, since the server's first progress event arrives late.
+- Existing per-thread selections in `t3code:diff-panel-state:v1` are kept; only the default and the reset on open changed.
 
 ## Keeping the fork up to date with upstream
 
