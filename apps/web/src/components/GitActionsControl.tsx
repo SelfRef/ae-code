@@ -17,6 +17,7 @@ import type {
   SourceControlProviderDiscoveryItem,
   SourceControlPublishRepositoryResult,
   SourceControlRepositoryVisibility,
+  VcsForcePushPreview,
   VcsStatusResult,
 } from "@t3tools/contracts";
 import { useNavigate } from "@tanstack/react-router";
@@ -88,9 +89,12 @@ import {
   useGitStackedAction,
   useSourceControlActionRunning,
   useSourceControlPublishRepositoryAction,
+  useVcsForcePushAction,
+  useVcsForcePushPreviewAction,
   useVcsInitAction,
   useVcsPullAction,
 } from "../state/sourceControlActions";
+import { ForcePushDialog } from "./ForcePushDialog";
 import { useQuietThreadProjection, useQuietThreadShell } from "~/state/entities";
 import { readEnvironmentScope, useEnvironmentScope } from "~/state/session";
 import { useEnvironmentQuery } from "~/state/query";
@@ -167,7 +171,12 @@ function requestVcsStatusRefresh(
   }
   void refresh({ environmentId, input: { cwd } });
 }
-const RUNNING_SOURCE_CONTROL_ACTIONS = ["runStackedAction", "pull", "publishRepository"] as const;
+const RUNNING_SOURCE_CONTROL_ACTIONS = [
+  "runStackedAction",
+  "pull",
+  "forcePush",
+  "publishRepository",
+] as const;
 
 const PUBLISH_PROVIDER_OPTIONS = sourceControlClients.definitions.map((definition) => ({
   value: definition.kind,
@@ -974,6 +983,7 @@ export default function GitActionsControl({
   const [isEditingFiles, setIsEditingFiles] = useState(false);
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
   const [inlineSuccess, setInlineSuccess] = useState<InlineGitActionSuccess | null>(null);
+  const [forcePushPreview, setForcePushPreview] = useState<VcsForcePushPreview | null>(null);
   const [pendingDefaultBranchAction, setPendingDefaultBranchAction] =
     useState<PendingDefaultBranchAction | null>(null);
   const confirmPushToDefaultBranch = useClientSettings(
@@ -1066,6 +1076,8 @@ export default function GitActionsControl({
   const initAction = useVcsInitAction(sourceControlScope);
   const runImmediateGitAction = useGitStackedAction(sourceControlScope);
   const pullAction = useVcsPullAction(sourceControlScope);
+  const readForcePushPreview = useVcsForcePushPreviewAction(sourceControlScope);
+  const forcePushAction = useVcsForcePushAction(sourceControlScope);
   const isGitActionRunning = useSourceControlActionRunning(
     sourceControlScope,
     RUNNING_SOURCE_CONTROL_ACTIONS,
@@ -1337,8 +1349,57 @@ export default function GitActionsControl({
     }
   };
 
+  const showForcePushError = (title: string, error: unknown) => {
+    toastManager.add(
+      stackedThreadToast({
+        type: "error",
+        title,
+        description: error instanceof Error ? error.message : "An error occurred.",
+        timeout: resolveGitActionResultToastTiming("error").timeout,
+        ...(threadToastData !== undefined ? { data: threadToastData } : {}),
+      }),
+    );
+  };
+
+  const openForcePushDialog = () => {
+    void (async () => {
+      const result = await readForcePushPreview();
+      if (result._tag === "Failure") {
+        if (!isAtomCommandInterrupted(result)) {
+          showForcePushError("Force push unavailable", squashAtomCommandFailure(result));
+        }
+        return;
+      }
+      setForcePushPreview(result.value);
+    })();
+  };
+
+  const runForcePush = (preview: VcsForcePushPreview) => {
+    setForcePushPreview(null);
+    void (async () => {
+      setInlineSuccess(null);
+      const result = await forcePushAction.run(preview.upstreamSha);
+      if (result._tag === "Failure") {
+        if (!isAtomCommandInterrupted(result)) {
+          showForcePushError("Force push failed", squashAtomCommandFailure(result));
+        }
+        return;
+      }
+      setInlineSuccess({
+        title: "Force pushed",
+        description: `Replaced ${result.value.upstreamRef} (${result.value.previousSha.slice(0, 7)}) with ${result.value.refName} (${result.value.newSha.slice(0, 7)}).`,
+        scopeKey: successScopeKey,
+        expiresAtMs: inlineSuccessExpiresAt(),
+      });
+    })();
+  };
+
   const openDialogForMenuItem = (item: GitActionMenuItem) => {
     if (item.disabled) return;
+    if (item.dialogAction === "force_push") {
+      openForcePushDialog();
+      return;
+    }
     if (item.dialogAction === "push") {
       void runGitActionWithToast({ action: "push" });
       return;
@@ -1857,6 +1918,13 @@ export default function GitActionsControl({
           gitCwd={gitCwd}
         />
       ) : null}
+
+      <ForcePushDialog
+        preview={forcePushPreview}
+        canWrite={canWriteSourceControl}
+        onConfirm={runForcePush}
+        onCancel={() => setForcePushPreview(null)}
+      />
 
       <Dialog
         open={pendingDefaultBranchAction !== null}

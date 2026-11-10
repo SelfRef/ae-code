@@ -20,7 +20,7 @@ export {
 } from "@t3tools/client-runtime/state/vcs";
 
 export interface GitActionMenuItem {
-  id: "commit" | "push" | "pr";
+  id: "commit" | "push" | "force_push" | "pr";
   label: string;
   disabled: boolean;
   icon: GitActionIconName;
@@ -156,13 +156,29 @@ export function buildMenuItems(
     dialogAction: "push",
   };
 
+  // A rewritten history can't be pushed or pulled; replacing the remote branch is the way out.
+  const forcePushItem: GitActionMenuItem[] =
+    gitStatus.hasUpstream && hasBranch && isBehind && gitStatus.aheadCount > 0
+      ? [
+          {
+            id: "force_push",
+            label: "Force push...",
+            disabled: isBusy,
+            icon: "push",
+            kind: "open_dialog",
+            dialogAction: "force_push",
+          },
+        ]
+      : [];
+
   if (hasOpenPr) {
-    return [commitItem, pushItem];
+    return [commitItem, pushItem, ...forcePushItem];
   }
 
   return [
     commitItem,
     pushItem,
+    ...forcePushItem,
     {
       id: "pr",
       label: `Create ${terminology.shortLabel}`,
@@ -271,7 +287,7 @@ export function resolveQuickAction(
       label: "Sync ref",
       disabled: true,
       kind: "show_hint",
-      hint: "Branch has diverged from upstream. Rebase/merge first.",
+      hint: "Branch has diverged from upstream. Rebase/merge first, or force push from the menu.",
     };
   }
 
