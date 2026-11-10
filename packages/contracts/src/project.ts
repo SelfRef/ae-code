@@ -547,6 +547,55 @@ export const ProjectCreateFromThreadResult = Schema.Struct({
 });
 export type ProjectCreateFromThreadResult = typeof ProjectCreateFromThreadResult.Type;
 
+const ProjectEntryPath = TrimmedNonEmptyString.check(
+  Schema.isMaxLength(PROJECT_WRITE_FILE_PATH_MAX_LENGTH),
+);
+
+// Workspace-relative paths. A move whose parent changes is a move; one that keeps it is a rename.
+export const ProjectEntryOperation = Schema.Union([
+  Schema.Struct({
+    type: Schema.Literal("create"),
+    kind: ProjectEntryKind,
+    relativePath: ProjectEntryPath,
+  }),
+  Schema.Struct({ type: Schema.Literal("move"), from: ProjectEntryPath, to: ProjectEntryPath }),
+  Schema.Struct({ type: Schema.Literal("copy"), from: ProjectEntryPath, to: ProjectEntryPath }),
+  Schema.Struct({ type: Schema.Literal("delete"), relativePath: ProjectEntryPath }),
+]);
+export type ProjectEntryOperation = typeof ProjectEntryOperation.Type;
+
+export const ProjectModifyEntryInput = Schema.Struct({
+  cwd: TrimmedNonEmptyString,
+  operation: ProjectEntryOperation,
+});
+export type ProjectModifyEntryInput = typeof ProjectModifyEntryInput.Type;
+
+export const ProjectModifyEntryResult = Schema.Struct({
+  // The created, moved or copied entry's path; the deleted path for a delete.
+  relativePath: TrimmedNonEmptyString,
+});
+export type ProjectModifyEntryResult = typeof ProjectModifyEntryResult.Type;
+
+export const ProjectModifyEntryFailure = Schema.Literals([
+  "workspace_path_outside_root",
+  "resolved_path_outside_root",
+  "already_exists",
+  "not_found",
+  "invalid_target",
+  "operation_failed",
+]);
+export type ProjectModifyEntryFailure = typeof ProjectModifyEntryFailure.Type;
+
+export class ProjectModifyEntryError extends Schema.TaggedError<ProjectModifyEntryError>()(
+  "ProjectModifyEntryError",
+  {
+    cwd: Schema.optional(TrimmedNonEmptyString),
+    failure: Schema.optional(ProjectModifyEntryFailure),
+    message: TrimmedNonEmptyString,
+    cause: Schema.optional(Schema.Defect()),
+  },
+) {}
+
 export class ProjectWriteFileError extends Schema.TaggedError<ProjectWriteFileError>()(
   "ProjectWriteFileError",
   {

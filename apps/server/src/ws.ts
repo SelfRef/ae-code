@@ -69,12 +69,14 @@ import {
   type ApplicationStoredEvent,
   type ProjectEntriesFailure,
   type ProjectFileFailure,
+  type ProjectModifyEntryFailure,
   type ProjectFileOperation,
   type ProjectMutation,
   ProjectListEntriesError,
   ProjectReadFileError,
   ProjectSearchContentsError,
   ProjectSearchEntriesError,
+  ProjectModifyEntryError,
   ProjectWriteFileError,
   ProjectMutationError,
   ProviderUploadFeedbackError,
@@ -662,6 +664,24 @@ function projectFileFailureContext(
       return { failure: "binary_file", resolvedPath: error.resolvedPath };
     default:
       return unexpectedCompatibilityError(error);
+  }
+}
+
+function projectModifyEntryFailure(
+  error: Effect.Error<
+    ReturnType<WorkspaceFileSystem.WorkspaceFileSystem["Service"]["modifyEntry"]>
+  >,
+): ProjectModifyEntryFailure {
+  switch (error._tag) {
+    case "WorkspaceEntryConflictError":
+      return error.reason;
+    case "WorkspaceFilePathEscapeError":
+      return "resolved_path_outside_root";
+    case "WorkspacePathOutsideRootError":
+    case "UnknownWorkspaceError":
+      return "workspace_path_outside_root";
+    default:
+      return "operation_failed";
   }
 }
 
@@ -3069,6 +3089,24 @@ export const layerWsRpc = (
                   cause,
                 }),
             ),
+          ),
+        [WS_METHODS.projectsModifyEntry]: (input) =>
+          workspaceFileSystem.modifyEntry(input).pipe(
+            Effect.mapError((cause) => {
+              const failure = projectModifyEntryFailure(cause);
+              return new ProjectModifyEntryError({
+                cwd: input.cwd,
+                failure,
+                message:
+                  cause._tag === "WorkspaceEntryConflictError"
+                    ? cause.message
+                    : failure === "operation_failed" &&
+                        cause._tag === "WorkspaceFileSystemOperationError"
+                      ? `Could not ${input.operation.type} the entry: ${cause.cause instanceof Error ? cause.cause.message : "operation failed"}.`
+                      : "That path is not available in this project.",
+                cause,
+              });
+            }),
           ),
         [WS_METHODS.projectsMutate]: (mutation) =>
           startup.enqueueCommand(mutateProject(mutation)).pipe(
