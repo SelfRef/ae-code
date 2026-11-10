@@ -1,4 +1,5 @@
 import { EnvironmentId, type ProjectEntry } from "@t3tools/contracts";
+import { Atom } from "effect/reactivity";
 import { describe, expect, it, vi } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
 
@@ -40,6 +41,11 @@ const pathSearch = {
 };
 
 vi.mock("./useDirectoryEntries", () => ({ useDirectoryEntries: () => directory }));
+vi.mock("~/state/projects", () => ({
+  projectEnvironment: {
+    modifyEntry: { label: "modify-entry", permissionAtom: () => Atom.make(true) },
+  },
+}));
 vi.mock("~/state/queries", () => ({ useProjectPathSearch: () => pathSearch }));
 vi.mock("~/fileContextMenu", () => ({
   useFileContextMenu: () => ({ buildItems: () => [], activate: () => Promise.resolve() }),
@@ -288,5 +294,35 @@ describe("FileBrowserPanel", () => {
     await using _second = await render(panel());
     await vi.waitFor(() => expect(findTreeRow("src/")).not.toBeNull());
     await vi.waitFor(() => expect(findTreeRow("src/")!.getAttribute("aria-expanded")).toBe("true"));
+  });
+
+  it("offers new entries on empty space and rename, move, copy and delete on a row", async () => {
+    await using _screen = await render(
+      <FileBrowserPanel
+        environmentId={EnvironmentId.make("env-files")}
+        cwd="/repo"
+        projectName="repo"
+        selectedPath={null}
+        selectedPathRevealId={0}
+        onOpenFile={() => {}}
+        workspaceMutationId={null}
+      />,
+    );
+    using _menu = { [Symbol.dispose]: () => dismissContextMenu() };
+    await vi.waitFor(() => expect(findTreeRow("README.md")).not.toBeNull());
+    const contextMenu = () =>
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, composed: true, button: 2 });
+
+    page.getByRole("tree").element().dispatchEvent(contextMenu());
+    await expect
+      .element(page.getByRole("menuitem", { name: "New folder", exact: true }))
+      .toBeVisible();
+    expect(page.getByRole("menuitem", { name: "Rename…", exact: true }).elements()).toHaveLength(0);
+    dismissContextMenu();
+
+    findTreeRow("README.md")!.dispatchEvent(contextMenu());
+    for (const name of ["New file", "Rename…", "Move to…", "Copy to…", "Delete"]) {
+      await expect.element(page.getByRole("menuitem", { name, exact: true })).toBeVisible();
+    }
   });
 });
