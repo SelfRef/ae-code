@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [33] | Saved environments follow you: a browser signed in to a server shows the environments saved on any other browser signed in to it (kept on that server)                 | done    |
 | [32] | Merge a thread's branch into the default branch (with or without pushing) from the Git actions menu, optionally as a project's main action                             | done    |
 | [31] | Move a started thread into a new worktree from the workspace control or the thread menu (the control used to lock after the first message)                             | done    |
 | [30] | Synced drafts: unsent text, attachments, contexts and new-thread settings follow you across web, desktop and Android (on the server)                                   | planned |
@@ -69,6 +70,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 [24]: #commit-and-push-on-the-changed-files-card-change-24
 [27]: #skills-manager-change-27
 [30]: #synced-drafts-change-30
+[33]: #saved-environments-shared-through-the-server-change-33
 [26]: #pull-requests-from-the-fork-change-26
 [25]: #in-place-updates-of-the-docker-image-and-a-bare-host-change-25
 
@@ -1182,6 +1184,32 @@ and `merge_push` (both commit pending changes first), plus a project-scoped sett
 - Web only; mobile's Git sheet does not list the merge actions. Older servers do not know the actions, and the
   result's `merge` field is optional for the same reason.
 - No data migration: a new setting with a default.
+
+## Saved environments shared through the server (change 33)
+
+The web client kept its saved environments (and their bearer tokens) in the browser's IndexedDB, so each browser started with
+only the environment that served the page. Now the browser keeps the part every device can use on the server it was served
+from, and other browsers signed in to that server load it.
+
+- **What is shared:** bearer connections (target, profile, token) whose route is not the device's own loopback, and which of
+  them are switched off. **What is not:** T3 Connect (relay) routes and their DPoP tokens (bound to a per-browser key), SSH
+  routes (desktop only), loopback routes, and pull-request routing trust, which stay per browser.
+- **Server:** `GET`/`PUT /api/connection-catalog` (`EnvironmentConnectionCatalogHttpApi`), both gated by `access:write`
+  because the document holds other environments' tokens. `ConnectionCatalog` keeps one opaque JSON document with a revision
+  in the secret store (`connection-catalog`), at most 1 MiB. A write must name the revision it read; a stale one is refused
+  (`connection_catalog_conflict`).
+- **Client:** `withSharedCatalog` wraps the IndexedDB catalog backend (`apps/web/src/connection/serverCatalogBackend.ts`).
+  The IndexedDB copy stays as the offline cache and the home of the device-bound part. A change that leaves the shared part
+  alone (a refreshed DPoP token) never calls the server. On a conflict the catalog store reloads and applies the change
+  again on top of the server's copy.
+- **First sync:** a browser that never synced adds the entries only it has to the server's copy. After that the server's copy
+  wins, so removing an environment on one browser removes it on the others at their next load.
+- **Degrades to local:** a server without the endpoint, a session without `access:write` and a signed-out page keep the old
+  behaviour for that page. When the server is only unreachable, a change to the shared part is refused instead of saved on
+  one browser, where the next load would drop it.
+- Web only. Desktop keeps its own catalog and mobile its own storage. Another browser sees a change at its next load, not
+  live.
+- No data migration: the server's copy is created by the first browser that syncs.
 
 ## Keeping the fork up to date with upstream
 

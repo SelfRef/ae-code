@@ -45,6 +45,7 @@ import {
 import {
   DpopFailureReason,
   AuthSessionId,
+  NonNegativeInt,
   ThreadId,
   TrimmedNonEmptyString,
 } from "./baseSchemas.ts";
@@ -113,6 +114,8 @@ export const EnvironmentRequestInvalidReason = Schema.Literals([
   "invalid_audio",
   "speech_unavailable",
   "speech_busy",
+  "connection_catalog_conflict",
+  "connection_catalog_too_large",
 ]);
 export type EnvironmentRequestInvalidReason = typeof EnvironmentRequestInvalidReason.Type;
 
@@ -784,6 +787,33 @@ class EnvironmentPullRequestsHttpApi extends HttpApiGroup.make("pullRequests").a
   }).middleware(EnvironmentAuthenticatedAuth),
 ) {}
 
+/** One saved-environments document shared by every browser that signs in to this environment. */
+export const CONNECTION_CATALOG_MAX_BYTES = 1024 * 1024;
+
+export const EnvironmentConnectionCatalog = Schema.Struct({
+  /** Counts accepted writes; 0 while nothing is stored. */
+  revision: NonNegativeInt,
+  document: Schema.NullOr(Schema.String),
+});
+export type EnvironmentConnectionCatalog = typeof EnvironmentConnectionCatalog.Type;
+
+export class EnvironmentConnectionCatalogHttpApi extends HttpApiGroup.make("connectionCatalog")
+  .add(
+    HttpApiEndpoint.get("get", "/api/connection-catalog", {
+      headers: OptionalBearerHeaders,
+      success: EnvironmentConnectionCatalog,
+      error: EnvironmentScopedOperationErrors,
+    }).middleware(EnvironmentAuthenticatedAuth),
+  )
+  .add(
+    HttpApiEndpoint.put("put", "/api/connection-catalog", {
+      headers: OptionalBearerHeaders,
+      payload: Schema.Struct({ baseRevision: NonNegativeInt, document: Schema.String }),
+      success: Schema.Struct({ revision: NonNegativeInt }),
+      error: [EnvironmentRequestInvalidError, ...EnvironmentScopedOperationErrors],
+    }).middleware(EnvironmentAuthenticatedAuth),
+  ) {}
+
 export class EnvironmentVoiceBodyLimit extends HttpApiMiddleware.Service<EnvironmentVoiceBodyLimit>()(
   "EnvironmentVoiceBodyLimit",
   { error: EnvironmentRequestInvalidError },
@@ -1012,5 +1042,6 @@ export class EnvironmentHttpApi extends HttpApi.make("environment")
   .add(EnvironmentPullRequestsHttpApi)
   .add(EnvironmentProjectsHttpApi)
   .add(EnvironmentVoiceHttpApi)
+  .add(EnvironmentConnectionCatalogHttpApi)
   .add(EnvironmentConnectHttpApi)
   .add(EnvironmentWebhooksHttpApi) {}

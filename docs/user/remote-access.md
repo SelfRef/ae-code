@@ -107,6 +107,24 @@ created in Settings can only be copied from the client that created them while
 its Sharing & access page stays open. If you leave or reload that page, create
 another link to share.
 
+### Use your machines in every browser
+
+On the web, the machines you add in one browser appear in every other browser
+you sign in to the same server with, so you pair each machine once. Removing a
+machine in one browser removes it in the others the next time they load. This
+needs the **Manage access** permission on that server, which a browser signed in
+as the owner has. Without it, or on a server that does not offer this, a browser
+keeps its own list.
+
+Only machines you paired directly are shared. T3 Connect machines, SSH
+machines, addresses that point back at the device itself (`localhost`) and the
+route settings of those stay in the browser that added them. The desktop app and
+the Android app keep their own lists.
+
+The server keeps the machines' access tokens, so anyone who can sign in to it
+with that permission can use those machines. Sign out of a machine you no longer
+trust, or revoke its access under **Settings → Sharing & access**.
+
 ### Reach one machine several ways
 
 A machine can have more than one route: LAN, Tailscale, another VPN, a public

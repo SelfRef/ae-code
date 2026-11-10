@@ -9,8 +9,8 @@ not introduce another execution model. See
 ## Identity is independent of the route
 
 An environment keeps its ID across server restarts and endpoint changes. Saved
-connections are local to a client profile; the server's identity and state are
-not. A repository identity can correlate clones across environments, but never
+connections are local to a client profile, apart from the shared part of a web
+browser's catalog below; the server's identity and state are not. A repository identity can correlate clones across environments, but never
 routes work between them. A project and its threads belong to one environment;
 an agent reaches another environment's threads only through a peer link.
 The canonical key follows the `origin` remote, then `upstream`, so pull request
@@ -67,6 +67,32 @@ miss a DHCP change, and the wildcard keeps the reported addresses current.
 
 Pull request routing trust covers the whole route list. Adding or changing a route
 revokes it; reordering does not, because the same addresses remain trusted.
+
+## Shared saved environments
+
+A web browser keeps the bearer connections of its catalog on the server that
+served the page, so another browser signed in to that server starts with the same
+environments ([`ConnectionCatalog`](../../apps/server/src/connectionCatalog/ConnectionCatalog.ts),
+[`serverCatalogBackend.ts`](../../apps/web/src/connection/serverCatalogBackend.ts)).
+
+- **The server stores an opaque document with a revision** in its secret store,
+  because it holds other environments' tokens, and requires `access:write` to read
+  or write it. It never parses the document, so the catalog schema can change
+  without a server change.
+- **Only what works from any device is shared**
+  ([`sharedCatalogPart`](../../packages/client-runtime/src/platform/storageDocument.ts)).
+  T3 Connect DPoP tokens are bound to a key in the browser that minted them, SSH is
+  desktop only, and a loopback route reaches a different machine from another
+  device. Sharing any of these would give other browsers an entry that cannot connect.
+- **A write must name the revision it read.** Two browsers editing at once is
+  routine, so the catalog store reloads on a conflict and re-applies the change
+  on top of the newer copy instead of overwriting it.
+- **The first sync adds, later syncs replace.** Without the `sharedRevision`
+  marker, a device cannot tell an entry added offline from one removed elsewhere,
+  so a device that never synced contributes its own entries and one that did takes
+  the server's copy.
+- **When the server cannot be reached, a shared change is refused**, not saved
+  locally: the next load would take the server's copy and silently drop it.
 
 ## Peer links
 
