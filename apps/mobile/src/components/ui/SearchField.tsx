@@ -12,6 +12,8 @@ export interface SearchFieldProps {
   readonly placeholder: string;
   readonly value: string;
   readonly onChangeText: (value: string) => void;
+  /** Runs the search when the keyboard's search key is pressed. */
+  readonly onSubmitEditing?: () => void;
 }
 
 export function SearchField({
@@ -22,6 +24,7 @@ export function SearchField({
   placeholder,
   value,
   onChangeText,
+  onSubmitEditing,
 }: SearchFieldProps) {
   const { scale, mediumIconSize } = useAndroidControlSizing();
   return (
@@ -54,6 +57,7 @@ export function SearchField({
         style={{ paddingVertical: 7 * scale }}
         value={value}
         onChangeText={onChangeText}
+        {...(onSubmitEditing ? { onSubmitEditing } : {})}
       />
       {value.length > 0 ? (
         <Pressable

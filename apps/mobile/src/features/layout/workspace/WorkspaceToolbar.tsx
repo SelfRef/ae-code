@@ -17,12 +17,14 @@ import {
 import { useHardwareKeyboardCommand } from "../../keyboard/hardwareKeyboardCommands";
 import { useAdaptiveWorkspaceLayout } from "../AdaptiveWorkspaceLayout";
 import { useWorkspaceTabs } from "./WorkspaceTabsContext";
+import { isPageNavigationTab } from "./navigation-tab-order";
 import { shouldRestoreNativeSearch } from "./workspace-tabs-state";
 import { useFloatingWorkspaceTabs, useSidebarWorkspaceTabs } from "./useSystemWorkspaceTabBar";
 import { WorkspaceTabToolbarButtons } from "./WorkspaceSectionToolbar";
 
 const SEARCH_LABELS = {
   threads: "Search threads",
+  issues: "Search issues",
   pullRequests: "Search pull requests",
   settings: "Search settings",
 } as const;
@@ -52,7 +54,7 @@ export function WorkspaceToolbar(props: {
   // The Settings list takes the selected tab's place, so search follows it.
   const selectedTab = workspace.settingsOpen ? "settings" : workspace.state.selectedTab;
   const tab = workspace.state.tabs[selectedTab];
-  const searchLabel = SEARCH_LABELS[selectedTab === "usage" ? "threads" : selectedTab];
+  const searchLabel = SEARCH_LABELS[isPageNavigationTab(selectedTab) ? "threads" : selectedTab];
   const { isTabActive: isListTabActive } = workspace;
   // A retained tab slot stays mounted while another is shown.
   const isTabActive = (tab: typeof selectedTab) =>

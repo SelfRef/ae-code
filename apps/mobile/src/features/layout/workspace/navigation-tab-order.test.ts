@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
+  DEFAULT_HIDDEN_NAVIGATION_TABS,
   NAVIGATION_TAB_ORDER,
   navigationCustomizationAvailable,
   moveNavigationTab,
   overflowNavigationTabs,
   enabledNavigationTabs,
   toggleNavigationTabVisibility,
+  resolveHiddenNavigationTabs,
   resolveSelectedNavigationTab,
   resolveNavigationTabOrder,
   selectedNavigationTab,
@@ -13,18 +15,16 @@ import {
 } from "./navigation-tab-order";
 
 describe("navigation tab order", () => {
-  it("enables customization only above four registered sections, excluding Settings", () => {
-    expect(navigationCustomizationAvailable()).toBe(false);
-    expect(navigationCustomizationAvailable(3)).toBe(false);
-    expect(navigationCustomizationAvailable(4)).toBe(false);
-    expect(navigationCustomizationAvailable(5)).toBe(true);
-    expect(navigationCustomizationAvailable(6)).toBe(true);
+  it("enables customization once there is more than one section to choose from", () => {
+    expect(navigationCustomizationAvailable()).toBe(true);
+    expect(navigationCustomizationAvailable(1)).toBe(false);
+    expect(navigationCustomizationAvailable(2)).toBe(true);
   });
 
   it("fills missing sections and drops removed placeholders, duplicates, and Settings", () => {
     expect(
       resolveNavigationTabOrder(["usage", "home", "issues", "settings", "usage", null]),
-    ).toEqual(["usage", "threads", "pullRequests"]);
+    ).toEqual(["usage", "issues", "threads", "pullRequests"]);
     expect(resolveNavigationTabOrder()).toEqual(NAVIGATION_TAB_ORDER);
   });
 
@@ -41,8 +41,8 @@ describe("navigation tab order", () => {
   });
 
   it("shows every real section without overflow and keeps Settings selected during editing", () => {
-    expect(visibleNavigationTabs()).toEqual(NAVIGATION_TAB_ORDER);
-    expect(overflowNavigationTabs()).toEqual([]);
+    expect(visibleNavigationTabs(undefined, [])).toEqual(NAVIGATION_TAB_ORDER);
+    expect(overflowNavigationTabs(undefined, [])).toEqual([]);
     expect(selectedNavigationTab(undefined, "threads", true)).toBe("settings");
     expect(selectedNavigationTab(undefined, "usage", false)).toBe("usage");
     expect(selectedNavigationTab(undefined, "usage", false, [], 2)).toBe("settings");
@@ -51,16 +51,22 @@ describe("navigation tab order", () => {
   it("removes hidden sections from navigation and restores their saved positions", () => {
     const order = moveNavigationTab(undefined, "usage", 0);
     const hidden = toggleNavigationTabVisibility([], "usage");
-    expect(enabledNavigationTabs(order, hidden)).toEqual(["threads", "pullRequests"]);
+    expect(enabledNavigationTabs(order, hidden)).toEqual(["threads", "issues", "pullRequests"]);
     expect(toggleNavigationTabVisibility(hidden, "usage")).toEqual([]);
     expect(visibleNavigationTabs(order, [], 5)).toEqual(order);
-    expect(enabledNavigationTabs(undefined, ["home", "issues", "settings"])).toEqual(
-      NAVIGATION_TAB_ORDER,
-    );
+    expect(enabledNavigationTabs(undefined, ["home", "settings"])).toEqual(NAVIGATION_TAB_ORDER);
+  });
+
+  it("hides Pulls until the user chooses tabs, then follows the saved choice", () => {
+    expect(enabledNavigationTabs()).toEqual(["threads", "issues", "usage"]);
+    expect(resolveHiddenNavigationTabs()).toEqual(DEFAULT_HIDDEN_NAVIGATION_TABS);
+    expect(toggleNavigationTabVisibility(undefined, "pullRequests")).toEqual([]);
+    expect(toggleNavigationTabVisibility(undefined, "usage")).toEqual(["pullRequests", "usage"]);
+    expect(enabledNavigationTabs(undefined, [])).toEqual(NAVIGATION_TAB_ORDER);
   });
 
   it("falls back when the selected section is hidden, including when all are hidden", () => {
-    expect(resolveSelectedNavigationTab(undefined, ["threads"], "threads")).toBe("pullRequests");
+    expect(resolveSelectedNavigationTab(undefined, ["threads"], "threads")).toBe("issues");
     expect(resolveSelectedNavigationTab(undefined, ["threads"], "usage")).toBe("usage");
     expect(
       resolveSelectedNavigationTab(undefined, NAVIGATION_TAB_ORDER, "threads"),

@@ -1,7 +1,7 @@
 import { useAndroidFloatingTabs } from "../../settings/appearance/AppearancePreferencesProvider";
 import { WorkspaceNoTabs } from "./WorkspaceNoTabs";
 import { useEnabledNavigationTabs } from "./navigation-tabs";
-import { NAVIGATION_TAB_ORDER } from "./navigation-tab-order";
+import { NAVIGATION_TAB_ORDER, isPageNavigationTab } from "./navigation-tab-order";
 import { WorkspaceExtraTab } from "./WorkspaceExtraTab";
 import type { ReactNode } from "react";
 import { View } from "react-native";
@@ -61,7 +61,7 @@ function WorkspaceRoot() {
             layout.usesSplitView
               ? insets
               : floatingTabsEnabled
-                ? tab === "usage"
+                ? isPageNavigationTab(tab)
                   ? { ...insets, bottom: context.bottomClearance }
                   : insets
                 : { ...insets, bottom: 0 }

@@ -55,16 +55,25 @@ describe("Duo list clearance", () => {
 describe("workspace root navigation", () => {
   it("pairs Settings, chats and pull requests with a detail column, and keeps Usage one page", () => {
     expect(workspaceUsesColumns("usage")).toBe(false);
+    expect(workspaceUsesColumns("issues")).toBe(false);
     expect(workspaceUsesColumns("usage", true)).toBe(true);
     expect(workspaceUsesColumns("threads")).toBe(true);
     expect(workspaceUsesColumns("pullRequests")).toBe(true);
   });
 
-  it("keeps the registered defaults while customization is unavailable", () => {
-    expect(resolveWorkspaceTabOrder(undefined)).toEqual(["threads", "pullRequests", "usage"]);
-    expect(resolveWorkspaceTabOrder(["home", "usage", "issues", "threads"])).toEqual(
-      resolveWorkspaceTabOrder(undefined),
-    );
+  it("completes a saved order with the registered sections", () => {
+    expect(resolveWorkspaceTabOrder(undefined)).toEqual([
+      "threads",
+      "issues",
+      "pullRequests",
+      "usage",
+    ]);
+    expect(resolveWorkspaceTabOrder(["home", "usage", "issues", "threads"])).toEqual([
+      "usage",
+      "issues",
+      "threads",
+      "pullRequests",
+    ]);
   });
 
   it("retains separate queries and positions across tabs, and cancels only the current search", () => {

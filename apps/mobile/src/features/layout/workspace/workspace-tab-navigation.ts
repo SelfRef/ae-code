@@ -4,6 +4,7 @@ import {
   type SettingsPageTarget,
 } from "../../settings/components/settings-page-targets";
 import { settingsNavigationState } from "../../settings/settings-navigation";
+import { isPageNavigationTab } from "./navigation-tab-order";
 import type { WorkspaceTab } from "./workspace-tabs-state";
 
 type RouteLike = {
@@ -227,7 +228,7 @@ export function workspaceTabNavigationState<
   }
   const home = state.routes.find((route) => route.name === "Home") ?? { name: "Home" };
   const detail =
-    options.columns && tab !== "usage"
+    options.columns && !isPageNavigationTab(tab)
       ? detailRoute(state, tab, selections, options.check, options.seedPullRequest)
       : undefined;
   const routes = [...[home, ...(detail ? [detail] : [])].map(keyed), ...overlays];

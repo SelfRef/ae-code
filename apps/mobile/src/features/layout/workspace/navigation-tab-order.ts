@@ -1,14 +1,23 @@
-export const NAVIGATION_TAB_ORDER = ["threads", "pullRequests", "usage"] as const;
+export const NAVIGATION_TAB_ORDER = ["threads", "issues", "pullRequests", "usage"] as const;
 export type NavigationTab = (typeof NAVIGATION_TAB_ORDER)[number];
+
+/** Shown until the user picks tabs in Settings: this fork's work is tracked in issues, not pulls. */
+export const DEFAULT_HIDDEN_NAVIGATION_TABS: readonly NavigationTab[] = ["pullRequests"];
+
+/** Tabs that are one page rather than a list beside a detail column. */
+export function isPageNavigationTab(tab: unknown): tab is "issues" | "usage" {
+  return tab === "issues" || tab === "usage";
+}
 
 export function navigationCustomizationAvailable(
   registeredSections: number = NAVIGATION_TAB_ORDER.length,
 ) {
-  return registeredSections > 4;
+  return registeredSections > 1;
 }
 
 export const NAVIGATION_TAB_LABELS: Readonly<Record<NavigationTab, string>> = {
   threads: "Threads",
+  issues: "Issues",
   pullRequests: "Pulls",
   usage: "Usage",
 };
@@ -37,7 +46,8 @@ export function moveNavigationTab(
 }
 
 export function resolveHiddenNavigationTabs(saved?: readonly unknown[]): readonly NavigationTab[] {
-  return [...new Set(saved?.filter(isNavigationTab) ?? [])];
+  if (saved === undefined) return DEFAULT_HIDDEN_NAVIGATION_TABS;
+  return [...new Set(saved.filter(isNavigationTab))];
 }
 
 export function toggleNavigationTabVisibility(
