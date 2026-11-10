@@ -14,6 +14,7 @@ import {
   formatQuickActionLabel,
   requiresDefaultBranchConfirmation,
   resolveDefaultBranchActionDialogCopy,
+  resolveDefaultBranchActions,
   resolveQuickAction,
 } from "@t3tools/client-runtime/state/vcs";
 import { useNavigation } from "@react-navigation/native";
@@ -124,8 +125,11 @@ function useThreadGitControlModel(props: ThreadGitMenuProps) {
   const hasPrimaryRemote = gitStatus?.hasPrimaryRemote ?? false;
   const isDefaultRef = gitStatus?.isDefaultRef ?? false;
 
-  const quickMergeAction = useQuickMergeAction();
   const confirmPushToDefaultBranch = useConfirmPushToDefaultBranch();
+  const quickMergeAction = useQuickMergeAction();
+  const defaultBranchPrimary =
+    resolveDefaultBranchActions(gitStatus, busy, hasPrimaryRemote, quickMergeAction)?.primary ??
+    null;
   const quickAction = (() => {
     if (!isRepo) {
       return {
@@ -135,13 +139,7 @@ function useThreadGitControlModel(props: ThreadGitMenuProps) {
         hint: "This workspace is not a git repository.",
       };
     }
-    const action = resolveQuickAction(
-      gitStatus,
-      busy,
-      isDefaultRef,
-      hasPrimaryRemote,
-      quickMergeAction,
-    );
+    const action = resolveQuickAction(gitStatus, busy, isDefaultRef, hasPrimaryRemote);
     return !canWriteSourceControl && (action.kind === "run_pull" || action.kind === "run_action")
       ? {
           ...action,
@@ -159,9 +157,6 @@ function useThreadGitControlModel(props: ThreadGitMenuProps) {
     if (quickAction.kind === "run_pull") return "arrow.down.circle";
     if (quickAction.kind === "open_pr") return "arrow.up.right.circle";
     if (quickAction.kind === "run_action") {
-      if (quickAction.action === "merge" || quickAction.action === "merge_push") {
-        return PullRequestGlyph.merged;
-      }
       if (quickAction.action === "commit") return "checkmark.circle";
       if (quickAction.action === "push" || quickAction.action === "commit_push")
         return "arrow.up.circle";
@@ -245,6 +240,12 @@ function useThreadGitControlModel(props: ThreadGitMenuProps) {
     }
   };
 
+  const runDefaultBranchAction = async () => {
+    if (defaultBranchPrimary && !defaultBranchPrimary.disabled && canWriteSourceControl) {
+      await runActionWithPrompt({ action: defaultBranchPrimary.id });
+    }
+  };
+
   const openReview = () => {
     navigation.navigate("ThreadReview", {
       environmentId: EnvironmentId.make(String(environmentId)),
@@ -265,8 +266,14 @@ function useThreadGitControlModel(props: ThreadGitMenuProps) {
 
   return {
     currentBranchLabel,
+    defaultBranchIcon:
+      defaultBranchPrimary?.id === "push_default"
+        ? ("arrow.up.circle" as const)
+        : PullRequestGlyph.merged,
+    defaultBranchPrimary,
     isRepo,
     openGitInspector,
+    runDefaultBranchAction,
     openReview,
     quickAction,
     quickActionHint,
@@ -354,6 +361,20 @@ export function useThreadGitMenuDefinition(props: ThreadGitMenuProps): AppBarMen
           void model.runQuickAction();
         },
       },
+      ...(model.defaultBranchPrimary
+        ? [
+            {
+              id: "git-default-branch",
+              title: model.defaultBranchPrimary.label,
+              icon: model.defaultBranchIcon,
+              disabled: model.defaultBranchPrimary.disabled,
+              subtitle: "Default branch",
+              onPress: () => {
+                void model.runDefaultBranchAction();
+              },
+            },
+          ]
+        : []),
       {
         id: "git-review",
         title: "Review changes",

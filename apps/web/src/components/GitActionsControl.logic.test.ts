@@ -268,78 +268,14 @@ describe("when: the ref is on GitLab", () => {
   });
 });
 
-describe("merging into the default branch", () => {
-  const ahead = status({ aheadCount: 2, aheadOfDefaultCount: 2, hasUpstream: false });
-
-  it("offers merge and merge & push on a feature branch with commits, enabled", () => {
-    const items = buildMenuItems(ahead, false);
+describe("Git actions and the default branch", () => {
+  it("leaves the default branch actions to their own button", () => {
+    const ahead = status({ aheadCount: 2, aheadOfDefaultCount: 2, hasWorkingTreeChanges: true });
     assert.deepEqual(
-      items.filter((item) => item.id === "merge" || item.id === "merge_push"),
-      [
-        {
-          id: "merge",
-          label: "Merge",
-          disabled: false,
-          icon: "merge",
-          kind: "open_dialog",
-          dialogAction: "merge",
-        },
-        {
-          id: "merge_push",
-          label: "Merge & push",
-          disabled: false,
-          icon: "merge",
-          kind: "open_dialog",
-          dialogAction: "merge_push",
-        },
-      ],
+      buildMenuItems(ahead, false).filter((item) => /merge|default/.test(item.id)),
+      [],
     );
-  });
-
-  it("offers only merge without a remote, and names the commit that pending changes add", () => {
-    const items = buildMenuItems(status({ hasWorkingTreeChanges: true }), false, false);
-    assert.deepEqual(
-      items.filter((item) => item.id.startsWith("merge")).map((item) => item.label),
-      ["Commit & merge"],
-    );
-  });
-
-  it("disables both with nothing to merge and hides both on the default ref", () => {
-    const upToDate = buildMenuItems(status({ aheadOfDefaultCount: 0 }), false);
-    assert.deepEqual(
-      upToDate.filter((item) => item.id.startsWith("merge")).map((item) => item.disabled),
-      [true, true],
-    );
-    const onDefault = buildMenuItems(status({ isDefaultRef: true, aheadCount: 1 }), false);
-    assert.equal(
-      onDefault.some((item) => item.id.startsWith("merge")),
-      false,
-    );
-  });
-
-  it("makes the project's chosen merge the quick action, keeping the pull request one otherwise", () => {
-    assert.deepInclude(resolveQuickAction(ahead, false, false, true, "merge_push"), {
-      action: "merge_push",
-      label: "Merge & push",
-    });
-    assert.deepInclude(
-      resolveQuickAction(status({ hasWorkingTreeChanges: true }), false, false, true, "merge"),
-      { action: "merge", label: "Commit & merge" },
-    );
-    assert.deepInclude(resolveQuickAction(ahead, false, false, false, "merge_push"), {
-      action: "merge",
-    });
-    assert.equal(resolveQuickAction(ahead, false, false, true).action, "create_pr");
-    assert.deepInclude(resolveQuickAction(status(), false, false, true, "merge_push"), {
-      label: "Merge & push",
-      disabled: true,
-      kind: "show_hint",
-    });
-    assert.notEqual(
-      resolveQuickAction(ahead, false, true, true, "merge").action,
-      "merge",
-      "on the default ref the quick action stays a push",
-    );
+    assert.equal(resolveQuickAction(ahead, false, false, true).action, "commit_push_pr");
   });
 });
 
@@ -412,14 +348,6 @@ describe("formatQuickActionLabel", () => {
     assert.equal(
       formatQuickActionLabel(resolveQuickAction(one, false, true, true), one),
       "Push 1 commit",
-    );
-  });
-
-  it("names the commits a Merge action takes", () => {
-    const ahead = status({ refName: "feature/x", aheadCount: 1, aheadOfDefaultCount: 3 });
-    assert.equal(
-      formatQuickActionLabel(resolveQuickAction(ahead, false, false, true, "merge_push"), ahead),
-      "Merge 3 commits & push",
     );
   });
 

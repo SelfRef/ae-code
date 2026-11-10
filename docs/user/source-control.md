@@ -192,18 +192,20 @@ instructions to commits and pull requests.
 
 ## Merge into the default branch
 
-For a project you own, skip the pull request. A thread's Git actions menu has **Merge into default
-branch** and **Merge into default branch & push** on any branch except the default one. Both commit
-pending changes first, rebase the branch onto the default branch if it moved, and fast-forward the
-default branch to it, so history stays linear. The second also pushes the default branch.
+For a project you own, skip the pull request. Turn on **Default branch** in a thread's details card
+(right-click the card, **Choose what to show**) to get a button for the default branch, shown on any
+branch except the default one. Its main action is **Merge n commits**; under its arrow are **Merge &
+push** and **Push n commits**, which pushes the default branch as it is. When there is nothing to
+merge, the push is the button. Merging commits pending changes first, rebases the branch onto the
+default branch if it moved, and fast-forwards the default branch to it, so history stays linear.
 
 The merge runs in the checkout that has the default branch checked out, usually the project folder.
 It stops without changing anything if that folder has uncommitted changes, or if the rebase hits
 conflicts; fix those and run it again. The thread's worktree and branch stay until worktree cleanup
 removes them.
 
-To make one of these the main button instead of the pull request action, set **Settings → Source
-control → Main Git action** globally or for a project.
+To make **Merge & push** the main action, set **Settings → Source control → Default branch action**
+globally or for a project.
 
 ## Review and merge
 

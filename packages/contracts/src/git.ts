@@ -24,6 +24,8 @@ export const GitStackedAction = Schema.Literals([
   // Commit any changes, then fast-forward the default branch to this one; `merge_push` also pushes it.
   "merge",
   "merge_push",
+  // Push the default branch as it is, without touching the current one.
+  "push_default",
 ]);
 export type GitStackedAction = typeof GitStackedAction.Type;
 export const GitActionProgressPhase = Schema.Literals(["branch", "commit", "merge", "push", "pr"]);
@@ -271,6 +273,8 @@ const VcsStatusRemoteShape = {
   aheadCount: NonNegativeInt,
   behindCount: NonNegativeInt,
   aheadOfDefaultCount: Schema.optional(NonNegativeInt),
+  // Commits on the local default branch its remote does not have yet; absent from older servers.
+  defaultAheadCount: Schema.optional(NonNegativeInt),
   pr: Schema.NullOr(VcsStatusChangeRequest),
 };
 

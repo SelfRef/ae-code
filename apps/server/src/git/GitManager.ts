@@ -1572,6 +1572,7 @@ export const make = Effect.gen(function* () {
       aheadCount: shippedByMergedPr && !details.hasUpstream ? 0 : details.aheadCount,
       behindCount: details.behindCount,
       aheadOfDefaultCount: shippedByMergedPr ? 0 : details.aheadOfDefaultCount,
+      defaultAheadCount: details.defaultAheadCount,
       pr,
     } satisfies VcsStatusRemoteResult;
   });
@@ -3529,7 +3530,9 @@ export const make = Effect.gen(function* () {
           ...(input.featureBranch ? (["branch"] as const) : []),
           ...(wantsCommit ? (["commit"] as const) : []),
           ...(wantsMerge ? (["merge"] as const) : []),
-          ...(wantsPush || input.action === "merge_push" ? (["push"] as const) : []),
+          ...(wantsPush || input.action === "merge_push" || input.action === "push_default"
+            ? (["push"] as const)
+            : []),
           ...(wantsPr ? (["pr"] as const) : []),
         ];
 
@@ -3537,6 +3540,43 @@ export const make = Effect.gen(function* () {
           kind: "action_started",
           phases,
         });
+
+        if (input.action === "push_default") {
+          yield* Ref.set(currentPhase, Option.some("push"));
+          yield* progress.emit({
+            kind: "phase_started",
+            phase: "push",
+            label: "Pushing default branch...",
+          });
+          const pushed = yield* mergeIntoDefault(gitCore, {
+            cwd: input.cwd,
+            branch: initialStatus.branch ?? "",
+            push: true,
+            pushOnly: true,
+          });
+          const pushedStatus = pushed.push?.status ?? "skipped_up_to_date";
+          const result = {
+            action: input.action,
+            branch: { status: "skipped_not_requested" as const },
+            commit: { status: "skipped_not_requested" as const },
+            push: {
+              status: pushedStatus,
+              branch: pushed.baseBranch,
+              ...(pushed.push ? { upstreamBranch: pushed.push.upstreamBranch } : {}),
+            },
+            pr: { status: "skipped_not_requested" as const },
+            toast: {
+              title:
+                pushedStatus === "pushed"
+                  ? `Pushed ${pushed.baseBranch}`
+                  : `${pushed.baseBranch} is already up to date`,
+              ...(pushed.push ? { description: pushed.push.upstreamBranch } : {}),
+              cta: { kind: "none" as const },
+            },
+          };
+          yield* progress.emit({ kind: "action_finished", result });
+          return result;
+        }
 
         if (wantsMerge && !initialStatus.branch) {
           return yield* new GitManagerError({

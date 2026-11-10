@@ -32,7 +32,13 @@ function checkoutPathOf(porcelain: string, branch: string): string | null {
  */
 export const mergeIntoDefault = Effect.fn("GitManager.mergeIntoDefault")(function* (
   git: Git,
-  input: { readonly cwd: string; readonly branch: string; readonly push: boolean },
+  input: {
+    readonly cwd: string;
+    readonly branch: string;
+    readonly push: boolean;
+    /** Push the default branch as it is: no rebase, no fast-forward. */
+    readonly pushOnly?: boolean;
+  },
 ): Effect.fn.Return<MergeIntoDefaultResult, GitManagerError | GitCommandError> {
   const { cwd, branch } = input;
   const fail = (detail: string) =>
@@ -69,7 +75,7 @@ export const mergeIntoDefault = Effect.fn("GitManager.mergeIntoDefault")(functio
     }
   }
   if (base === null) return yield* fail("Could not tell which branch is the default branch.");
-  if (base === branch)
+  if (base === branch && !input.pushOnly)
     return yield* fail(`${branch} is the default branch; there is nothing to merge.`);
   if (
     !(yield* succeeds("base-exists", ["show-ref", "--verify", "--quiet", `refs/heads/${base}`]))
@@ -80,6 +86,7 @@ export const mergeIntoDefault = Effect.fn("GitManager.mergeIntoDefault")(functio
   }
 
   if (
+    !input.pushOnly &&
     !(yield* succeeds("base-in-head", [
       "merge-base",
       "--is-ancestor",
@@ -102,12 +109,14 @@ export const mergeIntoDefault = Effect.fn("GitManager.mergeIntoDefault")(functio
     run("base-sha", cwd, ["rev-parse", `refs/heads/${base}`]).pipe(
       Effect.map((result) => result.stdout.trim()),
     );
-  const merged = yield* succeeds("head-in-base", [
-    "merge-base",
-    "--is-ancestor",
-    "HEAD",
-    `refs/heads/${base}`,
-  ]);
+  const merged =
+    input.pushOnly ||
+    (yield* succeeds("head-in-base", [
+      "merge-base",
+      "--is-ancestor",
+      "HEAD",
+      `refs/heads/${base}`,
+    ]));
   if (!merged) {
     const worktrees = yield* run("worktrees", cwd, ["worktree", "list", "--porcelain"]);
     const baseCheckout = checkoutPathOf(worktrees.stdout, base);

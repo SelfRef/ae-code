@@ -83,11 +83,6 @@ const QUICK_MERGE_CHOICES: ReadonlyArray<{
   readonly description: string;
 }> = [
   {
-    mode: "pull_request",
-    label: "Open a pull request",
-    description: "Push and open a pull request. The other actions stay in the Git menu.",
-  },
-  {
     mode: "merge",
     label: "Merge into default branch",
     description: "Fast-forward the default branch in its own checkout, which must be clean.",
@@ -471,7 +466,7 @@ function ServerSettingsDetail(props: { readonly page: SettingsPage }) {
                   />
                 </SettingsSection>
                 <SettingsSection
-                  title="Main Git action"
+                  title="Default branch action"
                   footer={managed("quickMergeAction")}
                   trailing={
                     pendingWrites === 0 && isMixed("quickMergeAction") ? (

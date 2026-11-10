@@ -64,6 +64,7 @@ import {
   resolveLiveThreadBranchUpdate,
   getMenuActionDisabledReason,
   resolveThreadBranchMetadataPatch,
+  resolveDefaultBranchActions,
   resolveQuickAction,
   resolveThreadBranchUpdate,
 } from "./GitActionsControl.logic";
@@ -132,6 +133,8 @@ interface GitActionsControlProps {
   activeThreadRef: ScopedThreadRef | null;
   draftId?: DraftId;
   compact?: boolean;
+  /** "defaultBranch" renders the button for actions on the default branch instead of the Git actions. */
+  scope?: "git" | "defaultBranch";
   showActions?: boolean;
   showChanges?: boolean;
   onOpenChanges?: () => void;
@@ -263,7 +266,11 @@ function GitQuickActionIcon({
     if (quickAction.action === "merge" || quickAction.action === "merge_push") {
       return <PullRequestGlyph.merged className={className} />;
     }
-    if (quickAction.action === "push" || quickAction.action === "commit_push") {
+    if (
+      quickAction.action === "push" ||
+      quickAction.action === "commit_push" ||
+      quickAction.action === "push_default"
+    ) {
       return <CloudUploadIcon className={className} />;
     }
     return <SourceControlIcon className={className} />;
@@ -923,6 +930,7 @@ export default function GitActionsControl({
   activeThreadRef,
   draftId,
   compact = false,
+  scope = "git",
   showActions = true,
   showChanges = true,
   onOpenChanges,
@@ -1083,7 +1091,13 @@ export default function GitActionsControl({
 
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- persists the draft thread branch when the live git status subscription reports a different branch
   useEffect(() => {
-    if (isGitActionRunning || isSelectingWorktreeBase || activeServerThread || isProjectCloning) {
+    if (
+      scope !== "git" ||
+      isGitActionRunning ||
+      isSelectingWorktreeBase ||
+      activeServerThread ||
+      isProjectCloning
+    ) {
       return;
     }
 
@@ -1103,27 +1117,48 @@ export default function GitActionsControl({
     isGitActionRunning,
     isProjectCloning,
     isSelectingWorktreeBase,
+    scope,
   ]);
 
   const isDefaultRef = gitStatusForActions?.isDefaultRef ?? false;
 
-  const gitActionMenuItems = buildMenuItems(
-    gitStatusForActions,
-    isGitActionRunning,
-    hasPrimaryRemote,
-  );
   const quickMergeAction = useQuickMergeAction(
     activeEnvironmentId,
     activeServerThreadShell?.projectId ?? activeDraftThread?.projectId ?? null,
   );
-  const quickAction = resolveQuickAction(
-    gitStatusForActions,
-    isGitActionRunning,
-    isDefaultRef,
-    hasPrimaryRemote,
-    quickMergeAction,
-  );
-  const quickActionLabel = formatQuickActionLabel(quickAction, gitStatusForActions);
+  const defaultBranchActions =
+    scope === "defaultBranch"
+      ? resolveDefaultBranchActions(
+          gitStatusForActions,
+          isGitActionRunning,
+          hasPrimaryRemote,
+          quickMergeAction,
+        )
+      : null;
+  const gitActionMenuItems: GitActionMenuItem[] =
+    defaultBranchActions?.items ??
+    buildMenuItems(gitStatusForActions, isGitActionRunning, hasPrimaryRemote);
+  const defaultBranchHint = defaultBranchActions
+    ? getMenuActionDisabledReason({
+        item: defaultBranchActions.primary,
+        gitStatus: gitStatusForActions,
+        isBusy: isGitActionRunning,
+        hasPrimaryRemote,
+      })
+    : null;
+  const quickAction: GitQuickAction = defaultBranchActions
+    ? {
+        label: defaultBranchActions.primary.label,
+        disabled: defaultBranchActions.primary.disabled,
+        kind: "run_action",
+        action: defaultBranchActions.primary.id,
+        ...(defaultBranchHint ? { hint: defaultBranchHint } : {}),
+      }
+    : resolveQuickAction(gitStatusForActions, isGitActionRunning, isDefaultRef, hasPrimaryRemote);
+  // Default branch labels already carry their counts.
+  const formatActionLabel = (item: Pick<GitQuickAction, "label" | "disabled">) =>
+    defaultBranchActions ? item.label : formatQuickActionLabel(item, gitStatusForActions);
+  const quickActionLabel = formatActionLabel(quickAction);
   const quickActionDisabledReason = !canWriteSourceControl
     ? "This connection cannot change source control."
     : quickAction.disabled
@@ -1420,7 +1455,11 @@ export default function GitActionsControl({
       void runGitActionWithToast({ action: "create_pr" });
       return;
     }
-    if (item.dialogAction === "merge" || item.dialogAction === "merge_push") {
+    if (
+      item.dialogAction === "merge" ||
+      item.dialogAction === "merge_push" ||
+      item.dialogAction === "push_default"
+    ) {
       void runGitActionWithToast({ action: item.dialogAction });
       return;
     }
@@ -1545,35 +1584,41 @@ export default function GitActionsControl({
             }}
           >
             <GitActionItemIcon icon={item.icon} SourceControlIcon={SourceControlIcon} />
-            <MenuItemLabel>{formatQuickActionLabel(item, gitStatusForActions)}</MenuItemLabel>
+            <MenuItemLabel>{formatActionLabel(item)}</MenuItemLabel>
           </MenuItem>
         );
       })}
-      {canPublishRepository ? (
-        <MenuItem
-          disabled={isGitActionRunning}
-          onClick={() => {
-            setIsPublishDialogOpen(true);
-          }}
-        >
-          <CloudUploadIcon />
-          <MenuItemLabel>Publish repository...</MenuItemLabel>
-        </MenuItem>
+      {scope === "git" ? (
+        <>
+          {canPublishRepository ? (
+            <MenuItem
+              disabled={isGitActionRunning}
+              onClick={() => {
+                setIsPublishDialogOpen(true);
+              }}
+            >
+              <CloudUploadIcon />
+              <MenuItemLabel>Publish repository...</MenuItemLabel>
+            </MenuItem>
+          ) : null}
+          {isDetachedHead && (
+            <p className="px-2 py-1.5 text-xs text-warning">
+              Detached HEAD: create and check out a branch to enable push and{" "}
+              {changeRequestTerminology.singular} actions.
+            </p>
+          )}
+          {isCleanAndBehind && (
+            <p className="px-2 py-1.5 text-xs text-warning">Behind upstream. Pull/rebase first.</p>
+          )}
+          {gitStatusError && (
+            <p className="px-2 py-1.5 text-xs text-destructive">{gitStatusError}</p>
+          )}
+        </>
       ) : null}
-      {isDetachedHead && (
-        <p className="px-2 py-1.5 text-xs text-warning">
-          Detached HEAD: create and check out a branch to enable push and{" "}
-          {changeRequestTerminology.singular} actions.
-        </p>
-      )}
-      {isCleanAndBehind && (
-        <p className="px-2 py-1.5 text-xs text-warning">Behind upstream. Pull/rebase first.</p>
-      )}
-      {gitStatusError && <p className="px-2 py-1.5 text-xs text-destructive">{gitStatusError}</p>}
     </>
   );
 
-  if (!gitCwd) return null;
+  if (!gitCwd || (scope === "defaultBranch" && !defaultBranchActions)) return null;
 
   return (
     <>
@@ -1594,7 +1639,7 @@ export default function GitActionsControl({
       ) : quietEmptyDraft || (compact && !gitActionProgress && !visibleInlineSuccess) ? null : (
         <div
           role="group"
-          aria-label="Git actions"
+          aria-label={scope === "git" ? "Git actions" : "Default branch actions"}
           ref={panelAnchorRef}
           onPointerEnter={hasGitMenuContent ? undefined : refreshStatusForEmptyMenu}
           onFocus={hasGitMenuContent ? undefined : refreshStatusForEmptyMenu}
@@ -1700,7 +1745,9 @@ export default function GitActionsControl({
                       <MenuTrigger
                         render={
                           <ThreadDetailsControl
-                            aria-label="Git action options"
+                            aria-label={
+                              scope === "git" ? "Git action options" : "Default branch options"
+                            }
                             data-toolbar-control=""
                             size="sm"
                             variant="ghost"
@@ -1717,7 +1764,9 @@ export default function GitActionsControl({
                       className={THREAD_DETAILS_PANEL_CHEVRON_CLASS}
                     />
                   </TooltipTrigger>
-                  <TooltipPopup side="top">Git action options</TooltipPopup>
+                  <TooltipPopup side="top">
+                    {scope === "git" ? "Git action options" : "Default branch options"}
+                  </TooltipPopup>
                 </Tooltip>
                 <MenuPopup
                   align="end"
@@ -1733,7 +1782,7 @@ export default function GitActionsControl({
         </div>
       )}
 
-      {showChanges && isRepo && !quietEmptyDraft ? (
+      {scope === "git" && showChanges && isRepo && !quietEmptyDraft ? (
         <ThreadDetailsControl
           type="button"
           variant="ghost"
@@ -1957,7 +2006,7 @@ export default function GitActionsControl({
       </Dialog>
 
       {/* Its discovery query should stop when the Git actions row that opens it is hidden. */}
-      {showActions ? (
+      {showActions && scope === "git" ? (
         <PublishRepositoryDialog
           open={isPublishDialogOpen}
           onOpenChange={setIsPublishDialogOpen}

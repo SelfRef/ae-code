@@ -109,6 +109,7 @@ export interface GitRemoteStatusDetails {
   aheadCount: number;
   behindCount: number;
   aheadOfDefaultCount: number;
+  defaultAheadCount: number;
 }
 
 export interface GitPreparedCommitContext {
