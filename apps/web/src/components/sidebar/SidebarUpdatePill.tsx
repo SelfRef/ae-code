@@ -19,6 +19,7 @@ import {
   getArm64IntelBuildWarningDescription,
   getDesktopUpdateActionError,
   getDesktopUpdateButtonTooltip,
+  getDesktopUpdateDisabledReason,
   getDesktopUpdateDownloadedVersion,
   getDesktopUpdateIdleTooltip,
   getDesktopUpdateInstallConfirmationMessage,
@@ -411,6 +412,8 @@ function SidebarUpdateControl() {
       status={iconStatus}
     />
   );
+  const appDisabledReason = getDesktopUpdateDisabledReason(state, updatesDenial);
+  const appUpdateNotes = appDisabledReason ? [appDisabledReason] : [];
   const confirmDialog = (
     <UpdateEverythingDialog
       open={isConfirmingEverything}
@@ -418,6 +421,7 @@ function SidebarUpdateControl() {
       version={everything.version}
       providerCount={everything.providerCount}
       rows={everything.rows}
+      notes={appUpdateNotes}
       restarts={everything.restarts}
       checking={providerCheck === "dialog"}
       onConfirm={() => void runEverything()}

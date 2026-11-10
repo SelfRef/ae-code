@@ -1,16 +1,18 @@
-import type { DesktopUpdateState } from "@t3tools/contracts";
+import { type DesktopUpdateState, EnvironmentId } from "@t3tools/contracts";
 import { describe, expect, it, vi } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
 
 import "~/index.css";
 import { act, render } from "../../../test/render";
 import { SidebarUpdatePill } from "./SidebarUpdatePill";
+import type { UpdateEverythingRow } from "./updateEverything.logic";
 
 const mocks = vi.hoisted(() => {
   const listeners = new Set<() => void>();
   return {
     update: null as DesktopUpdateState | null,
     hasUpdates: false,
+    rows: [] as ReadonlyArray<UpdateEverythingRow>,
     subscribe: (listener: () => void) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -38,8 +40,8 @@ vi.mock("./useUpdateEverything", () => ({
     hasUpdates: mocks.hasUpdates,
     summary: "Update everything",
     version: null,
-    providerCount: 0,
-    rows: [],
+    providerCount: mocks.rows.reduce((count, row) => count + row.providers.length, 0),
+    rows: mocks.rows,
     restarts: [],
   }),
 }));
@@ -69,9 +71,13 @@ const RELEASE_NOTES: DesktopUpdateState["releaseNotes"] = [
   { version: "0.0.50-nightly.2", items: ["Faster sidebar."], totalItems: 1 },
 ];
 
-function setup(update: DesktopUpdateState | null, { hasUpdates = false } = {}) {
+function setup(
+  update: DesktopUpdateState | null,
+  { hasUpdates = false, rows = [] as ReadonlyArray<UpdateEverythingRow> } = {},
+) {
   mocks.update = update;
   mocks.hasUpdates = hasUpdates;
+  mocks.rows = rows;
 }
 
 function publish(update: DesktopUpdateState | null) {
@@ -139,5 +145,54 @@ describe("SidebarUpdatePill update everything", () => {
 
     await userEvent.keyboard("{Escape}");
     await vi.waitFor(() => expect(document.activeElement).toBe(button.element()));
+  });
+});
+
+describe("SidebarUpdatePill update everything dialog", () => {
+  const PACKAGE_MANAGED =
+    "This install is managed by your package manager, so update the app there (pacman or an AUR helper).";
+  const providerRow: UpdateEverythingRow = {
+    environmentId: null,
+    label: "This machine",
+    app: null,
+    skipped: null,
+    providers: ["Claude"],
+  };
+  const appRow: UpdateEverythingRow = { ...providerRow, app: "this-app" };
+  const serverRow: UpdateEverythingRow = {
+    ...providerRow,
+    environmentId: EnvironmentId.make("remote"),
+    label: "Remote",
+    app: "server",
+  };
+
+  async function openDialog() {
+    const screen = await render(<SidebarUpdatePill />);
+    await userEvent.click(screen.getByRole("button", { name: "Update everything" }));
+    await expect.element(page.getByRole("button", { name: "Cancel" })).toBeVisible();
+    return screen;
+  }
+
+  it("says why a package-managed desktop app cannot update and drops the T3 Code column", async () => {
+    setup(
+      { ...nightlyUpdate([]), enabled: false, status: "disabled", message: PACKAGE_MANAGED },
+      { hasUpdates: true, rows: [providerRow] },
+    );
+    await using _screen = await openDialog();
+
+    await expect.element(page.getByText(PACKAGE_MANAGED)).toBeVisible();
+    await expect.element(page.getByText("Providers", { exact: true })).toBeVisible();
+    expect(page.getByText("T3 Code", { exact: true }).elements()).toHaveLength(0);
+  });
+
+  it.each([
+    { name: "an updatable desktop app", update: nightlyUpdate([]), row: appRow },
+    { name: "the web client", update: null, row: serverRow },
+  ])("keeps the T3 Code column and shows no note for $name", async ({ update, row }) => {
+    setup(update, { hasUpdates: true, rows: [row] });
+    await using _screen = await openDialog();
+
+    await expect.element(page.getByText("T3 Code", { exact: true })).toBeVisible();
+    expect(document.body.textContent).not.toContain("package manager");
   });
 });
