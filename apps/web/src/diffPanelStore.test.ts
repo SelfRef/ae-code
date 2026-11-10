@@ -32,10 +32,9 @@ describe("diffPanelStore", () => {
       kind: "tool-call",
       ...target,
     });
-    store.selectGitScope(ref, "branch");
+    store.selectGitScope(ref, "unstaged");
     expect(useDiffPanelStore.getState().byThreadKey[scopedThreadKey(ref)]).toEqual({
-      kind: "branch",
-      baseRef: null,
+      kind: "unstaged",
     });
   });
 

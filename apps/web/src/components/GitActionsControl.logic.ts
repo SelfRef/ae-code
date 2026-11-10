@@ -426,30 +426,14 @@ export function resolveLiveThreadBranchUpdate(input: {
   };
 }
 
-export type ChangesLineTotals = {
-  readonly insertions: number;
-  readonly deletions: number;
-  /** Ref the counts compare against; `null` means they are uncommitted changes against HEAD. */
-  readonly baseRef: string | null;
-};
-
-// `branchChanges ?? workingTree` treats `{0,0}` as present, so a zero branch total hid a dirty
-// working tree and the Changes row read +0 while Diff still showed the work.
-export function resolveChangesTotals(
-  status: VcsStatusResult | null | undefined,
-): ChangesLineTotals | null {
-  if (!status) return null;
-  const branch = status.branchChanges;
-  const tree = { ...status.workingTree, baseRef: null };
-  const selected =
-    branch && (branch.insertions > 0 || branch.deletions > 0)
-      ? branch
-      : tree.insertions > 0 || tree.deletions > 0
-        ? tree
-        : (branch ?? tree);
-  return {
-    insertions: selected.insertions,
-    deletions: selected.deletions,
-    baseRef: selected.baseRef,
-  };
+/** Names how many commits a Push action sends; other labels pass through. */
+export function formatQuickActionLabel(
+  quickAction: Pick<GitQuickAction, "label" | "disabled">,
+  gitStatus: Pick<VcsStatusResult, "aheadCount"> | null,
+): string {
+  const count = gitStatus?.aheadCount ?? 0;
+  if (quickAction.disabled || !quickAction.label.startsWith("Push") || count <= 0) {
+    return quickAction.label;
+  }
+  return quickAction.label.replace("Push", `Push ${count} ${count === 1 ? "commit" : "commits"}`);
 }
