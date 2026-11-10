@@ -6,6 +6,7 @@ import {
   buildMenuItems,
   getGitActionDisabledReason,
   requiresDefaultBranchConfirmation,
+  resolveDefaultBranchActions,
 } from "@t3tools/client-runtime/state/vcs";
 import { EnvironmentId, ThreadId } from "@t3tools/contracts";
 import { sourceControlClients } from "@t3tools/client-runtime/source-control-clients";
@@ -124,6 +125,21 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
           }),
   }));
 
+  const defaultBranchRows = (
+    resolveDefaultBranchActions(gitStatus.data, busy, hasPrimaryRemote, "merge")?.items ?? []
+  ).map((item) => ({
+    item,
+    disabled: item.disabled || !canWriteSourceControl,
+    disabledReason: !canWriteSourceControl
+      ? "This connection cannot change source control."
+      : getGitActionDisabledReason({
+          item,
+          gitStatus: gitStatus.data,
+          isBusy: busy,
+          hasOriginRemote: hasPrimaryRemote,
+        }),
+  }));
+
   const { shortLabel, singular } = sourceControlClients.get(
     gitStatus.data?.sourceControlProvider?.kind,
   ).changeRequest;
@@ -204,9 +220,6 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
       await gitActions.onForcePushSelectedThreadBranch();
       return;
     }
-    if (item.dialogAction === "merge" || item.dialogAction === "merge_push") {
-      await runActionWithPrompt({ action: item.dialogAction });
-    }
   };
 
   const rowStatusDetail = (item: (typeof menuItems)[number]): string | undefined => {
@@ -221,10 +234,6 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
     if (item.dialogAction === "push" && (status.aheadCount ?? 0) > 0) {
       const ahead = status.aheadCount ?? 0;
       return `${ahead} commit${ahead === 1 ? "" : "s"} ahead`;
-    }
-    if (item.dialogAction === "merge" || item.dialogAction === "merge_push") {
-      const commits = status.aheadOfDefaultCount ?? status.aheadCount ?? 0;
-      if (commits > 0) return `${commits} commit${commits === 1 ? "" : "s"} to merge`;
     }
     if (item.kind === "open_pr" && status.pr?.number != null) {
       return `${shortLabel} #${status.pr.number} ${status.pr.state ?? "open"}`;
@@ -326,6 +335,21 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
           />
         ) : null}
       </ListSection>
+
+      {defaultBranchRows.length > 0 ? (
+        <ListSection title="Default branch">
+          {defaultBranchRows.map(({ item, disabled, disabledReason }) => (
+            <ListRow
+              key={item.id}
+              icon={menuItemIconName(item.icon)}
+              label={item.label}
+              description={disabledReason ?? undefined}
+              disabled={disabled}
+              onPress={() => void runActionWithPrompt({ action: item.id })}
+            />
+          ))}
+        </ListSection>
+      ) : null}
 
       {linkedPrLines.length > 0 ? (
         <ListSection title={`Linked ${linkedPrActions.terminology.plural}`}>

@@ -14,10 +14,11 @@ export type GitDialogAction =
   | "force_push"
   | "create_pr"
   | "merge"
-  | "merge_push";
+  | "merge_push"
+  | "push_default";
 
 export interface GitActionMenuItem {
-  id: "commit" | "push" | "force_push" | "pr" | "merge" | "merge_push";
+  id: "commit" | "push" | "force_push" | "pr" | "merge" | "merge_push" | "push_default";
   label: string;
   disabled: boolean;
   icon: GitActionIconName;
@@ -71,8 +72,6 @@ export function buildMenuItems(
   const hasDefaultBranchDelta = (gitStatus.aheadOfDefaultCount ?? gitStatus.aheadCount) > 0;
   const canPushWithoutUpstream = hasOriginRemote && !gitStatus.hasUpstream;
   const canCommit = !isBusy && hasChanges;
-  const canMerge =
-    !isBusy && hasBranch && !gitStatus.isDefaultRef && (hasChanges || hasDefaultBranchDelta);
   const canPush =
     !isBusy &&
     hasBranch &&
@@ -87,33 +86,6 @@ export function buildMenuItems(
     !isBehind &&
     (gitStatus.hasUpstream || canPushWithoutUpstream);
   const canOpenPr = !isBusy && hasOpenPr;
-
-  // Merging into the default branch is for a feature branch, whether or not there is a remote.
-  const mergeItems: GitActionMenuItem[] =
-    hasBranch && !gitStatus.isDefaultRef
-      ? [
-          {
-            id: "merge",
-            label: hasChanges ? "Commit & merge" : "Merge",
-            disabled: !canMerge,
-            icon: "merge",
-            kind: "open_dialog",
-            dialogAction: "merge",
-          },
-          ...(hasOriginRemote
-            ? [
-                {
-                  id: "merge_push" as const,
-                  label: hasChanges ? "Commit, merge & push" : "Merge & push",
-                  disabled: !canMerge,
-                  icon: "merge" as const,
-                  kind: "open_dialog" as const,
-                  dialogAction: "merge_push" as const,
-                },
-              ]
-            : []),
-        ]
-      : [];
 
   // A rewritten history can't be pushed or pulled; replacing the remote branch is the way out.
   const forcePushItems: GitActionMenuItem[] =
@@ -148,7 +120,6 @@ export function buildMenuItems(
       dialogAction: "push",
     },
     ...forcePushItems,
-    ...mergeItems,
     hasOpenPr
       ? {
           id: "pr",
@@ -173,7 +144,6 @@ export function resolveQuickAction(
   isBusy: boolean,
   isDefaultBranch = false,
   hasOriginRemote = true,
-  quickMergeAction: QuickMergeAction = "pull_request",
 ): GitQuickAction {
   if (isBusy) {
     return { label: "Commit", disabled: true, kind: "show_hint", hint: "Git action in progress." };
@@ -203,25 +173,6 @@ export function resolveQuickAction(
       disabled: true,
       kind: "show_hint",
       hint: `Create and checkout a branch before pushing or opening ${terminology.shortLabelWithArticle}.`,
-    };
-  }
-
-  // A project that merges directly makes that its main action, in place of the pull request one.
-  if (quickMergeAction !== "pull_request" && !isDefaultBranch) {
-    const push = quickMergeAction === "merge_push" && hasOriginRemote;
-    if (!hasChanges && !hasDefaultBranchDelta) {
-      return {
-        label: `Merge${push ? " & push" : ""}`,
-        disabled: true,
-        kind: "show_hint",
-        hint: "No commits to merge into the default branch.",
-      };
-    }
-    return {
-      label: `${hasChanges ? "Commit & merge" : "Merge"}${push ? " & push" : ""}`,
-      disabled: false,
-      kind: "run_action",
-      action: push ? "merge_push" : "merge",
     };
   }
 
@@ -364,6 +315,8 @@ export function getGitActionDisabledReason(input: {
     return "No commits or changes to merge into the default branch.";
   }
 
+  if (item.id === "push_default") return "No commits on the default branch to push.";
+
   if (item.id === "push") {
     if (!hasBranch) {
       return "Detached HEAD: checkout a branch before pushing.";
@@ -453,10 +406,10 @@ export function resolveDefaultBranchActionDialogCopy(input: {
   };
 }
 
-/** Names how many files a Commit action stages, or how many commits a Merge or Push action takes; other labels pass through. */
+/** Names how many files a Commit action stages, or how many commits a Push action sends; other labels pass through. */
 export function formatQuickActionLabel(
   quickAction: Pick<GitQuickAction, "label" | "disabled">,
-  gitStatus: Pick<VcsStatusResult, "aheadCount" | "aheadOfDefaultCount" | "workingTree"> | null,
+  gitStatus: Pick<VcsStatusResult, "aheadCount" | "workingTree"> | null,
 ): string {
   if (quickAction.disabled || !gitStatus) return quickAction.label;
   const plural = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
@@ -465,12 +418,69 @@ export function formatQuickActionLabel(
   if (quickAction.label.startsWith("Commit") && files > 0) {
     return quickAction.label.replace("Commit", `Commit ${plural(files, "file")}`);
   }
-  const mergeCommits = gitStatus.aheadOfDefaultCount ?? commits;
-  if (quickAction.label.startsWith("Merge") && mergeCommits > 0) {
-    return quickAction.label.replace("Merge", `Merge ${plural(mergeCommits, "commit")}`);
-  }
   if (quickAction.label.startsWith("Push") && commits > 0) {
     return quickAction.label.replace("Push", `Push ${plural(commits, "commit")}`);
   }
   return quickAction.label;
+}
+
+export type DefaultBranchActionItem = GitActionMenuItem & {
+  id: "merge" | "merge_push" | "push_default";
+};
+
+export interface DefaultBranchActions {
+  /** What the button does on a click: the merge, or the push when there is nothing to merge. */
+  readonly primary: DefaultBranchActionItem;
+  readonly items: DefaultBranchActionItem[];
+}
+
+/** Actions on the default branch from another branch; null on the default branch itself. */
+export function resolveDefaultBranchActions(
+  gitStatus: VcsStatusResult | null,
+  isBusy: boolean,
+  hasOriginRemote: boolean,
+  quickMergeAction: QuickMergeAction,
+): DefaultBranchActions | null {
+  if (!gitStatus?.isRepo || gitStatus.refName === null || gitStatus.isDefaultRef) return null;
+
+  const plural = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
+  const hasChanges = gitStatus.hasWorkingTreeChanges;
+  const files = gitStatus.workingTree.files.length;
+  const mergeCommits = gitStatus.aheadOfDefaultCount ?? gitStatus.aheadCount;
+  const pushCommits = gitStatus.defaultAheadCount ?? 0;
+  const mergeDisabled = isBusy || (!hasChanges && mergeCommits <= 0);
+  const pushDisabled = isBusy || pushCommits <= 0;
+  const mergeLabel = (andPush: boolean) =>
+    hasChanges
+      ? `${files > 0 ? `Commit ${plural(files, "file")}` : "Commit"}${andPush ? ", merge & push" : " & merge"}`
+      : `Merge${mergeCommits > 0 ? ` ${plural(mergeCommits, "commit")}` : ""}${andPush ? " & push" : ""}`;
+  const item = (
+    id: DefaultBranchActionItem["id"],
+    label: string,
+    disabled: boolean,
+  ): DefaultBranchActionItem => ({
+    id,
+    label,
+    disabled,
+    icon: id === "push_default" ? "push" : "merge",
+    kind: "open_dialog",
+    dialogAction: id,
+  });
+
+  const merge = item("merge", mergeLabel(false), mergeDisabled);
+  const mergePush = item("merge_push", mergeLabel(true), mergeDisabled);
+  const push = item(
+    "push_default",
+    pushCommits > 0 ? `Push ${plural(pushCommits, "commit")}` : "Push",
+    pushDisabled,
+  );
+  return {
+    primary:
+      mergeDisabled && !pushDisabled
+        ? push
+        : quickMergeAction === "merge_push" && hasOriginRemote
+          ? mergePush
+          : merge,
+    items: hasOriginRemote ? [merge, mergePush, push] : [merge],
+  };
 }

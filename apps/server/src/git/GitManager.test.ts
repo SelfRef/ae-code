@@ -579,7 +579,8 @@ function runStackedAction(
       | "commit_push"
       | "commit_push_pr"
       | "merge"
-      | "merge_push";
+      | "merge_push"
+      | "push_default";
     actionId?: string;
     commitMessage?: string;
     featureBranch?: boolean;
@@ -6213,6 +6214,26 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
         expect(result.push.status).toBe("skipped_not_requested");
         expect(yield* subjects(repoDir, "main")).toEqual(["Thread work", "Initial commit"]);
         expect(yield* subjects(remoteDir, "main", true)).toEqual(["Initial commit"]);
+      }),
+    );
+
+    it.effect("pushes the default branch as it is, leaving the thread's branch alone", () =>
+      Effect.gen(function* () {
+        const { remoteDir, worktreeDir, subjects } = yield* setupMerge;
+        const { manager } = yield* makeManager();
+        yield* runStackedAction(manager, { cwd: worktreeDir, action: "merge" });
+        expect((yield* manager.status({ cwd: worktreeDir })).defaultAheadCount).toBe(1);
+
+        yield* runGit(worktreeDir, ["commit", "--allow-empty", "-m", "More thread work"]);
+        const result = yield* runStackedAction(manager, {
+          cwd: worktreeDir,
+          action: "push_default",
+        });
+
+        expect(result.push).toMatchObject({ status: "pushed", branch: "main" });
+        expect(result.merge).toBeUndefined();
+        expect(yield* subjects(remoteDir, "main", true)).toEqual(["Thread work", "Initial commit"]);
+        expect((yield* manager.status({ cwd: worktreeDir })).defaultAheadCount).toBe(0);
       }),
     );
 

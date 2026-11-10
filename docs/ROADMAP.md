@@ -19,7 +19,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 | [35] | Android catch-up: tinted Input, Done and draft threads; merge, force push and worktree switching in Git                                                                | done    |
 | [34] | A "Thread actions" section in the thread details card: Settle thread, and the thread's context menu under an arrow                                                     | done    |
 | [33] | Saved environments follow you: a browser signed in to a server shows the environments saved on any other browser signed in to it (kept on that server)                 | done    |
-| [32] | Merge a thread's branch into the default branch (with or without pushing) from the Git actions menu, optionally as a project's main action                             | done    |
+| [32] | Merge a thread's branch into the default branch (with or without pushing) and push the default branch, from a "Default branch" section of the thread details card      | done    |
 | [31] | Move a started thread into a new worktree from the workspace control or the thread menu (the control used to lock after the first message)                             | done    |
 | [30] | Synced drafts: unsent text, attachments, contexts and new-thread settings follow you across web, desktop and Android (on the server)                                   | planned |
 | [29] | Appearance defaults: Dev artwork, 100 ms panel animations, composer context on, a version in the sidebar header; Nightly artwork removed                               | done    |
@@ -1209,9 +1209,19 @@ and `merge_push` (both commit pending changes first), plus a project-scoped sett
   before. `mergeByAgentModelSelection` (off by default: the thread's own model) picks a coding agent for the turn. Nothing
   is retried automatically.
 - Not cleaned up here: the existing worktree cleanup removes merged branches' worktrees.
-- Web only; mobile's Git sheet does not list the merge actions. Older servers do not know the actions, and the
-  result's `merge` field is optional for the same reason.
-- No data migration: a new setting with a default.
+- Its own button: the actions live in a **Default branch** section of the thread details card (off by default, shown with
+  the card's show/hide list, only on a branch other than the default one), not in the Git actions menu. The button
+  merges (`merge_push` when the project's `quickMergeAction` says so); under its arrow are Merge & push and
+  **Push n commits**. With nothing to merge, a push of the default branch is the button. `pull_request` for
+  `quickMergeAction` no longer means anything and reads as `merge`.
+- `push_default` is a third stacked action: it pushes the default branch as it is (`mergeIntoDefault` with `pushOnly`),
+  without rebasing or fast-forwarding. The count comes from `defaultAheadCount` in the remote part of the status: commits
+  the local default branch has that its upstream (else `origin/<default>`) does not. Absent from older servers, which also
+  do not know the action.
+- Android has no card to show or hide: the Git menu gets a Default branch entry with the same primary action, and the Git
+  sheet a **Default branch** list (Merge, Merge & push, Push n commits). Its project setting lost the pull request choice too.
+  Older servers do not know the actions, and the result's `merge` field is optional for the same reason.
+- No data migration: a new setting with a default, and a new key in the sparse `threadDetailsItems` setting.
 
 ## Saved environments shared through the server (change 33)
 
