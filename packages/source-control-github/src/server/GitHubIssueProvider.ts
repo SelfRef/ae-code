@@ -1,6 +1,7 @@
 import type {
   IssueComment,
   IssueDetail,
+  IssueListSort,
   IssueState,
   IssueStateReason,
   IssueSummary,
@@ -219,6 +220,13 @@ function repositoryPath(operation: string, repository: string) {
     : Effect.fail(failure(operation, "failed", `"${repository}" is not an owner/name repository.`));
 }
 
+const SEARCH_ORDER = {
+  updated: { sort: "updated", order: "desc" },
+  newest: { sort: "created", order: "desc" },
+  oldest: { sort: "created", order: "asc" },
+  comments: { sort: "comments", order: "desc" },
+} as const satisfies Record<IssueListSort, { sort: string; order: "asc" | "desc" }>;
+
 export const make = Effect.gen(function* () {
   const api = yield* GitHubRest.GitHubRest;
 
@@ -250,10 +258,11 @@ export const make = Effect.gen(function* () {
       yield* repositoryPath("listIssues", input.repository);
       const stateQualifier = input.state === "all" ? "" : ` is:${input.state}`;
       const query = `repo:${input.repository} is:issue${stateQualifier}${input.query === undefined ? "" : ` ${input.query.trim()}`}`;
+      const { sort, order } = SEARCH_ORDER[input.sort ?? "updated"];
       const answer = yield* read({
         host: input.host,
         operation: "listIssues",
-        path: `search/issues?q=${encodeURIComponent(query)}&sort=updated&order=desc&per_page=${input.pageSize}&page=${input.page}`,
+        path: `search/issues?q=${encodeURIComponent(query)}&sort=${sort}&order=${order}&per_page=${input.pageSize}&page=${input.page}`,
         decode: decodeSearch,
       });
       return {
