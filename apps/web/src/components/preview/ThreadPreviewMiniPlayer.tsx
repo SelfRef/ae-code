@@ -8,7 +8,6 @@ import {
   useEffect,
   useEffectEvent,
   useRef,
-  useState,
 } from "react";
 import { create } from "zustand";
 import { useAtomValue } from "@effect/atom-react";
@@ -453,27 +452,15 @@ function MiniPlayerShell({
   const canvas = useChatCanvas();
   const gestureRef = useRef<PreviewMiniPlayerGesture | null>(null);
   const captureRef = useRef<HTMLElement | null>(null);
-  // Touch toggles the pill after the tap's click so that click cannot land on the newly opened pill.
-  const [pillOpen, setPillOpen] = useState(false);
-  const handleTappedRef = useRef(false);
-  const handleRef = useRef<HTMLDivElement | null>(null);
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- document pointerdown listener closes the open pill on an outside press
-  useEffect(() => {
-    if (!pillOpen) return;
-    const dismiss = (event: PointerEvent) => {
-      if (event.target instanceof Node && handleRef.current?.contains(event.target)) return;
-      setPillOpen(false);
-    };
-    document.addEventListener("pointerdown", dismiss, true);
-    return () => document.removeEventListener("pointerdown", dismiss, true);
-  }, [pillOpen]);
   const container = canvas?.container ?? null;
   const sourceKey = previewMiniPlayerSourceKey(miniPlayer.source);
   const heldSourceKey = streamedSourceKey(threadRef, sourceKey);
   const frame = canvas?.previewKey === sourceKey ? canvas.layout.frame : null;
 
   const radius = frame ? cornerRadius(frame) : PREVIEW_MINI_PLAYER_CORNER_RADIUS;
-  const pillInset = Math.max(8, Math.round(radius * 0.55));
+  // The bar sits in the corner, so its outer corner follows the frame and its content clears the curve.
+  const barCornerRadius = Math.min(radius, 32);
+  const barEndPadding = Math.max(4, Math.round(radius * 0.35));
 
   const close = () => {
     usePreviewMiniPlayerStore.getState().close(threadRef);
@@ -484,7 +471,6 @@ function MiniPlayerShell({
     const gesture = gestureRef.current;
     if (!gesture) return null;
     gestureRef.current = null;
-    handleTappedRef.current = false;
     const handle = captureRef.current;
     captureRef.current = null;
     if (handle?.hasPointerCapture(gesture.pointerId)) {
@@ -566,12 +552,7 @@ function MiniPlayerShell({
 
   const endGesture = (event: ReactPointerEvent<HTMLElement>) => {
     if (gestureRef.current?.pointerId !== event.pointerId) return;
-    const gesture = finishGesture();
-    handleTappedRef.current =
-      event.type === "pointerup" &&
-      gesture?.direction === null &&
-      gesture.pointerType === "touch" &&
-      !gesture.moved;
+    finishGesture();
   };
 
   // Capture can go without a release or cancel: the handle is replaced, or the platform takes it.
@@ -590,7 +571,7 @@ function MiniPlayerShell({
         <section
           aria-label={label}
           data-preview-mini-player={sourceKey}
-          className="pointer-events-none absolute select-none"
+          className="group pointer-events-none absolute select-none"
           style={{
             left: frame.x,
             top: frame.y,
@@ -599,77 +580,59 @@ function MiniPlayerShell({
             borderRadius: radius,
           }}
         >
+          {/* A native webview takes the cursor from the DOM, so over one the bar shows only while the cursor is on it. */}
           <div
-            ref={handleRef}
-            data-pill-open={pillOpen ? "" : undefined}
-            className="group pointer-events-auto absolute z-[49] size-3 touch-none cursor-grab active:cursor-grabbing pointer-coarse:-m-2.5 pointer-coarse:size-8"
-            style={{ right: pillInset, top: pillInset }}
+            data-recording={recording ? "" : undefined}
+            className="pointer-events-auto absolute right-0 top-0 z-[49] flex h-8 touch-none cursor-grab items-center gap-0.5 rounded-bl-lg bg-popover/92 pl-1 opacity-0 shadow-lg/20 backdrop-blur-xl transition-opacity hover:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 data-recording:opacity-100 pointer-coarse:opacity-100 active:cursor-grabbing"
+            style={{ borderTopRightRadius: barCornerRadius, paddingRight: barEndPadding }}
             onPointerDown={(event) => beginGesture(event, null)}
             onPointerMove={handlePointerMove}
             onPointerUp={endGesture}
             onPointerCancel={endGesture}
             onLostPointerCapture={handleLostCapture}
-            onClick={() => {
-              if (!handleTappedRef.current) return;
-              handleTappedRef.current = false;
-              setPillOpen((open) => !open);
-            }}
           >
-            <div
-              role={recording ? "status" : undefined}
-              aria-label={recording ? "Recording preview" : undefined}
-              aria-hidden={!recording}
-              className="absolute right-0 top-0 size-2 transition-opacity group-hover:opacity-0 group-focus-within:opacity-0 group-data-pill-open:opacity-0 pointer-coarse:right-2.5 pointer-coarse:top-2.5"
-            >
+            {recording ? (
               <span
-                className={cn(
-                  "block size-2 rounded-full shadow-sm ring-1 ring-background/70",
-                  recording
-                    ? "bg-destructive motion-safe:animate-status-pulse"
-                    : "bg-foreground/25",
-                )}
-              />
-            </div>
-            <div className="pointer-events-none absolute right-0 top-0 flex h-8 cursor-grab items-center gap-0.5 rounded-lg border border-border/80 bg-popover/92 p-0.5 opacity-0 shadow-lg/20 backdrop-blur-xl transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-data-pill-open:pointer-events-auto group-data-pill-open:opacity-100 active:cursor-grabbing pointer-coarse:right-2.5 pointer-coarse:top-2.5">
-              {recording ? (
-                <span aria-hidden className="flex size-6 shrink-0 items-center justify-center">
-                  <span className="size-2 rounded-full bg-destructive motion-safe:animate-status-pulse" />
-                </span>
-              ) : null}
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      aria-label="Open preview in right panel"
-                      onPointerDown={(event) => event.stopPropagation()}
-                      onClick={onOpenInPanel}
-                    />
-                  }
-                >
-                  <PanelRightIcon />
-                </TooltipTrigger>
-                <TooltipPopup side="top">Open in right panel</TooltipPopup>
-              </Tooltip>
-              {pillActions}
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      aria-label="Close floating preview"
-                      onPointerDown={(event) => event.stopPropagation()}
-                      onClick={close}
-                    />
-                  }
-                >
-                  <XIcon />
-                </TooltipTrigger>
-                <TooltipPopup side="top">Close floating preview</TooltipPopup>
-              </Tooltip>
-            </div>
+                role="status"
+                aria-label="Recording preview"
+                className="flex size-6 shrink-0 items-center justify-center"
+              >
+                <span className="size-2 rounded-full bg-destructive motion-safe:animate-status-pulse" />
+              </span>
+            ) : null}
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label="Open preview in right panel"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={onOpenInPanel}
+                  />
+                }
+              >
+                <PanelRightIcon />
+              </TooltipTrigger>
+              <TooltipPopup side="top">Open in right panel</TooltipPopup>
+            </Tooltip>
+            {pillActions}
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label="Close floating preview"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={close}
+                  />
+                }
+              >
+                <XIcon />
+              </TooltipTrigger>
+              <TooltipPopup side="top">Close floating preview</TooltipPopup>
+            </Tooltip>
           </div>
 
           <div className="absolute inset-0 z-[47] rounded-[inherit] bg-muted shadow-2xl/35" />
