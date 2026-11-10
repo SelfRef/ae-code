@@ -10,7 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| [38] | Branches: every branch and worktree of a project with what to push, pull and merge, on the web (`/branches`)                                                           | done    |
+| [38] | Branches: every branch and worktree of a project with what to push, pull and merge, on the web (`/branches`) and in the Android app                                    | done    |
 | [37] | Forgejo and Gitea use the `gt` CLI (Gitea 28+) instead of `tea`; `fj` stays preferred                                                                                  | done    |
 | [36] | GitHub Releases: read-only list and detail per project on the web (`/releases`, right panel) and in the Android app                                                    | done    |
 | [35] | Android catch-up: tinted Input, Done and draft threads; merge, force push and worktree switching in Git                                                                | done    |
@@ -1258,6 +1258,8 @@ branch and from its own upstream. Read-only; nothing here switches, pulls, pushe
   remote-only branches have no thread.
 - **Web**: page `/branches` (project picker when several projects, All / Not merged filter), a sidebar button before
   Issues and a command-palette action. Shown for every project that is not archived or a scratch one.
+- **Android**: a Branches tab before Issues (a page like Issues and Releases; the row's "Open thread" opens it). The tab bar
+  holds four tabs, so with Pulls hidden Usage moves under the overflow entry.
 - No data migration.
 
 ## GitHub Releases (change 36)

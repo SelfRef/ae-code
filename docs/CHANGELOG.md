@@ -42,7 +42,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
   context menu. It can be hidden like the card's other rows.
 - When a merge fails, for example on a rebase conflict, its error offers "Merge by agent": the thread's agent
   rebases, resolves the conflicts and finishes the merge.
-- Branches: a page (sidebar, command palette) lists a project's branches and worktrees
+- Branches: a page (sidebar, command palette) and an Android tab list a project's branches and worktrees
   with what each has to push, pull and merge, highlight the ones with commits the default branch lacks and
   link to the thread working on them.
 - Issues open in the right panel.

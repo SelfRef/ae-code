@@ -24,7 +24,7 @@ describe("navigation tab order", () => {
   it("fills missing sections and drops removed placeholders, duplicates, and Settings", () => {
     expect(
       resolveNavigationTabOrder(["usage", "home", "issues", "settings", "usage", null]),
-    ).toEqual(["usage", "issues", "threads", "releases", "pullRequests"]);
+    ).toEqual(["usage", "issues", "threads", "branches", "releases", "pullRequests"]);
     expect(resolveNavigationTabOrder()).toEqual(NAVIGATION_TAB_ORDER);
   });
 
@@ -40,12 +40,13 @@ describe("navigation tab order", () => {
     }
   });
 
-  it("shows every real section without overflow and keeps Settings selected during editing", () => {
-    expect(visibleNavigationTabs()).toEqual(["threads", "issues", "releases", "usage"]);
-    expect(overflowNavigationTabs()).toEqual([]);
-    expect(overflowNavigationTabs(undefined, [])).toEqual(["usage"]);
+  it("shows four sections, overflows the rest and keeps Settings selected during editing", () => {
+    expect(visibleNavigationTabs()).toEqual(["threads", "branches", "issues", "releases"]);
+    expect(overflowNavigationTabs()).toEqual(["usage"]);
+    expect(overflowNavigationTabs(undefined, [])).toEqual(["pullRequests", "usage"]);
     expect(selectedNavigationTab(undefined, "threads", true)).toBe("settings");
-    expect(selectedNavigationTab(undefined, "usage", false)).toBe("usage");
+    expect(selectedNavigationTab(undefined, "usage", false)).toBe("settings");
+    expect(selectedNavigationTab(undefined, "usage", false, undefined, 5)).toBe("usage");
     expect(selectedNavigationTab(undefined, "usage", false, [], 2)).toBe("settings");
   });
 
@@ -54,17 +55,18 @@ describe("navigation tab order", () => {
     const hidden = toggleNavigationTabVisibility([], "usage");
     expect(enabledNavigationTabs(order, hidden)).toEqual([
       "threads",
+      "branches",
       "issues",
       "releases",
       "pullRequests",
     ]);
     expect(toggleNavigationTabVisibility(hidden, "usage")).toEqual([]);
-    expect(visibleNavigationTabs(order, [], 5)).toEqual(order);
+    expect(visibleNavigationTabs(order, [], 6)).toEqual(order);
     expect(enabledNavigationTabs(undefined, ["home", "settings"])).toEqual(NAVIGATION_TAB_ORDER);
   });
 
   it("hides Pulls until the user chooses tabs, then follows the saved choice", () => {
-    expect(enabledNavigationTabs()).toEqual(["threads", "issues", "releases", "usage"]);
+    expect(enabledNavigationTabs()).toEqual(["threads", "branches", "issues", "releases", "usage"]);
     expect(resolveHiddenNavigationTabs()).toEqual(DEFAULT_HIDDEN_NAVIGATION_TABS);
     expect(toggleNavigationTabVisibility(undefined, "pullRequests")).toEqual([]);
     expect(toggleNavigationTabVisibility(undefined, "usage")).toEqual(["pullRequests", "usage"]);
@@ -72,7 +74,7 @@ describe("navigation tab order", () => {
   });
 
   it("falls back when the selected section is hidden, including when all are hidden", () => {
-    expect(resolveSelectedNavigationTab(undefined, ["threads"], "threads")).toBe("issues");
+    expect(resolveSelectedNavigationTab(undefined, ["threads"], "threads")).toBe("branches");
     expect(resolveSelectedNavigationTab(undefined, ["threads"], "usage")).toBe("usage");
     expect(
       resolveSelectedNavigationTab(undefined, NAVIGATION_TAB_ORDER, "threads"),
