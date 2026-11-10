@@ -42,6 +42,8 @@ import * as Schema from "effect/Schema";
 import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 import { projectFaviconCache } from "../assets/projectFaviconCache";
+import { primaryCatalogRemote } from "./primaryCatalogRemote";
+import { type CatalogConflictError, withSharedCatalog } from "./serverCatalogBackend";
 
 const DATABASE_NAME = "t3code:connection-runtime";
 const DATABASE_VERSION = 5;
@@ -62,6 +64,7 @@ const QUERY_MAX_AGE_MS = 30 * 24 * 60 * 60_000;
 const QUERY_PRUNE_BATCH_ROWS = 32;
 const QUERY_PRUNE_BATCH_BYTES = 1024 * 1024;
 const CATALOG_KEY = "document";
+const CATALOG_CONFLICT_ATTEMPTS = 3;
 const StoredShellSnapshot = StoredOrchestrationShellSnapshot;
 const StoredShellSnapshotJson = Schema.fromJsonString(StoredShellSnapshot);
 const StoredThreadSnapshot = StoredOrchestrationThreadSnapshot;
@@ -480,7 +483,9 @@ const encodeCatalog = Effect.fn("web.connectionStorage.encodeCatalog")(function*
 
 export interface CatalogBackend {
   readonly read: Effect.Effect<string | null, ConnectionTransientError>;
-  readonly write: (raw: string) => Effect.Effect<void, ConnectionTransientError>;
+  readonly write: (
+    raw: string,
+  ) => Effect.Effect<void, ConnectionTransientError | CatalogConflictError>;
   readonly quarantine?: (raw: string) => Effect.Effect<void, ConnectionTransientError>;
 }
 
@@ -579,9 +584,24 @@ export const makeCatalogStore = Effect.fn("web.connectionStorage.makeCatalogStor
     function* (transform) {
       yield* lock.withPermits(1)(
         Effect.gen(function* () {
-          const next = transform(yield* loadUnlocked());
-          yield* backend.write(yield* encodeCatalog(next));
-          yield* Ref.set(state, Option.some(next));
+          // A conflict means a shared copy moved on: reload it and make the change on top.
+          for (let attempt = 1; ; attempt++) {
+            const next = transform(yield* loadUnlocked());
+            const saved = yield* backend.write(yield* encodeCatalog(next)).pipe(
+              Effect.as(true),
+              Effect.catchTags({
+                CatalogConflictError: (conflict) =>
+                  attempt < CATALOG_CONFLICT_ATTEMPTS
+                    ? Effect.succeed(false)
+                    : Effect.fail(catalogError("save", conflict)),
+              }),
+            );
+            if (saved) {
+              yield* Ref.set(state, Option.some(next));
+              return;
+            }
+            yield* Ref.set(state, Option.none());
+          }
         }),
       );
     },
@@ -717,7 +737,13 @@ export const layer = Layer.effectContext(
       makeDatabaseHandle(),
       (owned) => owned.close,
     );
-    const catalog = yield* makeCatalogStore(makeCatalogBackend(database));
+    const catalogBackend = makeCatalogBackend(database);
+    // Desktop keeps its own catalog; a browser shares it through the server it was served from.
+    const catalog = yield* makeCatalogStore(
+      window.desktopBridge === undefined
+        ? yield* withSharedCatalog(catalogBackend, primaryCatalogRemote)
+        : catalogBackend,
+    );
     const pullRequestRoutingPermissions = makeBrowserPullRequestRoutingPermissions();
     // Remembers each thread row's encoding, so a save only encodes rows that changed.
     const encodeStoredShellSnapshot = makeStoredShellSnapshotEncoder({

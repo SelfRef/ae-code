@@ -51,6 +51,8 @@ import * as SpeechModelStore from "./speech/SpeechModelStore.ts";
 import * as SpeechService from "./speech/SpeechService.ts";
 import * as CloudSpeech from "./speech/CloudSpeech.ts";
 import { speechHttpApiLayer } from "./speech/http.ts";
+import * as ConnectionCatalog from "./connectionCatalog/ConnectionCatalog.ts";
+import * as ConnectionCatalogHttp from "./connectionCatalog/http.ts";
 import { speechStreamRouteLayer } from "./speech/stream.ts";
 import * as IssueProviderRegistry from "./issue/IssueProviderRegistry.ts";
 import * as IssueService from "./issue/IssueService.ts";
@@ -841,6 +843,7 @@ const layerMakeRoutes = Layer.mergeAll(
       Layer.provide(PullRequestHttp.layer),
       Layer.provide(ProjectHttp.layer),
       Layer.provide(speechHttpApiLayer),
+      Layer.provide(ConnectionCatalogHttp.layer),
       Layer.provide(ServerHttp.layerServerEnvironmentHttpApi),
       Layer.provide(WebhookRoute.layer.pipe(Layer.provide(RelayDeliveryProof.layer))),
       Layer.provide(AuthHttp.layerAuthenticatedAuth),
@@ -895,6 +898,7 @@ const layerMakeRoutes = Layer.mergeAll(
     ),
   ),
   Layer.provide(CloudSpeech.layer.pipe(Layer.provide(SecretResolver.layer))),
+  Layer.provide(ConnectionCatalog.layer),
   Layer.provide(layerServerSettings),
   Layer.provide(PreviewAutomationBroker.layer),
   Layer.provide(ServerSelfUpdate.layer.pipe(Layer.provide(layerDesktopAppUpdate))),
