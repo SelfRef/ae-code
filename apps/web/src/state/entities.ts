@@ -165,6 +165,11 @@ export function useQuietThreadShells(): ReadonlyArray<EnvironmentThreadShell> {
   return useAtomValue(environmentThreadShells.quietThreadShellsAtom);
 }
 
+/** Subagents with a live run under the thread, nested ones included. */
+export function useRunningSubagentCount(ref: ScopedThreadRef): number {
+  return useAtomValue(environmentThreadShells.runningSubagentCountAtom(ref));
+}
+
 export function useChildThreadInputs(ref: ScopedThreadRef | null) {
   return useAtomValue(
     ref === null ? EMPTY_THREAD_SHELLS_ATOM : environmentThreadShells.childThreadInputsAtom(ref),

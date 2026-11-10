@@ -31,6 +31,7 @@ const EMPTY_THREADS: ReadonlyArray<OrchestrationV2ThreadShell> = Object.freeze([
 const EMPTY_SCOPED_THREAD_REFS: ReadonlyArray<ScopedThreadRef> = Object.freeze([]);
 const EMPTY_THREAD_INDEX: ReadonlyMap<ThreadId, OrchestrationV2ThreadShell> = new Map();
 const EMPTY_SUBAGENT_REQUESTS: ReadonlyMap<ThreadId, PendingSubagentRequest> = new Map();
+const EMPTY_SUBAGENT_COUNTS: ReadonlyMap<ThreadId, number> = new Map();
 const EMPTY_SIDE_CHATS_BY_PARENT: ReadonlyMap<
   ThreadId,
   ReadonlyArray<OrchestrationV2ThreadShell>
@@ -54,6 +55,33 @@ const isChildRunLive = (
       thread.status === "starting" ||
       thread.status === "running" ||
       thread.status === "waiting";
+
+/**
+ * Subagents with a live run, by the nearest thread above them that is not a subagent itself, so a
+ * row counts its nested subagents too. Idle children the shell leaves out are not running.
+ */
+export function runningSubagentCountsByThread(
+  threads: ReadonlyArray<OrchestrationV2ThreadShell>,
+): ReadonlyMap<ThreadId, number> {
+  let counts: Map<ThreadId, number> | undefined;
+  let byId: ReadonlyMap<ThreadId, OrchestrationV2ThreadShell> | undefined;
+  for (const child of threads) {
+    if (child.lineage.relationshipToParent !== "subagent" || !isChildRunLive(child)) continue;
+    byId ??= new Map(threads.map((thread) => [thread.id, thread] as const));
+    const seen = new Set<ThreadId>([child.id]);
+    let ownerId = child.lineage.parentThreadId;
+    while (ownerId !== null && !seen.has(ownerId)) {
+      seen.add(ownerId);
+      const owner = byId.get(ownerId);
+      if (owner?.lineage.relationshipToParent !== "subagent") break;
+      ownerId = owner.lineage.parentThreadId;
+    }
+    if (ownerId === null) continue;
+    counts ??= new Map();
+    counts.set(ownerId, (counts.get(ownerId) ?? 0) + 1);
+  }
+  return counts ?? EMPTY_SUBAGENT_COUNTS;
+}
 
 /**
  * Whether a thread shows under its parent rather than in thread lists: a
@@ -342,6 +370,29 @@ export function createEnvironmentThreadShellAtoms(input: {
       previous = next;
       return next;
     }).pipe(Atom.withLabel(`environment-pending-subagent-requests:${environmentId}`));
+  });
+
+  const runningSubagentCountsAtom = Atom.family((environmentId: EnvironmentId) => {
+    let previous = EMPTY_SUBAGENT_COUNTS;
+    return Atom.make((get) => {
+      const next = runningSubagentCountsByThread(get(environmentThreadsAtom(environmentId)));
+      if (
+        previous.size === next.size &&
+        [...next].every(([threadId, count]) => previous.get(threadId) === count)
+      ) {
+        return previous;
+      }
+      previous = next;
+      return next;
+    }).pipe(Atom.withLabel(`environment-running-subagent-counts:${environmentId}`));
+  });
+
+  // A number, so a row re-renders only when its own count changes.
+  const runningSubagentCountAtomFamily = Atom.family((key: string) => {
+    const ref = parseThreadKey(key);
+    return Atom.make(
+      (get) => get(runningSubagentCountsAtom(ref.environmentId)).get(ref.threadId) ?? 0,
+    ).pipe(Atom.withLabel(`environment-running-subagent-count:${key}`));
   });
 
   const environmentThreadRefsAtom = Atom.family((environmentId: EnvironmentId) => {
@@ -734,5 +785,7 @@ export function createEnvironmentThreadShellAtoms(input: {
     quietThreadShellAtom: (ref: ScopedThreadRef) => quietThreadShellAtomFamily(threadKey(ref)),
     childThreadInputsAtom: (ref: ScopedThreadRef) => childThreadInputsAtomFamily(threadKey(ref)),
     sideChatsAtom: (ref: ScopedThreadRef) => sideChatsAtomFamily(threadKey(ref)),
+    runningSubagentCountAtom: (ref: ScopedThreadRef) =>
+      runningSubagentCountAtomFamily(threadKey(ref)),
   };
 }
