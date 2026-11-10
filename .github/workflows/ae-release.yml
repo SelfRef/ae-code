@@ -456,3 +456,35 @@ jobs:
           TAG: ${{ needs.prepare.outputs.tag }}
           ABI: ${{ matrix.abi }}
         run: gh release upload "$TAG" "dist/ae-code-$TAG-$ABI.apk"
+
+  # The AUR packages ae-code and ae-code-bin, updated to the release (scripts/ae-aur.sh);
+  # ae-code-git follows on its own. Pushed with AUR_SSH_KEY, the passphrase-less private key of
+  # an AUR account that co-maintains both, as commits by the repository owner. makepkg refuses root, so a
+  # user of its own runs it. A failure here leaves the release in place; run the job again.
+  aur:
+    name: Update the AUR packages
+    needs: [prepare, release]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    container: archlinux:base-devel
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.ref }}
+
+      - name: Update and push
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          pacman -Syu --noconfirm --needed git openssh pacman-contrib
+          useradd -m builder
+          key=/home/builder/aur-key
+          printf '%s\n' "$AUR_SSH_KEY" > "$key"
+          chown builder "$key"
+          chmod 600 "$key"
+          runuser -u builder -- env HOME=/home/builder AUR_KEY="$key" \
+            GIT_AUTHOR_NAME="$GITHUB_REPOSITORY_OWNER" GIT_AUTHOR_EMAIL="$GITHUB_REPOSITORY_OWNER@users.noreply.github.com" \
+            GIT_COMMITTER_NAME="$GITHUB_REPOSITORY_OWNER" GIT_COMMITTER_EMAIL="$GITHUB_REPOSITORY_OWNER@users.noreply.github.com" \
+            scripts/ae-aur.sh "$TAG"
