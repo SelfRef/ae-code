@@ -410,6 +410,30 @@ describe("formatQuickActionLabel", () => {
     );
   });
 
+  it("names the files a Commit action stages", () => {
+    const files = [
+      { path: "a.ts", insertions: 1, deletions: 0 },
+      { path: "b.ts", insertions: 1, deletions: 0 },
+    ];
+    const dirty = status({
+      hasWorkingTreeChanges: true,
+      workingTree: { files, insertions: 2, deletions: 0 },
+      aheadCount: 2,
+    });
+    assert.equal(
+      formatQuickActionLabel(resolveQuickAction(dirty, false, true, true), dirty),
+      "Commit 2 files & push",
+    );
+    const one = status({
+      hasWorkingTreeChanges: true,
+      workingTree: { files: files.slice(0, 1), insertions: 1, deletions: 0 },
+    });
+    assert.equal(
+      formatQuickActionLabel(resolveQuickAction(one, false, true, true), one),
+      "Commit 1 file & push",
+    );
+  });
+
   it("leaves labels that push nothing alone", () => {
     const synced = status({ refName: "feature/x", hasUpstream: true, aheadCount: 0 });
     const action = resolveQuickAction(synced, false, false, true);
