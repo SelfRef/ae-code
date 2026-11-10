@@ -93,6 +93,7 @@ describe("DesktopUpdates", () => {
 
       const unmarked = yield* linuxState(undefined);
       assert.equal(unmarked.status, "disabled");
+      assert.include(unmarked.message ?? "", "managed by your package manager");
     }),
   );
 
