@@ -1494,7 +1494,7 @@ export const ServerSettings = Schema.Struct({
     Schema.withDecodingDefault(Effect.succeed(false)),
   ),
   quickMergeAction: QuickMergeAction.pipe(
-    Schema.withDecodingDefault(Effect.succeed("pull_request" as const)),
+    Schema.withDecodingDefault(Effect.succeed("merge" as const)),
   ),
   /** Null inherits t3.json, then recursive; unknown values decode to null for older clients. */
   worktreeSubmodules: ForwardCompatibleNullable(WorktreeSubmodules).pipe(

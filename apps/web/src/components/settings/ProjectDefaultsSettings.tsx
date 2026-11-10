@@ -524,11 +524,11 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
             {...searchableSetting("quick-merge-action")}
             description="The main Git action of a thread's branch. Merging fast-forwards the default branch in its own checkout, which must be clean, and rebases the branch first if needed. All stay in the menu."
             resetAction={
-              settings.quickMergeAction !== "pull_request" ? (
+              settings.quickMergeAction !== "merge" ? (
                 <SettingResetButton
                   label="main Git action"
-                  tooltip="Reset to pull request"
-                  onClick={() => updateSettings({ quickMergeAction: "pull_request" })}
+                  tooltip="Reset to merge into default branch"
+                  onClick={() => updateSettings({ quickMergeAction: "merge" })}
                 />
               ) : null
             }
@@ -554,9 +554,9 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
                   </SelectValue>
                 </SelectTrigger>
                 <SelectPopup align="end" alignItemWithTrigger={false}>
-                  <SelectItem value="pull_request">Open a pull request</SelectItem>
                   <SelectItem value="merge">Merge into default branch</SelectItem>
                   <SelectItem value="merge_push">Merge into default branch & push</SelectItem>
+                  <SelectItem value="pull_request">Open a pull request</SelectItem>
                 </SelectPopup>
               </Select>
             }
