@@ -30,6 +30,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Changed
 
+- Surfaces: the "Open a surface" menu and the add-tab menu list Files, Diff, Terminal, Issues, Pull
+  Request(s), Browser, Device and Side Chat, in that order and in title case.
 - New worktrees default to semantic branch names and start from the local branch, not the remote.
   Merged, deleted, unchanged and settled (for 3 days) worktrees are cleaned up.
 - Appearance defaults: Dev artwork, 100 ms panel animations, composer context on, and a version in
