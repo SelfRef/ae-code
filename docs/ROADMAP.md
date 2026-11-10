@@ -538,6 +538,9 @@ timer counting from the run's end.
   (`packages/client-runtime/src/state/models.ts`) is the shared filter.
 - The row label reads "1 subagent" or "N subagents" while the turn is not running (no timer: tasks carry no start time,
   and the run's end would lie). The status pill reads "Subagents". The web hover card lists each subagent's description.
+- While the turn runs the shell's roster is empty, so the label counts the subagents' own live child threads instead
+  (`runningSubagentCountsByThread` in `threadShell.ts`, nested ones counted on the nearest listed ancestor) and shows
+  "N subagents" beside the timer. The shell keeps a child while it has a live run, so the count has no gaps.
 - No contract or server change; the roster was already on the thread shell. Subagent rows under the parent were left out.
 - Other background work (monitors, awaited commands, `background_task`) still reads "Waiting".
 
