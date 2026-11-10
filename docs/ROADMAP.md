@@ -92,7 +92,7 @@ The app id follows the Aperte apps (`dev.aperte.Todav`, `dev.aperte.Notav`). The
 
 Not renamed, to keep rebases small: `T3CODE_*` env vars, `@t3tools/*` packages, the `t3` command, the `t3code` URL scheme, `T3Wordmark`, file names such as `com.t3tools.t3code.metainfo.xml` (only its contents changed), the model manifest URL (still read from upstream), and the user docs under `docs/user`, which still say `~/.t3`. The worktree dev state dir stays `.t3`.
 
-Icons: `assets/prod` is the Aperte icon on a dark Nord tile; `nightly` and `dev` use the same glyph on warmer and bluer variants of that palette. All rasters (`assets/*/*.png`, `.ico`, `apps/web/public`) are rendered straight from SVG, because Icon Composer (macOS only) is not available here, so they approximate its glass effect and `icons:check` will not pass until they are re-exported there. The Icon Composer projects only had their `text.svg` glyph swapped (and the prod fill), so a later export puts the glyph on the old dev and nightly backgrounds.
+Icons: one icon for every platform and build, since the fork has no release channels: the Aperte glyph on the blueprint tile (`assets/dev`, also the Android launcher and splash). The upstream `prod` and `nightly` icon sets are removed. All rasters (`assets/dev/*.png`, `.ico`, `apps/web/public`) are rendered straight from SVG, because Icon Composer (macOS only) is not available here, so they approximate its glass effect and `icons:check` will not pass until they are re-exported there. The Icon Composer project only had its `text.svg` glyph swapped, so a later export keeps the blueprint background.
 
 Caveats:
 
