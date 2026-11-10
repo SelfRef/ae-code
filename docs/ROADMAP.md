@@ -690,7 +690,7 @@ Upstream's server sends product usage events to its PostHog ingest unless `T3COD
 
 - The flag's default is `false` in both places `AnalyticsService` reads it (the config and the late desktop shell-consent
   lookup). The test that checked "disabled" now omits the flag, so it checks the default. Other tests set it explicitly.
-- Copy: the welcome page notice, the About → Legal description, `docs/user/telemetry.md` and `docs/user/faq.md` say the
+- Copy: the About → Legal description, `docs/user/telemetry.md` and `docs/user/faq.md` say the
   fork sends no usage data.
 - Left as upstream, on purpose: relay tracing (`isRelayTracingEnabled` in `packages/shared/src/otelEnvironment.ts` counts
   an unset flag as enabled) and the mobile app's own crash reports and traces. The fork's builds carry no relay, trace
