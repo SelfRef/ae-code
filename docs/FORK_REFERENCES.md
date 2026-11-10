@@ -36,7 +36,7 @@ What is wanted, who has it, and what this fork does about it. "Planned" and "don
 | Take back a steered message, or make it interrupt a long tool call | none found (searched 2026-11-09)        | stop-and-send done for Claude, take back planned, change 18  |
 | No product analytics by default                                    | E4 Code                                 | done, change 17                                              |
 | Memory for agents                                                  | GOAT, seatedro, Scripted Alchemy, akeru | done, change 13 (modelled on GOAT)                           |
-| Skills manager: one library, per-agent switches, sync              | MT Code, upstream PRs                   | not planned yet (researched 2026-11-10; see Skills)          |
+| Skills manager: one library, per-agent switches, sync              | MT Code, upstream PRs                   | done, change 27 (see Skills below)                           |
 | Project and thread switchers in the breadcrumb                     | mollymillions-code branch               | planned, change 4                                            |
 | Review surface: files, Reviewed marks, review guide                | E4 Code                                 | not planned                                                  |
 | Start, stop and monitor local model servers from the thread panel  | DeepQuantum                             | not planned yet                                              |

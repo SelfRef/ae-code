@@ -1331,6 +1331,14 @@ export function createServerEnvironmentAtoms<R, E>(
       label: "environment-data:server:memory:list",
       tag: WS_METHODS.memoryList,
     }),
+    skillsList: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:server:skills:list",
+      tag: WS_METHODS.skillsList,
+    }),
+    skillsRead: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:server:skills:read",
+      tag: WS_METHODS.skillsRead,
+    }),
     scheduledTaskWebhookDeliveries: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:server:scheduled-task:webhook-deliveries",
       tag: WS_METHODS.scheduledTasksListWebhookDeliveries,
@@ -1583,6 +1591,43 @@ export function createServerEnvironmentAtoms<R, E>(
       tag: WS_METHODS.memorySetSettings,
       scheduler: configScheduler,
       concurrency: configConcurrency,
+    }),
+    writeSkill: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:skills:write",
+      tag: WS_METHODS.skillsWrite,
+      scheduler: configScheduler,
+      concurrency: configConcurrency,
+    }),
+    removeSkill: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:skills:remove",
+      tag: WS_METHODS.skillsRemove,
+      scheduler: configScheduler,
+      concurrency: configConcurrency,
+    }),
+    restoreSkill: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:skills:restore",
+      tag: WS_METHODS.skillsRestore,
+      scheduler: configScheduler,
+      concurrency: configConcurrency,
+    }),
+    setSkillLink: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:skills:setlink",
+      tag: WS_METHODS.skillsSetLink,
+      scheduler: configScheduler,
+      concurrency: configConcurrency,
+    }),
+    // Runs git against a remote, so it takes seconds and is not queued with settings writes.
+    inspectSkillSource: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:skills:inspectsource",
+      tag: WS_METHODS.skillsInspectSource,
+    }),
+    installSkills: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:skills:install",
+      tag: WS_METHODS.skillsInstall,
+    }),
+    updateSkill: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:skills:update",
+      tag: WS_METHODS.skillsUpdate,
     }),
     upsertScheduledTask: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:server:scheduled-task:upsert",

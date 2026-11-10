@@ -4,6 +4,7 @@ import {
   AuthAccessWriteScope,
   AuthEnvironmentMaintainScope,
   AuthFilesystemReadScope,
+  AuthFilesystemWriteScope,
   AuthOrchestrationOperateScope,
   AuthOrchestrationReadScope,
   AuthPreviewOperateScope,
@@ -71,6 +72,15 @@ export const CLIENT_GUARDED_RPC_SCOPES = {
   [WS_METHODS.memorySetSettings]: AuthSettingsWriteScope,
   // Reads files from the server's disk, so it needs the same grant as browsing it.
   [WS_METHODS.memoryImportScan]: AuthFilesystemReadScope,
+  // The library holds instructions that agents run, and links reach into other providers' folders.
+  [WS_METHODS.skillsWrite]: AuthFilesystemWriteScope,
+  [WS_METHODS.skillsRemove]: AuthFilesystemWriteScope,
+  [WS_METHODS.skillsRestore]: AuthFilesystemWriteScope,
+  [WS_METHODS.skillsSetLink]: AuthFilesystemWriteScope,
+  // Fetching a source runs git against a remote chosen by the caller.
+  [WS_METHODS.skillsInspectSource]: AuthFilesystemWriteScope,
+  [WS_METHODS.skillsInstall]: AuthFilesystemWriteScope,
+  [WS_METHODS.skillsUpdate]: AuthFilesystemWriteScope,
   [WS_METHODS.scheduledTasksUpsert]: AuthOrchestrationOperateScope,
   [WS_METHODS.scheduledTasksSetEnabled]: AuthOrchestrationOperateScope,
   [WS_METHODS.scheduledTasksDelete]: AuthOrchestrationOperateScope,

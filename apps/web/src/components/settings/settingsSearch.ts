@@ -31,6 +31,7 @@ export type SettingsPath =
   | "/settings/scheduled-tasks"
   | "/settings/memory"
   | "/settings/mcp-servers"
+  | "/settings/skills"
   | "/settings/source-control"
   | "/settings/worktrees"
   | "/settings/connections"
@@ -107,6 +108,7 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/scheduled-tasks": "Scheduled tasks",
   "/settings/memory": "Memory",
   "/settings/mcp-servers": "MCP servers",
+  "/settings/skills": "Skills",
   "/settings/source-control": "Source control",
   "/settings/worktrees": "Worktrees",
   "/settings/connections": "Environments",
@@ -146,6 +148,7 @@ export const SETTINGS_NAV_GROUPS: ReadonlyArray<{
       "/settings/scheduled-tasks",
       "/settings/memory",
       "/settings/mcp-servers",
+      "/settings/skills",
     ],
   },
   {
@@ -1315,6 +1318,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["mcp model context protocol tools hub bearer header stdio remote server trusted"],
   },
   {
+    id: "skills",
+    title: "Skills",
+    to: "/settings/skills",
+    searchTerms: ["skill skills SKILL.md library agents instructions install git link provider"],
+  },
+  {
     id: "secret-providers",
     title: "Secret providers",
     to: "/settings/secrets",
@@ -1363,6 +1372,7 @@ const SETTINGS_CATEGORY_SCOPES: Readonly<Record<SettingsPath, SettingsSearchScop
   "/settings/scheduled-tasks": null,
   "/settings/memory": null,
   "/settings/mcp-servers": null,
+  "/settings/skills": null,
   "/settings/maintenance": null,
   "/settings/labs": null,
   "/settings/about": null,

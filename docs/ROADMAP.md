@@ -10,7 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| [27] | Skills manager: every provider's skills in one list, then a shared library with per-provider switches                                                                  | planned |
+| [27] | Skills manager: every provider's skills in one list, then a shared library with per-provider switches                                                                  | done    |
 | [26] | Pull requests and issues of a project come from its own `origin` remote, not from `upstream` (a fork listed its upstream's pull requests)                              | done    |
 | [25] | The Docker image updates in place from the fork's GitHub releases when `T3CODE_SELF_UPDATE=true` (Settings → About); one update channel, no Stable/Nightly picker      | done    |
 | [24] | The changed-files card under an answer says when that run committed and pushed (read from its successful `git commit` / `git push` commands)                           | done    |
@@ -870,56 +870,60 @@ progressive loading keep working. Research and the upstream PRs this draws on: [
 - Discovery exists for Claude, Codex, Cursor, Grok, fx, Antigravity and OpenCode; each provider snapshot carries
   `skills: ServerProviderSkill[]` (`name`, `path`, `scope`, `enabled`, ...). Pi, Kiro and the generic ACP providers list
   none.
-- Providers read different global folders: `~/.agents/skills` (Codex, Pi, fx and most others), `<claude home>/skills`,
-  `~/.cursor/skills`, `~/.config/opencode/skills`, `~/.grok/skills`, `~/.gemini/config/skills`. Claude reads none of the
-  shared ones.
-- A provider's home is the server process's `HOME`, unless the instance sets `homePath` (Claude's `CLAUDE_CONFIG_DIR`;
-  Codex's `homePath` and `shadowHomePath`). Discovery already resolves it per instance (`resolveClaudeHomePath`,
-  `resolveCodexHomeLayout`); the manager reuses those functions. In a container whose `HOME` is a volume the same code
-  runs unchanged. Nothing is shared between environments.
+- Providers read different global folders. `~/.agents/skills` is read by Codex, Cursor (its own discovery code), OpenCode
+  (its docs), fx (its discovery code) and Pi (its docs). Claude (`<claude home>/skills`), Antigravity
+  (`~/.gemini/config/skills`, its code ignores `~/.agents`), Grok (`~/.grok/skills`) and Kiro (`~/.kiro/skills`) do not.
+- A provider's home is the server process's `HOME`, unless the instance sets `homePath` (Claude's `CLAUDE_CONFIG_DIR`).
+  Discovery already resolves it per instance (`resolveClaudeHomePath`); the manager reuses that. In a container whose
+  `HOME` is a volume the same code runs unchanged. Nothing is shared between environments.
 - Claude keeps account-synced skills under `<claude home>/skills/synced`, and plugin and built-in skills have their own
-  roots. They belong to their provider: read-only here, never moved, linked or deleted.
+  roots. They belong to their provider: never moved, linked or deleted.
 
-### Design
+### Built
 
-- **Library:** `<HOME>/.agents/skills`, one folder per skill. The folder an environment reads natively, so Codex, Pi and
-  fx need nothing more. Each environment has its own; sharing one with the host (a read-only bind mount) and syncing
-  between environments are later.
-- **Reaching a provider that reads elsewhere:** a relative symlink (junction on Windows) from that provider's global
-  folder to the library folder, so it also resolves when the volume is seen from outside. Never replaces a real folder,
-  file or foreign link; a link is removed only when it provably points at that skill.
-- **Providers with a native switch** (Claude `skillOverrides`, Codex `[[skills.config]]`, OpenCode `permission.skill`)
-  get the switch where the provider reads the library directly. Cursor, Grok and Antigravity have none, so only the link
-  can be taken away.
-- **Global scope only.** Per-project skills are not built.
-- **Identity and safety:** the client sends opaque ids, never paths; the server re-resolves the root and rejects
-  traversal and symlinks that leave it; removal moves the folder to a trash with undo; mutations need the same scope as
-  Settings writes. Changes apply to new sessions.
-- **Contracts and storage:** no change to `ServerSettings`; the library is the filesystem, and a small own table (as in
-  change 13) holds only what the filesystem cannot, if anything.
+- **Library:** `<HOME>/.agents/skills`, one folder per skill, per environment. `SkillLibraryService`
+  (`apps/server/src/skills`) lists it with, for every enabled provider instance, a state: `native` (reads the library),
+  `linked`, `missing`, `blocked` (the provider's folder has something else of that name) or `unsupported`.
+- **Links:** a relative symlink from the provider's skills folder to the library folder, so it also resolves when the
+  volume is seen from another mount. Never replaces a real folder, file or foreign link; a link is removed only when it
+  provably points at that skill.
+- **Management:** create (name per the Agent Skills spec, generated `SKILL.md`), edit `SKILL.md`, remove to a trash
+  (`~/.agents/.skills-trash`, 14 days) that also takes the links away, restore with the links it had. A folder that is a
+  link elsewhere is not written through. Mutations are serialized by one semaphore and `SKILL.md` is written atomically.
+- **Install and update:** `owner/repo`, `owner/repo@skill` or an https or ssh git URL (local paths, `file:` and `ext::`
+  are refused), optional ref. A shallow fetch into a staging folder, with `GIT_ALLOW_PROTOCOL=https:ssh` and
+  `core.symlinks=false`; skills are the folders with a `SKILL.md` up to four levels down; files are copied (links
+  skipped, at most 2000 files and 20 MB). The source, ref, commit and folder are kept in `~/.agents/.ae-skills.json` (no
+  database table, `ServerSettings` untouched); update fetches again and replaces the skill when the commit moved.
+- **Contracts and permissions:** `packages/contracts/src/skillLibrary.ts`, nine `skills.*` RPCs. List and read need
+  `orchestration:read`; every write, and inspecting or installing a source, needs `filesystem:write`. The client sends
+  folder ids, never paths.
+- **Settings → Skills** (web and desktop, one environment at a time): the library with a switch per linkable provider,
+  an editor, create, install, trash, and a read-only list of what providers load from their own folders (from the
+  provider snapshots). User guide: `docs/user/skills.md`.
 
-### Phases
+### Not built
 
-1. **Read-only list (client only).** Settings → Skills: every skill of the selected environment from the provider
-   snapshots, grouped by name, with a badge per provider instance and the path each reads it from; plugin, built-in and
-   synced skills labelled read-only. No server, contract or storage change: one route, one component with its logic
-   file and test, and a few lines in `settingsSearch.ts` and `SettingsSidebarNav.tsx`. Open question for this phase:
-   a symlinked skill has a different path per provider, and the snapshot has no real path, so grouping is by name unless
-   the list gets a server-side `realpath`.
-2. **Library and switches.** Server `SkillLibraryService` (list, create, trash and undo, link and unlink per instance),
-   RPCs with permissions, the per-provider switches, "available to" taking real links and switches into account.
-3. **Install.** From a git URL or a skills.sh source into the library (a small copy of what `npx skills` does, or the
-   `skills` package if it fits), with a lock file for updates.
-
-Later, in order of cost: Pi, Kiro and ACP providers through `t3_skill_list` and `t3_skill_load` MCP tools (as in change 13) where they have no native skills; project skills; a read-only bind mount of a host library; sync between
-environments; bundled workflow skills.
+- **Native per-provider switches** (Claude `skillOverrides`, Codex `[[skills.config]]`, OpenCode `permission.skill`): a
+  provider that reads the library itself always has it. Taking a skill away from one of them would mean changing three
+  adapters and their replay fixtures.
+- Phase "read-only list from the snapshots" was skipped: symlinked skills have different paths per provider in the
+  snapshots, so the list is read from the filesystem and the snapshots only feed the last section.
+- Project skills; a skills.sh search or catalog (a source must be named); adopting a provider's existing skill folder into
+  the library; update checks without fetching; Windows junctions (relative symlinks need developer mode there).
+- `t3_skill_list` and `t3_skill_load` MCP tools for providers with no native skills (as in change 13); a read-only bind
+  mount of a host library; sync between environments (upstream PR #24377); bundled workflow skills; a mobile page (like
+  memory, Settings pages are web and desktop).
+- **Not verified:** the Grok and Kiro folders come from `npx skills`' table, and Pi and OpenCode reading `~/.agents/skills`
+  from their docs; no end-to-end pass of the page in a browser (browser tests cannot run on the build host).
 
 ### Rebase cost
 
-New files only for the feature (`apps/web/src/components/settings/Skills*`, the route, later `apps/server/src/skills/*`
-and `packages/contracts/src/skillLibrary.ts`). Touch points of a few lines: `settingsSearch.ts`,
-`SettingsSidebarNav.tsx`, the generated `routeTree.gen.ts`, and in phase 2 the contracts index and the RPC group.
-Upstream may land its own version (PRs #21815 to #21817); check them before phase 2.
+New files only for the feature: `packages/contracts/src/skillLibrary.ts`, `apps/server/src/skills/*`,
+`apps/web/src/components/settings/Skills*` and `skillsSettings.logic*`, the route. Touch points of a few lines:
+`settingsSearch.ts`, `SettingsSidebarNav.tsx`, `_chat.settings.tsx`, the generated `routeTree.gen.ts`, the contracts
+index, `rpc.ts`, `clientRpcPermissions.ts`, `RpcAuthorization.ts`, `RpcInstrumentation.ts`, `ws.ts`, `server.ts`,
+`ws.test.ts` and the client-runtime `server.ts`. Upstream may land its own version (PRs #21815 to #21817).
 
 ## Pull requests from the fork (change 26)
 

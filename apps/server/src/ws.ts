@@ -127,6 +127,7 @@ import * as DocumentText from "./provider/DocumentText.ts";
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
 import { scanClaudeMemories } from "./memory/ClaudeMemoryScan.ts";
 import * as MemoryService from "./memory/MemoryService.ts";
+import * as SkillLibraryService from "./skills/SkillLibraryService.ts";
 import * as ScheduledTasks from "./scheduledTasks/ScheduledTaskService.ts";
 import * as SecretRequests from "./secrets/SecretRequests.ts";
 import * as GuestShareService from "./guest/GuestShareService.ts";
@@ -1450,6 +1451,7 @@ export const layerWsRpc = (
       const commandOutputHub = yield* CommandOutputHub.CommandOutputHub;
       const providerSessionManager = yield* ProviderSessionManager.ProviderSessionManagerV2;
       const memory = yield* MemoryService.MemoryService;
+      const skillLibrary = yield* SkillLibraryService.SkillLibraryService;
       const scheduledTasks = yield* ScheduledTasks.ScheduledTaskService;
       const secretRequests = yield* SecretRequests.SecretRequests;
       const guestShares = yield* GuestShareService.GuestShareService;
@@ -2366,6 +2368,15 @@ export const layerWsRpc = (
         [WS_METHODS.memoryImportScan]: (input) => scanClaudeMemories(input),
         [WS_METHODS.memorySetSettings]: (input) =>
           memory.setSettings(input).pipe(Effect.map((settings) => ({ settings }))),
+        [WS_METHODS.skillsList]: () => skillLibrary.list(),
+        [WS_METHODS.skillsRead]: (input) => skillLibrary.read(input),
+        [WS_METHODS.skillsWrite]: (input) => skillLibrary.write(input),
+        [WS_METHODS.skillsRemove]: (input) => skillLibrary.remove(input),
+        [WS_METHODS.skillsRestore]: (input) => skillLibrary.restore(input),
+        [WS_METHODS.skillsSetLink]: (input) => skillLibrary.setLink(input),
+        [WS_METHODS.skillsInspectSource]: (input) => skillLibrary.inspectSource(input),
+        [WS_METHODS.skillsInstall]: (input) => skillLibrary.install(input),
+        [WS_METHODS.skillsUpdate]: (input) => skillLibrary.update(input),
         [WS_METHODS.scheduledTasksSubscribe]: (_input) =>
           scheduledTasks.subscribeList().pipe(Stream.map(withVisibleWebhookUrls)),
         [WS_METHODS.scheduledTasksUpsert]: (input) => scheduledTasks.upsert(input),

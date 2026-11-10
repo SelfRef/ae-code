@@ -154,7 +154,8 @@ function SettingsRouteLayout() {
         pathname === "/settings/providers" ||
         pathname === "/settings/secrets" ||
         pathname === "/settings/memory" ||
-        pathname === "/settings/mcp-servers"
+        pathname === "/settings/mcp-servers" ||
+        pathname === "/settings/skills"
       }
       onChange={(next) => {
         // Send every axis so retain middleware recognizes "all" as an explicit target.
