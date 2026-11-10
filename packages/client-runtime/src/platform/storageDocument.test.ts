@@ -28,7 +28,9 @@ import {
   ConnectionCatalogDocument,
   EMPTY_CONNECTION_CATALOG_DOCUMENT,
   catalogRoutes,
+  mergeSharedCatalog,
   setRoutesInCatalog,
+  sharedCatalogPart,
   putRemoteDpopTokenInCatalog,
   registerConnectionInCatalog,
   removeConnectionFromCatalog,
@@ -406,5 +408,83 @@ describe("ConnectionCatalogDocument", () => {
     expect(
       setRoutesInCatalog(document, ENVIRONMENT_ID, [BEARER_TARGET, RELAY_TARGET]).targets,
     ).toEqual([BEARER_TARGET, RELAY_TARGET, other]);
+  });
+});
+
+describe("shared catalog", () => {
+  const registerBearer = (
+    document: typeof EMPTY_CONNECTION_CATALOG_DOCUMENT,
+    id: string,
+    httpBaseUrl = `https://${id}.example.test`,
+  ) =>
+    registerConnectionInCatalog(
+      document,
+      new BearerConnectionRegistration({
+        target: new BearerConnectionTarget({
+          environmentId: EnvironmentId.make(id),
+          label: id,
+          connectionId: `connection-${id}`,
+        }),
+        profile: new BearerConnectionProfile({
+          connectionId: `connection-${id}`,
+          environmentId: EnvironmentId.make(id),
+          label: id,
+          httpBaseUrl,
+          wsBaseUrl: httpBaseUrl.replace("http", "ws"),
+        }),
+        credential: new BearerConnectionCredential({ token: `token-${id}` }),
+      }),
+    );
+  const environmentIds = (document: typeof EMPTY_CONNECTION_CATALOG_DOCUMENT) =>
+    document.targets.map((target) => target.environmentId);
+
+  it("shares bearer routes but keeps relay, SSH, loopback routes and DPoP tokens on the device", () => {
+    let document = registerBearer(EMPTY_CONNECTION_CATALOG_DOCUMENT, "vps");
+    document = registerBearer(document, "dev", "http://localhost:3773");
+    document = registerConnectionInCatalog(
+      document,
+      new RelayConnectionRegistration({ target: RELAY_TARGET }),
+    );
+    document = putRemoteDpopTokenInCatalog(document, REMOTE_TOKEN);
+
+    const shared = sharedCatalogPart(document);
+    expect(environmentIds(shared)).toEqual(["vps"]);
+    expect(shared.profiles.map((profile) => profile.connectionId)).toEqual(["connection-vps"]);
+    expect(shared.credentials.map((entry) => entry.connectionId)).toEqual(["connection-vps"]);
+    expect(shared.remoteDpopTokens).toEqual([]);
+  });
+
+  it("adds entries only this device has on its first sync, and asks to push them", () => {
+    const server = registerBearer(EMPTY_CONNECTION_CATALOG_DOCUMENT, "vps");
+    const local = registerBearer(EMPTY_CONNECTION_CATALOG_DOCUMENT, "laptop");
+
+    const merged = mergeSharedCatalog(local, server);
+    expect(environmentIds(merged.document)).toEqual(["vps", "laptop"]);
+    expect(merged.document.credentials).toHaveLength(2);
+    expect(merged.push).toBe(true);
+
+    expect(mergeSharedCatalog(local, null).push).toBe(true);
+    expect(mergeSharedCatalog(EMPTY_CONNECTION_CATALOG_DOCUMENT, server).push).toBe(false);
+  });
+
+  it("lets the server's copy win after the first sync and keeps what is device-bound", () => {
+    let local = registerBearer(EMPTY_CONNECTION_CATALOG_DOCUMENT, "gone");
+    local = registerBearer(local, "dev", "http://127.0.0.1:3773");
+    local = registerConnectionInCatalog(
+      local,
+      new RelayConnectionRegistration({ target: RELAY_TARGET }),
+    );
+    local = putRemoteDpopTokenInCatalog(local, REMOTE_TOKEN);
+    local = { ...local, sharedRevision: 3 };
+    const server = registerBearer(EMPTY_CONNECTION_CATALOG_DOCUMENT, "vps");
+
+    const merged = mergeSharedCatalog(local, server);
+    expect(environmentIds(merged.document)).toEqual(["vps", "dev", ENVIRONMENT_ID]);
+    expect(merged.document.credentials.map((entry) => entry.connectionId)).toEqual([
+      "connection-vps",
+      "connection-dev",
+    ]);
+    expect(merged.document.remoteDpopTokens).toEqual([REMOTE_TOKEN]);
+    expect(merged.push).toBe(false);
   });
 });

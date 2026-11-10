@@ -29,6 +29,8 @@ export const ConnectionCatalogDocument = Schema.Struct({
   disabledEnvironmentIds: Schema.Array(EnvironmentId).pipe(
     Schema.withDecodingDefaultKey(Effect.succeed([])),
   ),
+  /** Set once this device has synced with its server's shared copy (see `mergeSharedCatalog`). */
+  sharedRevision: Schema.optionalKey(Schema.Number),
 });
 export type ConnectionCatalogDocument = typeof ConnectionCatalogDocument.Type;
 
@@ -213,5 +215,116 @@ export function putRemoteDpopTokenInCatalog(
       (value) => value.environmentId,
       token,
     ),
+  };
+}
+
+const DEVICE_LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+
+function isDeviceLocalUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return DEVICE_LOCAL_HOSTS.has(host) || host.endsWith(".localhost");
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Bearer connections other devices can use as they are: a stored credential for a route that
+ * does not point back at the device's own loopback. Relay, SSH and loopback routes belong to the
+ * device that made them.
+ */
+function sharedConnectionIds(document: ConnectionCatalogDocument): ReadonlySet<string> {
+  const withCredential = new Set(document.credentials.map((entry) => entry.connectionId));
+  return new Set(
+    document.profiles.flatMap((profile) =>
+      profile._tag === "BearerConnectionProfile" &&
+      withCredential.has(profile.connectionId) &&
+      !isDeviceLocalUrl(profile.httpBaseUrl)
+        ? [profile.connectionId]
+        : [],
+    ),
+  );
+}
+
+function isSharedTarget(ids: ReadonlySet<string>, target: PersistedConnectionTarget): boolean {
+  return target._tag === "BearerConnectionTarget" && ids.has(target.connectionId);
+}
+
+/** What every device signed in to the same server keeps in common. */
+export function sharedCatalogPart(document: ConnectionCatalogDocument): ConnectionCatalogDocument {
+  const ids = sharedConnectionIds(document);
+  const targets = document.targets.filter((target) => isSharedTarget(ids, target));
+  const environmentIds = new Set(targets.map((target) => target.environmentId));
+  return {
+    schemaVersion: 1,
+    targets,
+    profiles: document.profiles.filter((profile) => ids.has(profile.connectionId)),
+    credentials: document.credentials.filter((entry) => ids.has(entry.connectionId)),
+    remoteDpopTokens: [],
+    disabledEnvironmentIds: document.disabledEnvironmentIds.filter((id) => environmentIds.has(id)),
+  };
+}
+
+/**
+ * Combines this device's catalog with the server's shared copy. Once the device has synced
+ * before (`sharedRevision`), the server's copy replaces the device's shared part, so a removal
+ * made on another device reaches this one. The first time, entries only this device has are
+ * added to the shared copy instead of being lost; `push` says the server needs them.
+ */
+export function mergeSharedCatalog(
+  local: ConnectionCatalogDocument,
+  shared: ConnectionCatalogDocument | null,
+): { readonly document: ConnectionCatalogDocument; readonly push: boolean } {
+  const ids = sharedConnectionIds(local);
+  const incoming = shared ?? EMPTY_CONNECTION_CATALOG_DOCUMENT;
+  const known = new Set(incoming.targets.map((target) => target.environmentId));
+  const own = sharedCatalogPart(local);
+  const extra =
+    local.sharedRevision === undefined
+      ? {
+          ...own,
+          targets: own.targets.filter((target) => !known.has(target.environmentId)),
+        }
+      : { ...own, targets: [] };
+  const extraIds = new Set(extra.targets.flatMap((target) => connectionIdOf(target) ?? []));
+  const extraEnvironments = new Set(extra.targets.map((target) => target.environmentId));
+  const adopted = {
+    targets: [...incoming.targets, ...extra.targets],
+    profiles: [
+      ...incoming.profiles,
+      ...extra.profiles.filter((profile) => extraIds.has(profile.connectionId)),
+    ],
+    credentials: [
+      ...incoming.credentials,
+      ...extra.credentials.filter((entry) => extraIds.has(entry.connectionId)),
+    ],
+    disabledEnvironmentIds: [
+      ...incoming.disabledEnvironmentIds,
+      ...extra.disabledEnvironmentIds.filter((id) => extraEnvironments.has(id)),
+    ],
+  };
+  const adoptedEnvironments = new Set(adopted.targets.map((target) => target.environmentId));
+  return {
+    document: {
+      ...local,
+      targets: [
+        ...adopted.targets,
+        ...local.targets.filter((value) => !isSharedTarget(ids, value)),
+      ],
+      profiles: [
+        ...adopted.profiles,
+        ...local.profiles.filter((profile) => !ids.has(profile.connectionId)),
+      ],
+      credentials: [
+        ...adopted.credentials,
+        ...local.credentials.filter((entry) => !ids.has(entry.connectionId)),
+      ],
+      disabledEnvironmentIds: [
+        ...adopted.disabledEnvironmentIds,
+        ...local.disabledEnvironmentIds.filter((id) => !adoptedEnvironments.has(id)),
+      ],
+    },
+    push: extra.targets.length > 0,
   };
 }
