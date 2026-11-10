@@ -12,6 +12,7 @@ import {
   type WorktreeSubmodules,
   PROJECT_SCOPED_SERVER_SETTING_KEYS,
   type ProjectScopedServerSettingKey,
+  type QuickMergeAction,
 } from "@t3tools/contracts";
 import { useRef, useState } from "react";
 import { View } from "react-native";
@@ -27,6 +28,7 @@ import { BranchNamingSettings } from "./components/BranchNamingSettings";
 import { DatabaseStorageNotice } from "./components/DatabaseStorageNotice";
 import { ListChoiceRow as SettingsChoiceRow } from "../../components/ui/ListChoiceRow";
 import { SettingsSection } from "./components/SettingsSection";
+import { ConfirmDefaultBranchPushRow } from "./components/ConfirmDefaultBranchPushRow";
 import { SettingsSwitchRow } from "./components/SettingsSwitchRow";
 import { SourceControlSignInSection } from "./components/SourceControlSignInSection";
 import { SettingsProjectOverridesSection } from "./components/SettingsProjectOverridesSection";
@@ -64,7 +66,7 @@ const PAGE_PROJECT_KEYS: Record<SettingsPage, readonly ProjectScopedServerSettin
     "sidebarAutoSettleOnMerge",
     "sidebarAutoSettleAfterDays",
   ],
-  "source-control": ["defaultAutoPull", "removeAgentCreditsOnMerge"],
+  "source-control": ["defaultAutoPull", "removeAgentCreditsOnMerge", "quickMergeAction"],
   worktrees: [
     "newWorktreesStartFromOrigin",
     "worktreeSubmodules",
@@ -74,6 +76,28 @@ const PAGE_PROJECT_KEYS: Record<SettingsPage, readonly ProjectScopedServerSettin
   ],
   maintenance: ["continueThreadsAfterServerUpdate"],
 };
+
+const QUICK_MERGE_CHOICES: ReadonlyArray<{
+  readonly mode: QuickMergeAction;
+  readonly label: string;
+  readonly description: string;
+}> = [
+  {
+    mode: "pull_request",
+    label: "Open a pull request",
+    description: "Push and open a pull request. The other actions stay in the Git menu.",
+  },
+  {
+    mode: "merge",
+    label: "Merge into default branch",
+    description: "Fast-forward the default branch in its own checkout, which must be clean.",
+  },
+  {
+    mode: "merge_push",
+    label: "Merge into default branch & push",
+    description: "Merge, then push the default branch.",
+  },
+];
 
 const SUBMODULE_CHOICES: ReadonlyArray<{
   readonly mode: WorktreeSubmodules | null;
@@ -446,6 +470,29 @@ function ServerSettingsDetail(props: { readonly page: SettingsPage }) {
                     onValueChange={(value) => write({ removeAgentCreditsOnMerge: value })}
                   />
                 </SettingsSection>
+                <SettingsSection
+                  title="Main Git action"
+                  footer={managed("quickMergeAction")}
+                  trailing={
+                    pendingWrites === 0 && isMixed("quickMergeAction") ? (
+                      <MixedValuesLabel projectSelected={projectSelected} />
+                    ) : null
+                  }
+                >
+                  {QUICK_MERGE_CHOICES.map((choice, index) => (
+                    <SettingsChoiceRow
+                      key={choice.mode}
+                      label={choice.label}
+                      description={choice.description}
+                      selected={
+                        !isMixed("quickMergeAction") && uniform("quickMergeAction") === choice.mode
+                      }
+                      separated={index > 0}
+                      disabled={disabledFor("quickMergeAction")}
+                      onPress={() => write({ quickMergeAction: choice.mode })}
+                    />
+                  ))}
+                </SettingsSection>
                 <SettingsSection title="Default branch">
                   <SettingsSwitchRow
                     icon="arrow.down.circle"
@@ -459,6 +506,11 @@ function ServerSettingsDetail(props: { readonly page: SettingsPage }) {
                     onValueChange={(value) => write({ defaultAutoPull: value })}
                   />
                 </SettingsSection>
+                {projectSelected ? null : (
+                  <SettingsSection title="This device">
+                    <ConfirmDefaultBranchPushRow />
+                  </SettingsSection>
+                )}
                 <SettingsSection title="Clones">
                   <SettingsSwitchRow
                     icon="folder"

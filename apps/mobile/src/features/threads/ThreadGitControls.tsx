@@ -11,6 +11,7 @@ import {
 } from "@t3tools/contracts";
 import {
   type GitActionRequestInput,
+  formatQuickActionLabel,
   requiresDefaultBranchConfirmation,
   resolveQuickAction,
 } from "@t3tools/client-runtime/state/vcs";
@@ -18,6 +19,9 @@ import { useNavigation } from "@react-navigation/native";
 import { sourceControlClients } from "@t3tools/client-runtime/source-control-clients";
 
 import { useEnvironmentScope } from "../../state/session";
+import { aheadLabel } from "./git/aheadLabel";
+import { useConfirmPushToDefaultBranch } from "./git/useConfirmPushToDefaultBranch";
+import { useQuickMergeAction } from "./git/useQuickMergeAction";
 import { PullRequestGlyph } from "../pull-requests/pullRequestGlyphs";
 import {
   basename,
@@ -50,14 +54,13 @@ function compactMenuStatus(gitStatus: VcsStatusResult | null): string {
   }
 
   const parts: string[] = [];
+  const ahead = aheadLabel(gitStatus);
   if (gitStatus.hasWorkingTreeChanges) {
     parts.push(`${gitStatus.workingTree.files.length} changed`);
-  } else if (gitStatus.aheadCount === 0 && gitStatus.behindCount === 0) {
+  } else if (!ahead && gitStatus.behindCount === 0) {
     parts.push("Clean");
   }
-  if (gitStatus.aheadCount > 0) {
-    parts.push(`${gitStatus.aheadCount} ahead`);
-  }
+  if (ahead) parts.push(ahead);
   if (gitStatus.behindCount > 0) {
     parts.push(`${gitStatus.behindCount} behind`);
   }
@@ -72,6 +75,7 @@ function compactMenuStatus(gitStatus: VcsStatusResult | null): string {
 }
 
 type QuickActionIcon =
+  | typeof PullRequestGlyph.merged
   | "arrow.down.circle"
   | "arrow.up.right.circle"
   | "checkmark.circle"
@@ -119,6 +123,8 @@ function useThreadGitControlModel(props: ThreadGitMenuProps) {
   const hasPrimaryRemote = gitStatus?.hasPrimaryRemote ?? false;
   const isDefaultRef = gitStatus?.isDefaultRef ?? false;
 
+  const quickMergeAction = useQuickMergeAction();
+  const confirmPushToDefaultBranch = useConfirmPushToDefaultBranch();
   const quickAction = (() => {
     if (!isRepo) {
       return {
@@ -128,7 +134,13 @@ function useThreadGitControlModel(props: ThreadGitMenuProps) {
         hint: "This workspace is not a git repository.",
       };
     }
-    const action = resolveQuickAction(gitStatus, busy, isDefaultRef, hasPrimaryRemote);
+    const action = resolveQuickAction(
+      gitStatus,
+      busy,
+      isDefaultRef,
+      hasPrimaryRemote,
+      quickMergeAction,
+    );
     return !canWriteSourceControl && (action.kind === "run_pull" || action.kind === "run_action")
       ? {
           ...action,
@@ -146,6 +158,9 @@ function useThreadGitControlModel(props: ThreadGitMenuProps) {
     if (quickAction.kind === "run_pull") return "arrow.down.circle";
     if (quickAction.kind === "open_pr") return "arrow.up.right.circle";
     if (quickAction.kind === "run_action") {
+      if (quickAction.action === "merge" || quickAction.action === "merge_push") {
+        return PullRequestGlyph.merged;
+      }
       if (quickAction.action === "commit") return "checkmark.circle";
       if (quickAction.action === "push" || quickAction.action === "commit_push")
         return "arrow.up.circle";
@@ -181,6 +196,7 @@ function useThreadGitControlModel(props: ThreadGitMenuProps) {
       branchName &&
       confirmableAction &&
       !input.featureBranch &&
+      confirmPushToDefaultBranch &&
       requiresDefaultBranchConfirmation(input.action, isDefaultRef)
     ) {
       if (props.hasThread === false) {
@@ -319,7 +335,7 @@ export function useThreadGitMenuDefinition(props: ThreadGitMenuProps): AppBarMen
       },
       {
         id: "git-quick-action",
-        title: model.quickAction.label,
+        title: formatQuickActionLabel(model.quickAction, props.gitStatus),
         icon: model.quickActionIcon,
         disabled: model.quickAction.disabled,
         subtitle: model.quickActionHint ?? undefined,

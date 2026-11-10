@@ -4,6 +4,7 @@ import { EnvironmentProject, EnvironmentThreadShell } from "@t3tools/client-runt
 import type { AtomCommandResult } from "@t3tools/client-runtime/state/runtime";
 import {
   createVcsStatusRevalidationAtomFamily,
+  mergeByAgentPrompt,
   type GitActionRequestInput,
   type VcsActionOperation,
   type VcsRef,
@@ -12,6 +13,7 @@ import {
   AuthOrchestrationOperateScope,
   AuthSourceControlWriteScope,
   EnvironmentAuthorizationError,
+  MessageId,
   type GitRunStackedActionResult,
 } from "@t3tools/contracts";
 import {
@@ -21,6 +23,7 @@ import {
 import * as Cause from "effect/Cause";
 import { AsyncResult } from "effect/reactivity";
 
+import * as Dialog from "../components/ui/Dialog";
 import { useBranches } from "./queries";
 import { threadEnvironment } from "./threads";
 import { vcsActionManager, vcsEnvironment } from "./vcs";
@@ -62,6 +65,12 @@ export function useSelectedThreadGitActions() {
   const createRef = useAtomCommand(vcsEnvironment.createRef, { reportFailure: false });
   const createWorktree = useAtomCommand(vcsEnvironment.createWorktree, { reportFailure: false });
   const pull = useAtomCommand(vcsEnvironment.pull, { reportFailure: false });
+  const readForcePushPreview = useAtomCommand(vcsEnvironment.forcePushPreview, {
+    reportFailure: false,
+  });
+  const forcePush = useAtomCommand(vcsEnvironment.forcePush, { reportFailure: false });
+  const startTurn = useAtomCommand(threadEnvironment.startTurn, { reportFailure: false });
+  const stopSession = useAtomCommand(threadEnvironment.stopSession, { reportFailure: false });
   const { selectedThread, selectedThreadProject } = useThreadSelection();
   const canWriteSourceControl = useEnvironmentScope(
     selectedThread?.environmentId ?? null,
@@ -169,7 +178,12 @@ export function useSelectedThreadGitActions() {
       readonly project: EnvironmentProject;
       readonly cwd: string;
     }) => Promise<AtomCommandResult<T, E>>,
-    options?: { readonly managedExternally?: boolean; readonly changesThreadBranch?: boolean },
+    options?: {
+      readonly managedExternally?: boolean;
+      readonly changesThreadBranch?: boolean;
+      /** Replaces the error toast. */
+      readonly onError?: (message: string) => void;
+    },
   ): Promise<T | null> => {
     if (
       !selectedThread ||
@@ -201,7 +215,8 @@ export function useSelectedThreadGitActions() {
       const error = Cause.squash(result.cause);
       const message = error instanceof Error ? error.message : "Git action failed.";
       setPendingConnectionError(message);
-      showGitActionResult({ type: "error", title: "Git action failed", description: message });
+      if (options?.onError) options.onError(message);
+      else showGitActionResult({ type: "error", title: "Git action failed", description: message });
       return null;
     }
     return result.value;
@@ -269,6 +284,39 @@ export function useSelectedThreadGitActions() {
       },
       { changesThreadBranch: true },
     );
+  };
+
+  // A branch checked out in another worktree is not switched to: the thread moves into that checkout.
+  const onUseSelectedThreadWorktree = async (target: {
+    readonly branch: string;
+    readonly worktreePath: string;
+  }) => {
+    const thread = selectedThread;
+    if (!thread || !canChangeThreadBranch) return null;
+    const root = selectedThreadProject?.workspaceRoot.replace(/\/+$/, "") ?? null;
+    const path = target.worktreePath.replace(/\/+$/, "");
+    // The project's own checkout is the thread's default, not a worktree path.
+    const nextWorktreePath =
+      root !== null && (root === path || root.startsWith(`${path}/`)) ? null : target.worktreePath;
+    setPendingConnectionError(null);
+    if (thread.runtime !== null && nextWorktreePath !== selectedThreadWorktreePath) {
+      await stopSession({ environmentId: thread.environmentId, input: { threadId: thread.id } });
+    }
+    const syncResult = await syncSelectedThreadBranchState({
+      thread,
+      cwd: target.worktreePath,
+      nextThreadState: { branch: target.branch, worktreePath: nextWorktreePath },
+    });
+    if (AsyncResult.isFailure(syncResult)) {
+      const error = Cause.squash(syncResult.cause);
+      showGitActionResult({
+        type: "error",
+        title: "Git action failed",
+        description: error instanceof Error ? error.message : "Failed to switch worktree.",
+      });
+      return null;
+    }
+    return target;
   };
 
   const onCreateSelectedThreadBranch = async (branch: string) => {
@@ -360,6 +408,36 @@ export function useSelectedThreadGitActions() {
     input: GitActionRequestInput,
   ): Promise<GitRunStackedActionResult | null> => {
     const actionId = uuidv4();
+    const isMergeAction = input.action === "merge" || input.action === "merge_push";
+    const offerMergeByAgent = (message: string) => {
+      const thread = selectedThread;
+      if (!thread || !canOperateThread) {
+        showGitActionResult({ type: "error", title: "Merge failed", description: message });
+        return;
+      }
+      Dialog.confirm({
+        title: "Merge failed",
+        message,
+        confirmText: "Merge by agent",
+        onConfirm: () => {
+          void startTurn({
+            environmentId: thread.environmentId,
+            input: {
+              threadId: thread.id,
+              message: {
+                messageId: MessageId.make(uuidv4()),
+                role: "user",
+                text: mergeByAgentPrompt({ push: input.action === "merge_push", error: message }),
+                attachments: [],
+              },
+              runtimeMode: thread.runtimeMode,
+              interactionMode: "default",
+              createdAt: new Date().toISOString(),
+            },
+          });
+        },
+      });
+    };
     return await runSelectedThreadGitMutation(
       "run_change_request",
       "Running source control action",
@@ -399,8 +477,70 @@ export function useSelectedThreadGitActions() {
         });
         return result;
       },
-      { managedExternally: true, changesThreadBranch: input.featureBranch === true },
+      {
+        managedExternally: true,
+        changesThreadBranch: input.featureBranch === true,
+        ...(isMergeAction ? { onError: offerMergeByAgent } : {}),
+      },
     );
+  };
+
+  const onForcePushSelectedThreadBranch = async () => {
+    if (!selectedThread || !selectedThreadCwd) return;
+    // Ask before tracking, so the progress overlay is not up behind the dialog.
+    const preview = await readForcePushPreview({
+      environmentId: selectedThread.environmentId,
+      input: { cwd: selectedThreadCwd },
+    });
+    if (AsyncResult.isFailure(preview)) {
+      const error = Cause.squash(preview.cause);
+      showGitActionResult({
+        type: "error",
+        title: "Force push unavailable",
+        description: error instanceof Error ? error.message : "An error occurred.",
+      });
+      return;
+    }
+    const { value } = preview;
+    const list = (title: string, commits: typeof value.localCommits, total: number) =>
+      [
+        `${title} (${total}):`,
+        ...commits.slice(0, 5).map((commit) => `${commit.sha.slice(0, 7)} ${commit.subject}`),
+        ...(total > 5 ? [`and ${total - 5} more`] : []),
+      ].join("\n");
+    const confirmed = await new Promise<boolean>((resolve) => {
+      Dialog.confirm({
+        title: `Force push ${value.refName}?`,
+        message: [
+          `Your branch and ${value.upstreamRef} have diverged. Pushing replaces ${value.upstreamRef} with your local commits and deletes the remote-only ones from it.`,
+          list(
+            `Deleted from ${value.upstreamRef}`,
+            value.upstreamCommits,
+            value.upstreamCommitCount,
+          ),
+          list(`Pushed to ${value.upstreamRef}`, value.localCommits, value.localCommitCount),
+        ].join("\n\n"),
+        confirmText: "Force push",
+        destructive: true,
+        onConfirm: () => resolve(true),
+        onCancel: () => resolve(false),
+      });
+    });
+    if (!confirmed) return;
+    await runSelectedThreadGitMutation("force_push", "Force pushing", async ({ thread, cwd }) => {
+      const result = await forcePush({
+        environmentId: thread.environmentId,
+        input: { cwd, expectedUpstreamSha: value.upstreamSha },
+      });
+      if (AsyncResult.isFailure(result)) return result;
+      await refreshSelectedThreadGitStatus({ quiet: true, cwd });
+      showGitActionResult({
+        type: "success",
+        title: "Force pushed",
+        description: `Replaced ${result.value.upstreamRef} (${result.value.previousSha.slice(0, 7)}) with ${result.value.refName} (${result.value.newSha.slice(0, 7)}).`,
+      });
+      return result;
+    });
   };
 
   return {
@@ -409,9 +549,11 @@ export function useSelectedThreadGitActions() {
     refreshSelectedThreadGitStatus,
     refreshSelectedThreadBranches,
     onCheckoutSelectedThreadBranch,
+    onUseSelectedThreadWorktree,
     onCreateSelectedThreadBranch,
     onCreateSelectedThreadWorktree,
     onPullSelectedThreadBranch,
     onRunSelectedThreadGitAction,
+    onForcePushSelectedThreadBranch,
   };
 }

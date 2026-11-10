@@ -50,14 +50,6 @@ export function GitBranchesSheet(_props: GitBranchesSheetProps) {
     (currentBranchLabel === "Detached HEAD" ? "main" : currentBranchLabel);
   const [worktreeBranchName, setWorktreeBranchName] = useState("");
 
-  const disabledExistingBranchNames: Array<string> = [];
-  for (const branch of availableBranches) {
-    if (branch.worktreePath !== null && branch.worktreePath !== currentWorktreePath) {
-      disabledExistingBranchNames.push(branch.name);
-    }
-  }
-  const disabledExistingBranches = new Set(disabledExistingBranchNames);
-
   return (
     <FitSheet
       header={<SheetHeader title="Branches & worktrees" onClose={() => navigation.goBack()} />}
@@ -139,11 +131,14 @@ export function GitBranchesSheet(_props: GitBranchesSheetProps) {
         }
       >
         {availableBranches.map((branch, index) => {
-          const disabled = disabledExistingBranches.has(branch.name);
+          const otherWorktreePath =
+            branch.worktreePath !== null && branch.worktreePath !== currentWorktreePath
+              ? branch.worktreePath
+              : null;
           const subtitle = branch.worktreePath
-            ? branch.worktreePath === currentWorktreePath
+            ? otherWorktreePath === null
               ? "Checked out in this thread"
-              : "Checked out in another worktree"
+              : "Checked out in another worktree. Opens it in this thread."
             : branch.isDefault
               ? "Default branch"
               : "Local branch";
@@ -155,9 +150,16 @@ export function GitBranchesSheet(_props: GitBranchesSheetProps) {
               description={subtitle}
               selected={branch.current}
               separated={index > 0}
-              disabled={!canChangeThreadBranch || busy || disabled}
+              disabled={!canChangeThreadBranch || busy}
               onPress={() => {
-                void gitActions.onCheckoutSelectedThreadBranch(branch.name).then((result) => {
+                const switched =
+                  otherWorktreePath === null
+                    ? gitActions.onCheckoutSelectedThreadBranch(branch.name)
+                    : gitActions.onUseSelectedThreadWorktree({
+                        branch: branch.name,
+                        worktreePath: otherWorktreePath,
+                      });
+                void switched.then((result) => {
                   if (result === null) return;
                   navigation.goBack();
                 });
