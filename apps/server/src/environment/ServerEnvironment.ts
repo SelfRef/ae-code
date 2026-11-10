@@ -17,6 +17,7 @@ import packageJson from "../../package.json" with { type: "json" };
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import { resolveServerInstallation } from "../cli/invocation.ts";
 import { readAgentActivityPublishingActive } from "../cloud/config.ts";
+import { selfUpdateEnabled } from "../cloud/forkRelease.ts";
 import { resolveServerSelfUpdateCapability } from "../cloud/selfUpdate.ts";
 import { resolveServiceLauncherMode } from "../cloud/serviceLauncherClient.ts";
 import * as ServerConfig from "../config.ts";
@@ -199,6 +200,7 @@ export const make = Effect.gen(function* () {
   const serverSelfUpdate = resolveServerSelfUpdateCapability({
     desktopManaged: serverConfig.mode === "desktop",
     launcherManaged: launcher.managed,
+    respawnManaged: yield* selfUpdateEnabled,
   });
   const serverInstallation = serverSelfUpdate === null ? yield* resolveServerInstallation : null;
   // The desktop reports whether it can install updates; requests travel over its control fd.
@@ -284,7 +286,7 @@ export const make = Effect.gen(function* () {
       cloudVoiceTranscription: true,
       ...(serverSelfUpdate === null ? {} : { serverSelfUpdate }),
       ...(serverInstallation === null ? {} : { serverInstallation }),
-      ...(serverSelfUpdate === "boot-service" || desktopAppUpdate
+      ...(serverSelfUpdate === "boot-service" || serverSelfUpdate === "respawn" || desktopAppUpdate
         ? { serverSelfUpdateProgress: true }
         : {}),
       ...(serverSelfUpdate === "boot-service" ? { serverUpdateStaging: true } : {}),

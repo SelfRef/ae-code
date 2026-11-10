@@ -1,6 +1,6 @@
 # The AE Code server: the Linux x64 archive of a release (ae-code-linux-x64.tar.gz), which
 # carries the `ae-code` server binary, the web client and its own libatomic. The build context
-# holds only that archive; ae-release.yml builds and pushes this image.
+# holds only that archive and entrypoint.sh; ae-release.yml builds and pushes this image.
 # Agent CLIs are not included: install the ones you use in a derived image.
 FROM ubuntu:24.04
 
@@ -12,8 +12,11 @@ RUN userdel -r ubuntu \
  && apt-get install -y --no-install-recommends ca-certificates git openssh-client libsecret-1-0 \
  && rm -rf /var/lib/apt/lists/*
 
-COPY ae-code-linux-x64.tar.gz /tmp/
-RUN mkdir /opt/ae-code && tar -xzf /tmp/ae-code-linux-x64.tar.gz -C /opt/ae-code --strip-components=1 && rm /tmp/ae-code-linux-x64.tar.gz
+COPY ae-code-linux-x64.tar.gz entrypoint.sh /tmp/
+RUN mkdir /opt/ae-code && tar -xzf /tmp/ae-code-linux-x64.tar.gz -C /opt/ae-code --strip-components=1 \
+ && /opt/ae-code/ae-code --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+[^ ]*' | tail -n 1 > /opt/ae-code/VERSION \
+ && install -m 755 /tmp/entrypoint.sh /usr/local/bin/ae-code-entrypoint \
+ && rm /tmp/ae-code-linux-x64.tar.gz /tmp/entrypoint.sh
 
 ENV PATH=/opt/ae-code:$PATH
 USER ae
@@ -21,4 +24,7 @@ WORKDIR /home/ae
 # The server's state (database, settings, secrets) lives here.
 VOLUME /home/ae/.ae
 EXPOSE 3773
+# Off by default. T3CODE_SELF_UPDATE=true lets Settings -> About install newer releases from
+# GitHub in place: the entrypoint then restarts the server from <state>/updates (entrypoint.sh).
+ENTRYPOINT ["ae-code-entrypoint"]
 CMD ["ae-code", "serve", "--host", "0.0.0.0", "--port", "3773", "--no-browser"]
