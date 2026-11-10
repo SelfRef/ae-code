@@ -1173,7 +1173,7 @@ capability so older servers do not offer it.
 
 Own projects merge to the default branch and push instead of opening pull requests. Two stacked Git actions, `merge`
 and `merge_push` (both commit pending changes first), plus a project-scoped setting `quickMergeAction`
-(`pull_request` by default) that makes one of them the main button.
+(`merge` by default; `pull_request` restores the pull request button) that makes one of them the main button.
 
 - Logic is `apps/server/src/git/mergeIntoDefault.ts`, run from `GitManager.runStackedAction` as a `merge` phase.
 - Fast-forward only: rebase the branch onto the default branch if it moved, then `merge --ff-only` in the default
