@@ -1076,6 +1076,7 @@ export default function GitActionsControl({
   const hasPrimaryRemote = gitStatus?.hasPrimaryRemote ?? false;
   const gitStatusForActions = gitStatus;
   const changesTotals = gitStatusForActions?.workingTree ?? { insertions: 0, deletions: 0 };
+  const changedFileCount = gitStatusForActions?.workingTree.files.length ?? 0;
 
   const allFiles = gitStatusForActions?.workingTree.files ?? [];
   // Changed-file paths are repository-relative, so they must resolve against
@@ -1732,6 +1733,11 @@ export default function GitActionsControl({
           <FileDiffIcon className={THREAD_DETAILS_PANEL_ICON_CLASS} aria-hidden />
           <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
             <span className="shrink-0">Uncommitted</span>
+            {changedFileCount > 0 ? (
+              <span className="min-w-0 truncate font-normal text-muted-foreground">
+                {changedFileCount} {changedFileCount === 1 ? "file" : "files"}
+              </span>
+            ) : null}
             {changesTotals.insertions || changesTotals.deletions ? (
               <span className="ml-auto flex shrink-0 items-baseline gap-2 ps-2 font-mono tabular-nums">
                 <span
