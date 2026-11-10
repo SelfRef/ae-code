@@ -4,6 +4,7 @@ import {
   ChartNoAxesColumnIcon,
   CircleDotIcon,
   SettingsIcon,
+  TagIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { memo } from "react";
@@ -264,6 +265,10 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     closeMobileSidebar();
     void navigate({ to: "/issues", search: { state: "open" } });
   };
+  const handleReleasesClick = () => {
+    closeMobileSidebar();
+    void navigate({ to: "/releases" });
+  };
   const handleSettingsClick = () => {
     closeMobileSidebar();
     void navigate({ to: "/settings" });
@@ -310,6 +315,9 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
               label="Issues"
               onClick={handleIssuesClick}
             />
+          ) : null}
+          {issuesSupported ? (
+            <SidebarUtilityItem icon={<TagIcon />} label="Releases" onClick={handleReleasesClick} />
           ) : null}
           <SidebarUtilityItem
             icon={<ChartNoAxesColumnIcon />}

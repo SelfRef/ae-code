@@ -36,6 +36,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 - When a merge fails, for example on a rebase conflict, its error offers "Merge by agent": the thread's agent
   rebases, resolves the conflicts and finishes the merge.
 - Issues open in the right panel.
+- Releases: a project on GitHub lists its releases with their notes and assets, on a Releases page
+  (sidebar, command palette) and in the right panel.
 - Sidebar: Done and Input threads are tinted, a draft shows a Draft status, and a thread without a
   worktree shows a branch icon before its branch name.
 - A plain `ae-code serve`, not only the Docker image, updates in place from GitHub releases when
