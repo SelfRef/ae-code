@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { issueEnvironment } from "~/state/issues";
 import { useEnvironmentQuery } from "~/state/query";
+import { usePageProject } from "~/hooks/usePageProject";
 import { useProjects } from "~/state/entities";
 import { useSourceControlSignIn } from "~/state/sourceControl";
 import { formatRelativeTimeLabel } from "~/timestampFormat";
@@ -12,17 +13,13 @@ import { cn } from "~/lib/utils";
 
 import { Button } from "../ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../ui/empty";
-import { RefreshIcon } from "../ui/refresh-icon";
-import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { SidebarInset } from "../ui/sidebar";
 import { Spinner } from "../ui/spinner";
 import { Badge } from "../ui/badge";
+import { ListRefreshButton } from "../ListToolbar";
+import { ProjectPageHeader } from "../ProjectPageHeader";
 import { ReleaseBadges, ReleaseDetailPane } from "./ReleaseDetailPane";
-import {
-  issueProjects,
-  projectKey,
-  selectIssueProject,
-} from "@t3tools/client-runtime/issue-projects";
+import { issueProjects, projectKey } from "@t3tools/client-runtime/issue-projects";
 
 function ReleaseRow({
   release,
@@ -139,7 +136,7 @@ export function ReleasesPage() {
   const search = useSearch({ from: "/_chat/releases" });
   const navigate = useNavigate();
   const projects = issueProjects(useProjects(), useSourceControlSignIn().githubSignedOut);
-  const project = selectIssueProject(projects, search);
+  const project = usePageProject(projects, search);
   const [pages, setPages] = useState(1);
   const [refreshToken, setRefreshToken] = useState(0);
 
@@ -164,48 +161,24 @@ export function ReleasesPage() {
             detailOpen && "hidden md:flex",
           )}
         >
-          <header className="flex flex-col gap-2 border-b p-3">
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm font-semibold">Releases</h1>
-              <Button
-                size="icon-sm"
-                variant="ghost-muted"
-                aria-label="Refresh"
-                className="ms-auto"
-                onClick={() => {
-                  setPages(1);
-                  setRefreshToken((token) => token + 1);
-                }}
-              >
-                <RefreshIcon className="size-3.5" />
-              </Button>
-            </div>
-            {projects.length > 1 && project !== null ? (
-              <Select
-                value={projectKey(project)}
-                onValueChange={(key) => {
-                  const next = projects.find((candidate) => projectKey(candidate) === key);
-                  if (next)
-                    update({
-                      environmentId: next.environmentId,
-                      projectId: next.id,
-                      id: undefined,
-                    });
-                }}
-              >
-                <SelectTrigger size="compact" aria-label="Project">
-                  <SelectValue>{project.title}</SelectValue>
-                </SelectTrigger>
-                <SelectPopup alignItemWithTrigger={false}>
-                  {projects.map((candidate) => (
-                    <SelectItem key={projectKey(candidate)} value={projectKey(candidate)}>
-                      {candidate.title}
-                    </SelectItem>
-                  ))}
-                </SelectPopup>
-              </Select>
-            ) : null}
-          </header>
+          <ProjectPageHeader
+            title="Releases"
+            project={project}
+            projects={projects}
+            reserveNativeControls={false}
+            onProject={(next) =>
+              update({ environmentId: next.environmentId, projectId: next.id, id: undefined })
+            }
+          >
+            <ListRefreshButton
+              label="Refresh releases"
+              refreshing={false}
+              onRefresh={() => {
+                setPages(1);
+                setRefreshToken((token) => token + 1);
+              }}
+            />
+          </ProjectPageHeader>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {project === null ? (
               <Empty size="compact">

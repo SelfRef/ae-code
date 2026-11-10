@@ -2,19 +2,32 @@ import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import {
   branchMergeState,
   branchProjects,
+  filterBranches,
+  sortBranches,
   threadForBranch,
+  type BranchKind,
+  type BranchMergeFilter,
+  type BranchSort,
 } from "@t3tools/client-runtime/branch-overview";
-import { projectKey, selectIssueProject } from "@t3tools/client-runtime/issue-projects";
-import type { VcsBranchOverviewEntry } from "@t3tools/contracts";
+import { ALL_VCS_REMOTES, type VcsBranchOverviewEntry } from "@t3tools/contracts";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
+  ArrowDownAZIcon,
   ArrowDownIcon,
+  ArrowDownUpIcon,
   ArrowUpIcon,
+  CalendarArrowUpIcon,
+  ClockIcon,
+  CloudIcon,
   FolderGit2Icon,
   GitBranchIcon,
+  LayersIcon,
   MessageSquareIcon,
+  SearchIcon,
 } from "lucide-react";
+import { useState } from "react";
 
+import { usePageProject } from "~/hooks/usePageProject";
 import { useProjects, useQuietThreadShells } from "~/state/entities";
 import { useEnvironmentQuery } from "~/state/query";
 import { vcsEnvironment } from "~/state/vcs";
@@ -25,10 +38,37 @@ import { buildThreadRouteParams } from "../../threadRoutes";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../ui/empty";
-import { RefreshIcon } from "../ui/refresh-icon";
-import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group";
 import { SidebarInset } from "../ui/sidebar";
 import { Spinner } from "../ui/spinner";
+import { ListFiltersMenu, ListRefreshButton } from "../ListToolbar";
+import { ProjectPageHeader } from "../ProjectPageHeader";
+import { PullRequestGlyph } from "../pullRequest/pullRequestIcons";
+import { PullRequestCompactFilterMenu } from "../pullRequest/PullRequestCompactFilterMenu";
+import {
+  PullRequestFilterRadioSubmenu,
+  type PullRequestFilterOption,
+} from "../pullRequest/PullRequestListFilters";
+
+const SORT_OPTIONS = [
+  { value: "recent", label: "Latest commit", Icon: ClockIcon },
+  { value: "oldest", label: "Oldest commit", Icon: CalendarArrowUpIcon },
+  { value: "ahead", label: "Most unmerged commits", Icon: ArrowUpIcon },
+  { value: "name", label: "Name", Icon: ArrowDownAZIcon },
+] as const satisfies ReadonlyArray<PullRequestFilterOption<BranchSort>>;
+
+const UNFILTERED = "all";
+const MERGE_OPTIONS = [
+  { value: UNFILTERED, label: "All", Icon: LayersIcon },
+  { value: "unmerged", label: "Not merged", Icon: GitBranchIcon },
+  { value: "merged", label: "Merged", Icon: PullRequestGlyph.merged },
+] as const satisfies ReadonlyArray<PullRequestFilterOption<string>>;
+const KIND_OPTIONS = [
+  { value: UNFILTERED, label: "All", Icon: LayersIcon },
+  { value: "branch", label: "Branch", Icon: GitBranchIcon },
+  { value: "worktree", label: "Worktree", Icon: FolderGit2Icon },
+  { value: "remote", label: "Remote only", Icon: CloudIcon },
+] as const satisfies ReadonlyArray<PullRequestFilterOption<string>>;
 
 function BranchRow({
   branch,
@@ -121,14 +161,19 @@ export function BranchesPage() {
   const search = useSearch({ from: "/_chat/branches" });
   const navigate = useNavigate();
   const projects = branchProjects(useProjects());
-  const project = selectIssueProject(projects, search);
+  const project = usePageProject(projects, search);
   const threads = useQuietThreadShells();
+  const [query, setQuery] = useState("");
   const overview = useEnvironmentQuery(
     project === null
       ? null
       : vcsEnvironment.branchOverview({
           environmentId: project.environmentId,
-          input: { cwd: project.workspaceRoot, fetch: true },
+          input: {
+            cwd: project.workspaceRoot,
+            fetch: true,
+            ...(search.remote === undefined ? {} : { remote: search.remote }),
+          },
         }),
   );
 
@@ -138,73 +183,100 @@ export function BranchesPage() {
   };
 
   const data = overview.data;
+  const remotes = data?.remotes ?? [];
+  const remote = data === null ? ALL_VCS_REMOTES : (data.remote ?? ALL_VCS_REMOTES);
   const unmergedCount =
     data?.branches.filter((b) => branchMergeState(b) === "unmerged").length ?? 0;
-  const branches =
-    data?.branches.filter((b) => !search.unmerged || branchMergeState(b) === "unmerged") ?? [];
+  const branches = sortBranches(
+    filterBranches(data?.branches ?? [], {
+      merge: search.merge,
+      kind: search.kind,
+      query,
+    }),
+    search.branchSort ?? "recent",
+  );
+  const filterCount = [
+    search.merge,
+    search.kind,
+    search.remote !== undefined && search.remote !== remotes[0],
+  ].filter(Boolean).length;
+  const remoteOptions: ReadonlyArray<PullRequestFilterOption<string>> = [
+    { value: ALL_VCS_REMOTES, label: "All remotes", Icon: LayersIcon },
+    ...remotes.map((name) => ({ value: name, label: name, Icon: CloudIcon })),
+  ];
 
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none">
-      <header className="flex flex-col gap-2 border-b p-3">
-        <div className="flex items-center gap-2">
-          <h1 className="text-sm font-semibold">Branches</h1>
-          {data?.isRepo ? (
-            <span className="text-xs text-muted-foreground">
-              {unmergedCount > 0
-                ? `${unmergedCount} not merged into ${data.defaultRef}`
-                : "All merged"}
-            </span>
+      <ProjectPageHeader
+        title="Branches"
+        project={project}
+        projects={projects}
+        onProject={(next) =>
+          update({ environmentId: next.environmentId, projectId: next.id, remote: undefined })
+        }
+      >
+        {data?.isRepo ? (
+          <span className="min-w-0 truncate text-xs text-muted-foreground">
+            {unmergedCount > 0
+              ? `${unmergedCount} not merged into ${data.defaultRef}`
+              : "All merged"}
+          </span>
+        ) : null}
+      </ProjectPageHeader>
+      <div className="flex flex-wrap items-center gap-2 border-b p-3">
+        <InputGroup className="min-w-0 basis-full flex-1 sm:basis-0 **:[input]:h-9 sm:**:[input]:h-8">
+          <InputGroupAddon>
+            <SearchIcon aria-hidden />
+          </InputGroupAddon>
+          <InputGroupInput
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.currentTarget.value)}
+            placeholder="Search branches"
+            aria-label="Search branches"
+          />
+        </InputGroup>
+        <PullRequestCompactFilterMenu
+          label="Sort branches"
+          triggerIcon={<ArrowDownUpIcon aria-hidden className="size-4" />}
+          triggerLabel="Sort"
+          outlined
+          value={search.branchSort ?? "recent"}
+          options={SORT_OPTIONS}
+          onChange={(sort) => update({ branchSort: sort === "recent" ? undefined : sort })}
+        />
+        <ListFiltersMenu count={filterCount}>
+          <PullRequestFilterRadioSubmenu
+            label="Merge state"
+            value={search.merge ?? UNFILTERED}
+            options={MERGE_OPTIONS}
+            onChange={(next) =>
+              update({ merge: next === UNFILTERED ? undefined : (next as BranchMergeFilter) })
+            }
+          />
+          <PullRequestFilterRadioSubmenu
+            label="Kind"
+            value={search.kind ?? UNFILTERED}
+            options={KIND_OPTIONS}
+            onChange={(next) =>
+              update({ kind: next === UNFILTERED ? undefined : (next as BranchKind) })
+            }
+          />
+          {remotes.length > 1 ? (
+            <PullRequestFilterRadioSubmenu
+              label="Remote"
+              value={remote}
+              options={remoteOptions}
+              onChange={(next) => update({ remote: next })}
+            />
           ) : null}
-          <Button
-            size="icon-sm"
-            variant="ghost-muted"
-            aria-label="Refresh"
-            className="ms-auto"
-            onClick={overview.refresh}
-          >
-            <RefreshIcon className="size-3.5" />
-          </Button>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {projects.length > 1 && project !== null ? (
-            <Select
-              value={projectKey(project)}
-              onValueChange={(key) => {
-                const next = projects.find((candidate) => projectKey(candidate) === key);
-                if (next) update({ environmentId: next.environmentId, projectId: next.id });
-              }}
-            >
-              <SelectTrigger size="compact" aria-label="Project" className="w-auto min-w-40">
-                <SelectValue>{project.title}</SelectValue>
-              </SelectTrigger>
-              <SelectPopup alignItemWithTrigger={false}>
-                {projects.map((candidate) => (
-                  <SelectItem key={projectKey(candidate)} value={projectKey(candidate)}>
-                    {candidate.title}
-                  </SelectItem>
-                ))}
-              </SelectPopup>
-            </Select>
-          ) : null}
-          <div className="flex gap-1" role="tablist" aria-label="Filter">
-            {[
-              { value: undefined, label: "All" },
-              { value: true as const, label: "Not merged" },
-            ].map((entry) => (
-              <Button
-                key={entry.label}
-                size="compact"
-                role="tab"
-                aria-selected={search.unmerged === entry.value}
-                variant={search.unmerged === entry.value ? "outline" : "ghost-muted"}
-                onClick={() => update({ unmerged: entry.value })}
-              >
-                {entry.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </header>
+        </ListFiltersMenu>
+        <ListRefreshButton
+          label="Refresh branches"
+          refreshing={overview.isPending}
+          onRefresh={overview.refresh}
+        />
+      </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {project === null ? (
           <Empty size="compact">
@@ -238,9 +310,13 @@ export function BranchesPage() {
             {branches.length === 0 ? (
               <Empty size="compact">
                 <EmptyHeader>
-                  <EmptyTitle>Everything is merged</EmptyTitle>
+                  <EmptyTitle>
+                    {search.merge === "unmerged" ? "Everything is merged" : "No matching branches"}
+                  </EmptyTitle>
                   <EmptyDescription>
-                    No branch has commits that {data.defaultRef} lacks.
+                    {search.merge === "unmerged"
+                      ? `No branch has commits that ${data.defaultRef} lacks.`
+                      : "Change the search or the filters to see more."}
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>

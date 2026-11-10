@@ -199,9 +199,10 @@ Built differently from the plan below, to stay small:
   `issues.list` and `issues.read` (read scope), `IssueProviderApi` as an optional `issues` field of the driver
   instance, `IssueService` resolving the project's repository the way the pull-request service does. Other forges have no
   `issues` and answer "unsupported".
-- **Web**: page `/issues` (project picker when several projects are on GitHub, search, Open/Closed/All, list next to
-  the issue, Markdown body and comments, "Open on GitHub"), a sidebar button and a command-palette action, both shown
-  only when a project is on GitHub.
+- **Web**: page `/issues` (the thread header's project switcher among the GitHub projects, search, Sort and Filters like
+  Pull requests, list next to the issue, Markdown body and comments, "Open on GitHub"), a sidebar button and a
+  command-palette action, both shown only when a project is on GitHub. Sort (`IssueListInput.sort`: updated, newest,
+  oldest, comments) goes to GitHub's search; "created by me" and "assigned to me" are its `author:@me` and `assignee:@me`.
 - **Right panel**: an "Issues" tab (add menu, key `I`) lists and reads the thread's project issues beside the chat, same
   list and detail as the page. Offered when the thread's project is on GitHub.
 - **Android**: an Issues tab next to Threads, Pulls and Usage. Settings → Navigation chooses which tabs show; Pulls is
@@ -1285,8 +1286,14 @@ branch and from its own upstream. Read-only; nothing here switches, pulls, pushe
 - **Threads**: a row links to the newest live thread of that project working on it (in that worktree, or on that branch in
   the project root). Matching is client-side (`threadForBranch` in `packages/client-runtime/src/branchOverview.ts`);
   remote-only branches have no thread.
-- **Web**: page `/branches` (project picker when several projects, All / Not merged filter), a sidebar button before
-  Issues and a command-palette action. Shown for every project that is not archived or a scratch one.
+- **Remotes**: `vcs.branchOverview` takes `remote` (a remote's name, or `*` for all) and answers with `remotes` (primary
+  first) and the `remote` it listed. Unset is the primary remote (`origin`, else the first), because the 200-branch cap
+  applies after this filter: a fork's `upstream` has thousands of branches and would crowd out the project's own.
+- **Web**: page `/branches` with the project switcher of the thread header (`ProjectPageHeader`, shared with Issues and
+  Releases; it opens on the project of the last opened chat), search, Sort (latest/oldest commit, most unmerged, name) and
+  Filters (merge state, kind, remote), a sidebar button before Issues and a command-palette action. Shown for every
+  project that is not archived or a scratch one. The sort and filters live in the URL (`branchSort`, `merge`, `kind`,
+  `remote`).
 - **Android**: a Branches tab before Issues (a page like Issues and Releases; the row's "Open thread" opens it). The tab bar
   holds four tabs, so with Pulls hidden Usage moves under the overflow entry.
 - No data migration.
