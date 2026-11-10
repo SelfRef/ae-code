@@ -59,14 +59,17 @@ const GtAccountSchema = Schema.Struct({
 export function parseForgejoLogins(raw: string): ReadonlyArray<typeof ForgejoLoginSchema.Type> {
   const decoded = decodeJsonResult(Schema.Array(GtAccountSchema))(raw);
   if (Result.isFailure(decoded)) return [];
-  return decoded.success.map((account) => ({
-    // Several accounts can share a user name or an instance; together they are unique.
-    name: `${account.user}@${account.host}`,
-    url: account.host,
-    valid: String(account.credential_available && !account.error),
-    user: account.user,
-    default: String(account.active),
-  }));
+  // A GITEA_TOKEN without GITEA_CLI_HOST shows up as an active entry with no host.
+  return decoded.success
+    .filter((account) => account.host !== "")
+    .map((account) => ({
+      // Several accounts can share a user name or an instance; together they are unique.
+      name: `${account.user}@${account.host}`,
+      url: account.host,
+      valid: String(account.credential_available && !account.error),
+      user: account.user,
+      default: String(account.active),
+    }));
 }
 
 export const ForgejoKeysSchema = Schema.Struct({
