@@ -898,6 +898,12 @@ progressive loading keep working. Research and the upstream PRs this draws on: [
 - **Contracts and permissions:** `packages/contracts/src/skillLibrary.ts`, nine `skills.*` RPCs. List and read need
   `orchestration:read`; every write, and inspecting or installing a source, needs `filesystem:write`. The client sends
   folder ids, never paths.
+- **Agent tools** (`apps/server/src/mcp/toolkits/skills`): `t3_skill_list`, `t3_skill_read`, `t3_skill_write`,
+  `t3_skill_remove`, `t3_skill_link`, each a call into the service. The two reads are open to any thread and are on the
+  Claude read-only allowlist. The three writes work only in a thread in full access: T3's own MCP tools are pre-approved
+  for Claude (`mcp__t3-code__*`) and there is no per-tool approval prompt, so the gate is the thread's own trust level
+  (in full access an agent can write any file anyway). A per-write approval card would be a new turn-item type like the
+  secret request. Install and update are not tools. The tool list grew by 1782 bytes (`agentContextBudget.json`).
 - **Settings → Skills** (web and desktop, one environment at a time): the library with a switch per linkable provider,
   an editor, create, install, trash, and a read-only list of what providers load from their own folders (from the
   provider snapshots). User guide: `docs/user/skills.md`.
@@ -911,11 +917,12 @@ progressive loading keep working. Research and the upstream PRs this draws on: [
   snapshots, so the list is read from the filesystem and the snapshots only feed the last section.
 - Project skills; a skills.sh search or catalog (a source must be named); adopting a provider's existing skill folder into
   the library; update checks without fetching; Windows junctions (relative symlinks need developer mode there).
-- `t3_skill_list` and `t3_skill_load` MCP tools for providers with no native skills (as in change 13); a read-only bind
+- A per-write approval card for the agent tools; a `t3_skill_load` for providers with no native skills; a read-only bind
   mount of a host library; sync between environments (upstream PR #24377); bundled workflow skills; a mobile page (like
   memory, Settings pages are web and desktop).
 - **Not verified:** the Grok and Kiro folders come from `npx skills`' table, and Pi and OpenCode reading `~/.agents/skills`
-  from their docs; no end-to-end pass of the page in a browser (browser tests cannot run on the build host).
+  from their docs; the page was checked by hand for listing, creating and editing only (not links or install), and the agent
+  tools were not run against a real model (`evals/mcp-tool-use` needs paid keys, not run).
 
 ### Rebase cost
 
