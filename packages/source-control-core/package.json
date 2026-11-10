@@ -35,6 +35,10 @@
       "types": "./src/server/pullRequestChecks.ts",
       "import": "./src/server/pullRequestChecks.ts"
     },
+    "./server/IssueProvider": {
+      "types": "./src/server/IssueProvider.ts",
+      "import": "./src/server/IssueProvider.ts"
+    },
     "./server/PullRequestProvider": {
       "types": "./src/server/PullRequestProvider.ts",
       "import": "./src/server/PullRequestProvider.ts"
