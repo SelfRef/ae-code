@@ -764,7 +764,11 @@ export const make = Effect.gen(function* () {
             }),
         );
         const subscription = yield* PubSub.subscribe(changesPubSub);
-        const initialLocal = yield* getOrLoadLocalStatus(cwd);
+        // Nothing watched the checkout while nobody was subscribed, so a push or a moved default
+        // branch since then is invisible to a cached status.
+        const initialLocal = (yield* getCachedStatus(cwd))?.local
+          ? yield* refreshLocalStatusCore(cwd)
+          : yield* getOrLoadLocalStatus(cwd);
         const cachedStatus = yield* getCachedStatus(cwd);
         const initialRemote = cachedStatus?.remote?.value ?? null;
         if (input.includeRemote !== false) {

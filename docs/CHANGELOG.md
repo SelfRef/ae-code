@@ -74,6 +74,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Fixed
 
+- Opening a thread rereads its git status, so a "Merge N commits" button no longer lingers after the branch was merged or pushed while the thread wasn't open.
 - Android: pushing from the default branch on a new-thread draft asks to confirm instead of refusing with "Choose a feature branch".
 - Android: Settings → Source control shows the "Confirm pushing to the default branch" switch while a project is selected too.
 - Done, Input and draft chats in the sidebar have a more visible tint on the dark theme.
