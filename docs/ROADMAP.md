@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [31] | Move a started thread into a new worktree from the workspace control or the thread menu (the control used to lock after the first message)                             | done    |
 | [30] | Synced drafts: unsent text, attachments, contexts and new-thread settings follow you across web, desktop and Android (on the server)                                   | planned |
 | [29] | Appearance defaults: Dev artwork, 100 ms panel animations, composer context on, a version in the sidebar header; Nightly artwork removed                               | done    |
 | [28] | Worktree defaults for parallel feature work: semantic branch names, no start from the remote, cleanup of merged, deleted, unchanged and settled (3 days) worktrees     | done    |
@@ -1133,6 +1134,24 @@ New files: `packages/contracts/src/composerDraftSync.ts`, `apps/server/src/compo
 index, client-runtime `rpc/client.ts` and `state/server.ts`, `appInit.tsx`, the mobile `App.tsx`, `composerDraftStore.ts`
 (two actions), `attachmentStore.ts` (the keep set) and `attachmentUploadQueue.ts` (stamp images). Upstream may land its own
 version: its PR #26273 was closed for evidence, not rejected.
+
+## Move a thread into a worktree (change 31)
+
+The workspace control locked once a thread had messages, so a thread started on the local checkout could never get a
+worktree. An idle thread without one can now move into a new worktree: the picker unlocks for it, and the thread menu
+has **Move to new worktree**. Both call the `threads.moveToWorktree` RPC, gated by the `threadMoveToWorktree`
+capability so older servers do not offer it.
+
+- The server reuses the agent's `t3_worktree_handoff` path (`WorktreeMcpService.moveThread`): a worktree branched from
+  the project's checked-out branch, the thread re-pointed at it (which detaches its provider session), the setup script
+  started. The branch is a temporary `t3/<hex>` name, as for a new thread; there is no model-written name.
+- One instance serves both entry points, so a single per-thread guard stops an agent handoff and a UI move from both
+  creating a worktree.
+- Rejected while the thread has a queued or running turn, is archived, or already has a worktree.
+- Uncommitted changes in the local checkout are left there, not copied.
+- Web and desktop only; mobile does not offer it. The command palette has no per-thread actions, so the thread menu is
+  the second entry point.
+- No data migration.
 
 ## Keeping the fork up to date with upstream
 

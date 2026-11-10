@@ -20,6 +20,7 @@ import { flushSync } from "react-dom";
 import { useComposerDraftStore, type DraftId } from "../composerDraftStore";
 import { EnvironmentMachineIcon } from "./EnvironmentMachineIcon";
 import { useProject, useThreadShellsForProjectRefs } from "../state/entities";
+import { useCanMoveThreadToWorktree, useMoveThreadToWorktree } from "../hooks/useThreadActions";
 import {
   ADD_TO_MACHINE_LABEL_CLASS,
   type EnvMode,
@@ -201,7 +202,7 @@ const RunContextSelector = memo(function RunContextSelector({
         ? resolveEnvModeLabel("worktree")
         : resolveCurrentWorkspaceLabel(activeWorktreePath);
   const isPanel = displayMode === "panel";
-  const isLocked = envLocked || (envModeLocked && (!isPanel || !showEnvironmentPicker));
+  const isLocked = envModeLocked && (envLocked || !isPanel || !showEnvironmentPicker);
   const workspacePath =
     forceNewWorktree || (effectiveEnvMode === "worktree" && !activeWorktreePath)
       ? null
@@ -627,7 +628,22 @@ export const BranchToolbar = memo(function BranchToolbar({
   const activeProject = useProject(activeProjectRef);
   const activeWorktreePath = forceNewWorktree ? null : worktreePath;
   const effectiveEnvMode = forceNewWorktree ? "worktree" : envMode;
-  const envModeLocked = envLocked || (isServerThread && activeWorktreePath !== null);
+  // A thread that has started stays on its checkout, except that an idle one can move into a new worktree.
+  const canMoveToWorktree =
+    useCanMoveThreadToWorktree(threadRef) && !forceNewWorktree && showGitControls;
+  const moveThreadToWorktree = useMoveThreadToWorktree();
+  const [movingToWorktree, setMovingToWorktree] = useState(false);
+  const envModeLocked =
+    (envLocked && !canMoveToWorktree) ||
+    movingToWorktree ||
+    (isServerThread && activeWorktreePath !== null);
+  const onWorkspaceChange = canMoveToWorktree
+    ? (mode: EnvMode) => {
+        if (mode !== "worktree") return;
+        setMovingToWorktree(true);
+        void moveThreadToWorktree(threadRef).finally(() => setMovingToWorktree(false));
+      }
+    : onEnvModeChange;
 
   const canUsePreviousWorktree = !isServerThread && !envModeLocked && !forceNewWorktree;
   const projectRefsForWorktreeLookup = canUsePreviousWorktree ? [activeProjectRef] : [];
@@ -707,7 +723,7 @@ export const BranchToolbar = memo(function BranchToolbar({
             onEnvironmentChange={onEnvironmentChange}
             effectiveEnvMode={effectiveEnvMode}
             activeWorktreePath={activeWorktreePath}
-            onEnvModeChange={onEnvModeChange}
+            onEnvModeChange={onWorkspaceChange}
             previousWorktreeLabel={previousWorktreeLabel}
             previousWorktreeBranch={previousWorktreeSeed?.branch ?? null}
             onUsePreviousWorktree={onUsePreviousWorktree}
@@ -757,7 +773,7 @@ export const BranchToolbar = memo(function BranchToolbar({
             onEnvironmentChange={onEnvironmentChange}
             effectiveEnvMode={effectiveEnvMode}
             activeWorktreePath={activeWorktreePath}
-            onEnvModeChange={onEnvModeChange}
+            onEnvModeChange={onWorkspaceChange}
             previousWorktreeLabel={previousWorktreeLabel}
             previousWorktreeBranch={previousWorktreeSeed?.branch ?? null}
             onUsePreviousWorktree={onUsePreviousWorktree}
@@ -800,7 +816,7 @@ export const BranchToolbar = memo(function BranchToolbar({
               envLocked={envModeLocked}
               effectiveEnvMode={effectiveEnvMode}
               activeWorktreePath={activeWorktreePath}
-              onEnvModeChange={onEnvModeChange}
+              onEnvModeChange={onWorkspaceChange}
               previousWorktreeLabel={previousWorktreeLabel}
               previousWorktreeBranch={previousWorktreeSeed?.branch ?? null}
               onUsePreviousWorktree={onUsePreviousWorktree}
