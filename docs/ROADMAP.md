@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [32] | Merge a thread's branch into the default branch (with or without pushing) from the Git actions menu, optionally as a project's main action                             | done    |
 | [31] | Move a started thread into a new worktree from the workspace control or the thread menu (the control used to lock after the first message)                             | done    |
 | [30] | Synced drafts: unsent text, attachments, contexts and new-thread settings follow you across web, desktop and Android (on the server)                                   | planned |
 | [29] | Appearance defaults: Dev artwork, 100 ms panel animations, composer context on, a version in the sidebar header; Nightly artwork removed                               | done    |
@@ -1152,6 +1153,22 @@ capability so older servers do not offer it.
 - Web and desktop only; mobile does not offer it. The command palette has no per-thread actions, so the thread menu is
   the second entry point.
 - No data migration.
+
+## Merge into the default branch (change 32)
+
+Own projects merge to the default branch and push instead of opening pull requests. Two stacked Git actions, `merge`
+and `merge_push` (both commit pending changes first), plus a project-scoped setting `quickMergeAction`
+(`pull_request` by default) that makes one of them the main button.
+
+- Logic is `apps/server/src/git/mergeIntoDefault.ts`, run from `GitManager.runStackedAction` as a `merge` phase.
+- Fast-forward only: rebase the branch onto the default branch if it moved, then `merge --ff-only` in the default
+  branch's own checkout, which must have no tracked changes. A default branch checked out nowhere is advanced with
+  `git fetch . branch:default`. A rebase conflict is aborted and reported; nothing is left half-done.
+- The push goes to the default branch's configured remote branch, or the primary remote's same-named branch.
+- Not cleaned up here: the existing worktree cleanup removes merged branches' worktrees.
+- Web only; mobile's Git sheet does not list the merge actions. Older servers do not know the actions, and the
+  result's `merge` field is optional for the same reason.
+- No data migration: a new setting with a default.
 
 ## Keeping the fork up to date with upstream
 

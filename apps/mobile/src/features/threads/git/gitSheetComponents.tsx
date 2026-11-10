@@ -3,6 +3,7 @@ import { SymbolView } from "../../../components/ui/AppSymbol";
 import type { ComponentProps } from "react";
 import { View } from "react-native";
 import { Button } from "../../../components/ui/Button";
+import { PullRequestGlyph } from "../../pull-requests/pullRequestGlyphs";
 
 export function SheetActionButton(props: {
   readonly icon: ComponentProps<typeof SymbolView>["name"];
@@ -19,9 +20,10 @@ export function SheetActionButton(props: {
 }
 
 export function menuItemIconName(
-  icon: "commit" | "push" | "pr",
+  icon: "commit" | "push" | "pr" | "merge",
 ): ComponentProps<typeof SymbolView>["name"] {
   if (icon === "commit") return "checkmark.circle";
+  if (icon === "merge") return PullRequestGlyph.merged;
   if (icon === "push") return "arrow.up.circle";
   return "arrow.up.right.circle";
 }

@@ -188,6 +188,21 @@ Choose how commit messages and pull request titles and descriptions are written 
 project's instructions and recent commit subjects. **Custom instructions** applies your own
 instructions to commits and pull requests.
 
+## Merge into the default branch
+
+For a project you own, skip the pull request. A thread's Git actions menu has **Merge into default
+branch** and **Merge into default branch & push** on any branch except the default one. Both commit
+pending changes first, rebase the branch onto the default branch if it moved, and fast-forward the
+default branch to it, so history stays linear. The second also pushes the default branch.
+
+The merge runs in the checkout that has the default branch checked out, usually the project folder.
+It stops without changing anything if that folder has uncommitted changes, or if the rebase hits
+conflicts; fix those and run it again. The thread's worktree and branch stay until worktree cleanup
+removes them.
+
+To make one of these the main button instead of the pull request action, set **Settings → Source
+control → Main Git action** globally or for a project.
+
 ## Review and merge
 
 Open **Pull requests** to review changes and comments, request reviewers, check out a branch,

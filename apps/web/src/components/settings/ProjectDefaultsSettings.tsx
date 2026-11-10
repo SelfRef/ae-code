@@ -108,6 +108,7 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
   const mixedAutoPull = useScopedSettingsMixed(["defaultAutoPull"]);
   const mixedAgentCredits = useScopedSettingsMixed(["removeAgentCreditsOnMerge"]);
   const mixedMergeMethod = useScopedSettingsMixed(["pullRequestMergeMethod"]);
+  const mixedQuickMerge = useScopedSettingsMixed(["quickMergeAction"]);
   const modelSource = useScopedSettingSource(["defaultModelSelection"]);
   const isProjectScope = scope.kind === "project" || scope.kind === "checkout";
   const unavailable = connectedEnvironments.length === 0;
@@ -512,6 +513,50 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
                   <SelectItem value="merge">{PULL_REQUEST_MERGE_METHOD_LABELS.merge}</SelectItem>
                   <SelectItem value="squash">{PULL_REQUEST_MERGE_METHOD_LABELS.squash}</SelectItem>
                   <SelectItem value="rebase">{PULL_REQUEST_MERGE_METHOD_LABELS.rebase}</SelectItem>
+                </SelectPopup>
+              </Select>
+            }
+          />
+          <SettingsRow
+            serverScoped
+            settingKeys={["quickMergeAction"]}
+            mixed={mixedQuickMerge}
+            {...searchableSetting("quick-merge-action")}
+            description="The main Git action of a thread's branch. Merging fast-forwards the default branch in its own checkout, which must be clean, and rebases the branch first if needed. All stay in the menu."
+            resetAction={
+              settings.quickMergeAction !== "pull_request" ? (
+                <SettingResetButton
+                  label="main Git action"
+                  tooltip="Reset to pull request"
+                  onClick={() => updateSettings({ quickMergeAction: "pull_request" })}
+                />
+              ) : null
+            }
+            control={
+              <Select
+                value={mixedQuickMerge ? null : settings.quickMergeAction}
+                onValueChange={(value) => {
+                  if (value === "pull_request" || value === "merge" || value === "merge_push")
+                    updateSettings({ quickMergeAction: value });
+                }}
+              >
+                <SelectTrigger size="sm" aria-label="Main Git action">
+                  <SelectValue>
+                    {(value: string | null) =>
+                      value === "pull_request"
+                        ? "Open a pull request"
+                        : value === "merge"
+                          ? "Merge into default branch"
+                          : value === "merge_push"
+                            ? "Merge into default branch & push"
+                            : "Mixed"
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectPopup align="end" alignItemWithTrigger={false}>
+                  <SelectItem value="pull_request">Open a pull request</SelectItem>
+                  <SelectItem value="merge">Merge into default branch</SelectItem>
+                  <SelectItem value="merge_push">Merge into default branch & push</SelectItem>
                 </SelectPopup>
               </Select>
             }

@@ -22,7 +22,7 @@ import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
 import { ChildProcessSpawner } from "effect/process";
-import { expect } from "vite-plus/test";
+import { describe, expect } from "vite-plus/test";
 import type {
   ChangeRequest,
   GitActionProgressEvent,
@@ -572,7 +572,14 @@ function runStackedAction(
   manager: GitManager.GitManager["Service"],
   input: {
     cwd: string;
-    action: "commit" | "push" | "create_pr" | "commit_push" | "commit_push_pr";
+    action:
+      | "commit"
+      | "push"
+      | "create_pr"
+      | "commit_push"
+      | "commit_push_pr"
+      | "merge"
+      | "merge_push";
     actionId?: string;
     commitMessage?: string;
     featureBranch?: boolean;
@@ -6160,4 +6167,112 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       ]);
     }),
   );
+
+  describe("merging into the default branch", () => {
+    // A project checkout on main with a remote, and a thread worktree on a feature branch.
+    const setupMerge = Effect.gen(function* () {
+      const repoDir = yield* makeTempDir("t3code-git-manager-");
+      yield* initRepo(repoDir);
+      const remoteDir = yield* createBareRemote();
+      yield* runGit(repoDir, ["remote", "add", "origin", remoteDir]);
+      yield* runGit(repoDir, ["push", "-u", "origin", "main"]);
+      const worktreeDir = NodePath.join(yield* makeTempDir("t3code-git-worktrees-"), "thread");
+      yield* runGit(repoDir, ["worktree", "add", "-b", "feature/merge-me", worktreeDir]);
+      NodeFS.writeFileSync(NodePath.join(worktreeDir, "thread.txt"), "thread work\n");
+      yield* runGit(worktreeDir, ["add", "thread.txt"]);
+      yield* runGit(worktreeDir, ["commit", "-m", "Thread work"]);
+      const subjects = (cwd: string, ref: string, remote = false) =>
+        runGit(
+          remote ? cwd : cwd,
+          remote ? ["--git-dir=.", "log", "--pretty=%s", ref] : ["log", "--pretty=%s", ref],
+        ).pipe(Effect.map((output) => output.stdout.trim().split("\n")));
+      return { repoDir, remoteDir, worktreeDir, subjects };
+    });
+
+    it.effect("fast-forwards the default branch in its checkout and pushes it", () =>
+      Effect.gen(function* () {
+        const { repoDir, remoteDir, worktreeDir, subjects } = yield* setupMerge;
+        const { manager } = yield* makeManager();
+        const result = yield* runStackedAction(manager, { cwd: worktreeDir, action: "merge_push" });
+
+        expect(result.merge).toMatchObject({ status: "merged", baseBranch: "main" });
+        expect(result.push.status).toBe("pushed");
+        expect(yield* subjects(repoDir, "main")).toEqual(["Thread work", "Initial commit"]);
+        expect(yield* subjects(remoteDir, "main", true)).toEqual(["Thread work", "Initial commit"]);
+        expect(NodeFS.existsSync(NodePath.join(repoDir, "thread.txt"))).toBe(true);
+      }),
+    );
+
+    it.effect("merges without pushing", () =>
+      Effect.gen(function* () {
+        const { repoDir, remoteDir, worktreeDir, subjects } = yield* setupMerge;
+        const { manager } = yield* makeManager();
+        const result = yield* runStackedAction(manager, { cwd: worktreeDir, action: "merge" });
+
+        expect(result.merge?.status).toBe("merged");
+        expect(result.push.status).toBe("skipped_not_requested");
+        expect(yield* subjects(repoDir, "main")).toEqual(["Thread work", "Initial commit"]);
+        expect(yield* subjects(remoteDir, "main", true)).toEqual(["Initial commit"]);
+      }),
+    );
+
+    it.effect("rebases onto a default branch that moved, keeping history linear", () =>
+      Effect.gen(function* () {
+        const { repoDir, worktreeDir, subjects } = yield* setupMerge;
+        NodeFS.writeFileSync(NodePath.join(repoDir, "elsewhere.txt"), "moved on\n");
+        yield* runGit(repoDir, ["add", "elsewhere.txt"]);
+        yield* runGit(repoDir, ["commit", "-m", "Main moved"]);
+        const { manager } = yield* makeManager();
+        yield* runStackedAction(manager, { cwd: worktreeDir, action: "merge" });
+
+        expect(yield* subjects(repoDir, "main")).toEqual([
+          "Thread work",
+          "Main moved",
+          "Initial commit",
+        ]);
+        expect((yield* runGit(repoDir, ["rev-list", "--merges", "main"])).stdout.trim()).toBe("");
+      }),
+    );
+
+    it.effect("refuses, changing nothing, when the default branch's checkout has edits", () =>
+      Effect.gen(function* () {
+        const { repoDir, worktreeDir, subjects } = yield* setupMerge;
+        NodeFS.writeFileSync(NodePath.join(repoDir, "README.md"), "edited\n");
+        const { manager } = yield* makeManager();
+        const failed = yield* runStackedAction(manager, { cwd: worktreeDir, action: "merge" }).pipe(
+          Effect.result,
+        );
+
+        expect(Result.isFailure(failed)).toBe(true);
+        expect(Result.isFailure(failed) ? String(failed.failure.message) : "").toContain(
+          "uncommitted changes",
+        );
+        expect(yield* subjects(repoDir, "main")).toEqual(["Initial commit"]);
+      }),
+    );
+
+    it.effect("stops on rebase conflicts without leaving a rebase in progress", () =>
+      Effect.gen(function* () {
+        const { repoDir, worktreeDir } = yield* setupMerge;
+        NodeFS.writeFileSync(NodePath.join(repoDir, "thread.txt"), "main wrote this first\n");
+        yield* runGit(repoDir, ["add", "thread.txt"]);
+        yield* runGit(repoDir, ["commit", "-m", "Conflicting"]);
+        const { manager } = yield* makeManager();
+        const failed = yield* runStackedAction(manager, {
+          cwd: worktreeDir,
+          action: "merge",
+        }).pipe(Effect.result);
+
+        expect(Result.isFailure(failed)).toBe(true);
+        expect(Result.isFailure(failed) ? String(failed.failure.message) : "").toContain(
+          "conflicts",
+        );
+        expect((yield* runGit(worktreeDir, ["status", "--porcelain"])).stdout.trim()).toBe("");
+        expect(NodeFS.existsSync(NodePath.join(worktreeDir, ".git"))).toBe(true);
+        expect(
+          (yield* runGit(worktreeDir, ["rev-parse", "--abbrev-ref", "HEAD"])).stdout.trim(),
+        ).toBe("feature/merge-me");
+      }),
+    );
+  });
 });
