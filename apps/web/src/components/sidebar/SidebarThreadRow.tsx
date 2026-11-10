@@ -1202,7 +1202,11 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
     <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-secondary-label text-xs">
       {thread.branch ? (
         <>
-          <ThreadWorktreeIndicator thread={thread} />
+          {thread.worktreePath?.trim() ? (
+            <ThreadWorktreeIndicator thread={thread} />
+          ) : (
+            <GitBranchIcon aria-hidden className="size-3.5 shrink-0 text-icon-muted" />
+          )}
           <span className="flex min-w-0 flex-1">
             <MiddleTruncate value={thread.branch} showTitle={false} />
           </span>
