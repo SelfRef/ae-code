@@ -1,7 +1,8 @@
-export type MobileStageLabel = "Beta" | "Dev" | "Nightly";
+export type MobileStageLabel = "Dev" | "Preview";
 
-export function resolveMobileStageLabel(appVariant: unknown): MobileStageLabel {
+/** Release builds carry no stage; the others show it as a badge, and as a suffix of the app name. */
+export function resolveMobileStageLabel(appVariant: unknown): MobileStageLabel | null {
   if (appVariant === "development") return "Dev";
-  if (appVariant === "preview") return "Nightly";
-  return "Beta";
+  if (appVariant === "preview") return "Preview";
+  return null;
 }
