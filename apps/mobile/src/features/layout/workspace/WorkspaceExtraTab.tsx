@@ -1,6 +1,7 @@
 import { type NavigationTab } from "./navigation-tab-order";
 import { NativeStackScreenOptions } from "../../../native/StackHeader";
 import { IssuesScreen } from "../../issues/IssuesScreen";
+import { ReleasesScreen } from "../../releases/ReleasesScreen";
 import { UsageRouteScreen } from "../../usage/UsageRouteScreen";
 
 export function WorkspaceExtraTab(props: {
@@ -9,7 +10,13 @@ export function WorkspaceExtraTab(props: {
   return (
     <>
       <NativeStackScreenOptions options={{ headerSearchBarOptions: undefined }} />
-      {props.tab === "issues" ? <IssuesScreen /> : <UsageRouteScreen workspace />}
+      {props.tab === "issues" ? (
+        <IssuesScreen />
+      ) : props.tab === "releases" ? (
+        <ReleasesScreen />
+      ) : (
+        <UsageRouteScreen workspace />
+      )}
     </>
   );
 }

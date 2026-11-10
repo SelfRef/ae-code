@@ -24,7 +24,7 @@ describe("navigation tab order", () => {
   it("fills missing sections and drops removed placeholders, duplicates, and Settings", () => {
     expect(
       resolveNavigationTabOrder(["usage", "home", "issues", "settings", "usage", null]),
-    ).toEqual(["usage", "issues", "threads", "pullRequests"]);
+    ).toEqual(["usage", "issues", "threads", "releases", "pullRequests"]);
     expect(resolveNavigationTabOrder()).toEqual(NAVIGATION_TAB_ORDER);
   });
 
@@ -41,8 +41,9 @@ describe("navigation tab order", () => {
   });
 
   it("shows every real section without overflow and keeps Settings selected during editing", () => {
-    expect(visibleNavigationTabs(undefined, [])).toEqual(NAVIGATION_TAB_ORDER);
-    expect(overflowNavigationTabs(undefined, [])).toEqual([]);
+    expect(visibleNavigationTabs()).toEqual(["threads", "issues", "releases", "usage"]);
+    expect(overflowNavigationTabs()).toEqual([]);
+    expect(overflowNavigationTabs(undefined, [])).toEqual(["usage"]);
     expect(selectedNavigationTab(undefined, "threads", true)).toBe("settings");
     expect(selectedNavigationTab(undefined, "usage", false)).toBe("usage");
     expect(selectedNavigationTab(undefined, "usage", false, [], 2)).toBe("settings");
@@ -51,14 +52,19 @@ describe("navigation tab order", () => {
   it("removes hidden sections from navigation and restores their saved positions", () => {
     const order = moveNavigationTab(undefined, "usage", 0);
     const hidden = toggleNavigationTabVisibility([], "usage");
-    expect(enabledNavigationTabs(order, hidden)).toEqual(["threads", "issues", "pullRequests"]);
+    expect(enabledNavigationTabs(order, hidden)).toEqual([
+      "threads",
+      "issues",
+      "releases",
+      "pullRequests",
+    ]);
     expect(toggleNavigationTabVisibility(hidden, "usage")).toEqual([]);
     expect(visibleNavigationTabs(order, [], 5)).toEqual(order);
     expect(enabledNavigationTabs(undefined, ["home", "settings"])).toEqual(NAVIGATION_TAB_ORDER);
   });
 
   it("hides Pulls until the user chooses tabs, then follows the saved choice", () => {
-    expect(enabledNavigationTabs()).toEqual(["threads", "issues", "usage"]);
+    expect(enabledNavigationTabs()).toEqual(["threads", "issues", "releases", "usage"]);
     expect(resolveHiddenNavigationTabs()).toEqual(DEFAULT_HIDDEN_NAVIGATION_TABS);
     expect(toggleNavigationTabVisibility(undefined, "pullRequests")).toEqual([]);
     expect(toggleNavigationTabVisibility(undefined, "usage")).toEqual(["pullRequests", "usage"]);
