@@ -1,10 +1,15 @@
 import {
   IssueError,
   ISSUE_LIST_PAGE_SIZE,
+  RELEASE_LIST_PAGE_SIZE,
   type IssueDetail,
   type IssueListInput,
   type IssueListResult,
   type IssueReadInput,
+  type ReleaseDetail,
+  type ReleaseListInput,
+  type ReleaseListResult,
+  type ReleaseReadInput,
   type ProjectId,
 } from "@t3tools/contracts";
 import type { PullRequestProviderError } from "@t3tools/source-control-core/server/PullRequestProvider";
@@ -23,6 +28,10 @@ export class IssueService extends Context.Service<
   {
     readonly list: (input: IssueListInput) => Effect.Effect<IssueListResult, IssueError>;
     readonly read: (input: IssueReadInput) => Effect.Effect<IssueDetail, IssueError>;
+    readonly listReleases: (
+      input: ReleaseListInput,
+    ) => Effect.Effect<ReleaseListResult, IssueError>;
+    readonly readRelease: (input: ReleaseReadInput) => Effect.Effect<ReleaseDetail, IssueError>;
   }
 >()("t3/issue/IssueService") {}
 
@@ -95,6 +104,19 @@ const make = Effect.gen(function* () {
       const { api, repository, host } = yield* resolve(input.projectId);
       return yield* api
         .getIssue({ host, repository, number: input.number })
+        .pipe(Effect.mapError(toIssueError));
+    }),
+    listReleases: Effect.fn("IssueService.listReleases")(function* (input) {
+      const { api, repository, host } = yield* resolve(input.projectId);
+      const page = yield* api
+        .listReleases({ host, repository, page: input.page ?? 1, pageSize: RELEASE_LIST_PAGE_SIZE })
+        .pipe(Effect.mapError(toIssueError));
+      return { repository, host, ...page };
+    }),
+    readRelease: Effect.fn("IssueService.readRelease")(function* (input) {
+      const { api, repository, host } = yield* resolve(input.projectId);
+      return yield* api
+        .getRelease({ host, repository, id: input.id })
         .pipe(Effect.mapError(toIssueError));
     }),
   });

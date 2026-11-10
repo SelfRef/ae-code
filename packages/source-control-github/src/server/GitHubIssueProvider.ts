@@ -6,6 +6,8 @@ import type {
   IssueSummary,
   PullRequestActor,
   PullRequestLabel,
+  ReleaseDetail,
+  ReleaseSummary,
 } from "@t3tools/contracts";
 import type { IssueProviderApi } from "@t3tools/source-control-core/server/IssueProvider";
 import { PullRequestProviderError } from "@t3tools/source-control-core/server/PullRequestProvider";
@@ -59,6 +61,33 @@ const RestComment = Schema.Struct({
   updated_at: Schema.optional(Schema.NullOr(Schema.String)),
 });
 
+const RestRelease = Schema.Struct({
+  id: Schema.Int,
+  tag_name: Schema.String,
+  name: Schema.optional(Schema.NullOr(Schema.String)),
+  html_url: Schema.String,
+  draft: Schema.Boolean,
+  prerelease: Schema.Boolean,
+  author: Schema.optional(Schema.NullOr(User)),
+  created_at: Schema.String,
+  published_at: Schema.optional(Schema.NullOr(Schema.String)),
+  target_commitish: Schema.optional(Schema.NullOr(Schema.String)),
+  body: Schema.optional(Schema.NullOr(Schema.String)),
+  assets: Schema.optional(
+    Schema.NullOr(
+      Schema.Array(
+        Schema.Struct({
+          name: Schema.String,
+          browser_download_url: Schema.String,
+          size: Schema.Int,
+          download_count: Schema.Int,
+        }),
+      ),
+    ),
+  ),
+});
+type RestRelease = typeof RestRelease.Type;
+
 const decodeSearch = Schema.decodeUnknownResult(
   Schema.fromJsonString(
     Schema.Struct({
@@ -68,6 +97,8 @@ const decodeSearch = Schema.decodeUnknownResult(
   ),
 );
 const decodeIssue = Schema.decodeUnknownResult(Schema.fromJsonString(RestIssue));
+const decodeReleases = Schema.decodeUnknownResult(Schema.fromJsonString(Schema.Array(RestRelease)));
+const decodeRelease = Schema.decodeUnknownResult(Schema.fromJsonString(RestRelease));
 const decodeComments = Schema.decodeUnknownResult(Schema.fromJsonString(Schema.Array(RestComment)));
 
 /** One page holds this many comments; an issue with more shows the first ones. */
@@ -118,6 +149,20 @@ function summaryOf(issue: RestIssue): IssueSummary {
     createdAt: issue.created_at,
     updatedAt: issue.updated_at,
     closedAt: issue.closed_at ?? null,
+  };
+}
+
+function releaseSummaryOf(release: RestRelease): ReleaseSummary {
+  return {
+    id: release.id,
+    tagName: release.tag_name,
+    name: release.name ?? "",
+    url: release.html_url,
+    draft: release.draft,
+    prerelease: release.prerelease,
+    author: actorOf(release.author),
+    createdAt: release.created_at,
+    publishedAt: release.published_at ?? null,
   };
 }
 
@@ -266,5 +311,51 @@ export const make = Effect.gen(function* () {
     },
   );
 
-  return { kind: definition.kind, listIssues, getIssue } satisfies IssueProviderApi;
+  const listReleases: IssueProviderApi["listReleases"] = Effect.fn(
+    "GitHubIssueProvider.listReleases",
+  )(function* (input) {
+    const path = yield* repositoryPath("listReleases", input.repository);
+    const releases = yield* read({
+      host: input.host,
+      operation: "listReleases",
+      path: `repos/${path}/releases?per_page=${input.pageSize}&page=${input.page}`,
+      decode: decodeReleases,
+    });
+    return {
+      releases: releases.map(releaseSummaryOf),
+      hasMore: releases.length === input.pageSize,
+    };
+  });
+
+  const getRelease: IssueProviderApi["getRelease"] = Effect.fn("GitHubIssueProvider.getRelease")(
+    function* (input) {
+      const path = yield* repositoryPath("getRelease", input.repository);
+      const release = yield* read({
+        host: input.host,
+        operation: "getRelease",
+        path: `repos/${path}/releases/${input.id}`,
+        decode: decodeRelease,
+      });
+      return {
+        ...releaseSummaryOf(release),
+        repository: input.repository,
+        targetCommitish: release.target_commitish ?? "",
+        body: release.body ?? "",
+        assets: (release.assets ?? []).map((asset) => ({
+          name: asset.name,
+          url: asset.browser_download_url,
+          size: asset.size,
+          downloadCount: asset.download_count,
+        })),
+      } satisfies ReleaseDetail;
+    },
+  );
+
+  return {
+    kind: definition.kind,
+    listIssues,
+    getIssue,
+    listReleases,
+    getRelease,
+  } satisfies IssueProviderApi;
 });
