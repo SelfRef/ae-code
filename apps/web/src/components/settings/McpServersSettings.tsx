@@ -115,7 +115,7 @@ function EnvironmentMcpServers({ environmentId }: { readonly environmentId: Envi
       {servers.length === 0 && editor === null ? (
         <SettingsRow
           title="No MCP servers yet."
-          description="Add one MCP server here and every agent on the providers you choose gets it, beside T3 Code's own tools."
+          description="Add one MCP server here and every agent on the providers you choose gets it, beside Æ Code's own tools."
         />
       ) : (
         servers.map((server) => (
