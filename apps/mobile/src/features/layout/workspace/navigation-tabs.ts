@@ -6,10 +6,12 @@ import {
   navigationCustomizationAvailable,
   resolveHiddenNavigationTabs,
   enabledNavigationTabs,
+  unavailableNavigationTabs,
   type NavigationTab,
 } from "./navigation-tab-order";
 import type { AppSymbolName } from "../../../components/ui/AppSymbol";
 import { mobilePreferencesAtom } from "../../../state/preferences";
+import { useSourceControlSignIn } from "../../../state/sourceControl";
 import { PullRequestGlyph } from "../../pull-requests/pullRequestGlyphs";
 import { resolveWorkspaceTabOrder } from "./workspace-tabs-state";
 
@@ -34,12 +36,22 @@ export function useNavigationTabOrder() {
   return resolveWorkspaceTabOrder(saved);
 }
 
-export function useHiddenNavigationTabs() {
+/** The tabs the user hid in Settings. */
+export function useSavedHiddenNavigationTabs() {
   const preferences = useAtomValue(mobilePreferencesAtom);
   const saved = AsyncResult.isSuccess(preferences)
     ? preferences.value.hiddenNavigationTabs
     : undefined;
   return navigationCustomizationAvailable() ? resolveHiddenNavigationTabs(saved) : [];
+}
+
+export function useUnavailableNavigationTabs() {
+  return unavailableNavigationTabs(useSourceControlSignIn());
+}
+
+/** Hidden by the user, or because their provider isn't signed in. */
+export function useHiddenNavigationTabs() {
+  return [...useSavedHiddenNavigationTabs(), ...useUnavailableNavigationTabs()];
 }
 
 export function useEnabledNavigationTabs() {

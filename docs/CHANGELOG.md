@@ -10,6 +10,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Added
 
+- Issues and Releases hide while GitHub isn't signed in on any connected environment, and Pull requests while no
+  source-control provider is (sidebar, command palette, Android tabs). Settings → Navigation tabs marks them "Not signed in".
 - Android: Input, Done and draft threads are tinted in the list, and an unsent draft reads "Draft".
 - Android: the Git sheet and menu merge into the default branch, force push (listing what it deletes) and offer
   "Merge by agent" when a merge fails; the main Git action follows the project's setting. Their headers

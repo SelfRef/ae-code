@@ -19,7 +19,8 @@ import {
   NAVIGATION_TAB_ICONS,
   WORKSPACE_TAB_LABELS,
   useNavigationTabOrder,
-  useHiddenNavigationTabs,
+  useSavedHiddenNavigationTabs,
+  useUnavailableNavigationTabs,
   useEnabledNavigationTabs,
 } from "../layout/workspace/navigation-tabs";
 import { SettingsScreen } from "./components/SettingsScreen";
@@ -31,7 +32,8 @@ export function SettingsNavigationRouteScreen() {
   const order = useNavigationTabOrder();
   const { layout } = useAdaptiveWorkspaceLayout();
   const capacity = Platform.OS === "android" && layout.usesSplitView ? 5 : 4;
-  const hidden = useHiddenNavigationTabs();
+  const hidden = useSavedHiddenNavigationTabs();
+  const unavailable = useUnavailableNavigationTabs();
   const enabled = useEnabledNavigationTabs();
   const preferences = useAtomValue(mobilePreferencesAtom);
   const customizable = navigationCustomizationAvailable();
@@ -60,11 +62,13 @@ export function SettingsNavigationRouteScreen() {
               <View className="flex-1">
                 <Text>{WORKSPACE_TAB_LABELS[tab]}</Text>
                 <Text className="text-xs text-foreground-muted">
-                  {hidden.includes(tab)
-                    ? "Hidden"
-                    : enabled.indexOf(tab) < capacity
-                      ? `Tab ${enabled.indexOf(tab) + 1}`
-                      : "In Settings"}
+                  {unavailable.includes(tab)
+                    ? "Not signed in"
+                    : hidden.includes(tab)
+                      ? "Hidden"
+                      : enabled.indexOf(tab) < capacity
+                        ? `Tab ${enabled.indexOf(tab) + 1}`
+                        : "In Settings"}
                 </Text>
               </View>
               <IconButton

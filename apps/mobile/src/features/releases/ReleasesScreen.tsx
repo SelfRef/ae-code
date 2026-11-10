@@ -16,6 +16,7 @@ import { relativeTime } from "../../lib/time";
 import { useProjects } from "../../state/entities";
 import { issueEnvironment } from "../../state/issues";
 import { useEnvironmentQuery } from "../../state/query";
+import { useSourceControlSignIn } from "../../state/sourceControl";
 import { SettingsScreen } from "../settings/components/SettingsScreen";
 import { PullRequestMarkdown } from "../pull-requests/PullRequestMarkdown";
 
@@ -204,7 +205,7 @@ function ReleaseDetail(props: { readonly target: Target; readonly id: number }) 
 
 /** The Releases tab: one page that swaps between the list and an open release. */
 export function ReleasesScreen() {
-  const projects = issueProjects(useProjects());
+  const projects = issueProjects(useProjects(), useSourceControlSignIn().githubSignedOut);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const project =
     projects.find((candidate) => projectKey(candidate) === selectedKey) ??

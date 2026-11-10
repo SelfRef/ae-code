@@ -124,7 +124,7 @@ import { useEnvironmentQuery } from "../state/query";
 import { serverEnvironment } from "../state/server";
 import { threadEnvironment } from "../state/threads";
 import { readEnvironmentScope, useEnvironmentScope } from "~/state/session";
-import { sourceControlEnvironment } from "../state/sourceControl";
+import { sourceControlEnvironment, useSourceControlSignIn } from "../state/sourceControl";
 import { useAtomCommand } from "../state/use-atom-command";
 import { useOrchestrationCommand } from "../state/use-orchestration-command";
 import { useAtomQueryRunner } from "../state/use-atom-query-runner";
@@ -488,6 +488,7 @@ function OpenCommandPaletteDialog(props: {
     useHandleNewThread();
   const paletteRouteTarget = useThreadRouteTarget();
   const projects = useProjects();
+  const signIn = useSourceControlSignIn();
   const referenceThreadRef =
     pathname === "/pull-requests"
       ? environments.some((environment) => environment.serverConfig !== null)
@@ -1628,7 +1629,10 @@ function OpenCommandPaletteDialog(props: {
 
   actionItems.push(themeEditorItem);
 
-  if (environments.some((environment) => environment.serverConfig !== null)) {
+  if (
+    !signIn.pullRequestsHidden &&
+    environments.some((environment) => environment.serverConfig !== null)
+  ) {
     actionItems.push({
       kind: "action",
       value: "action:pull-requests",
@@ -1656,7 +1660,7 @@ function OpenCommandPaletteDialog(props: {
     });
   }
 
-  if (issueProjects(projects).length > 0) {
+  if (issueProjects(projects, signIn.githubSignedOut).length > 0) {
     actionItems.push({
       kind: "action",
       value: "action:issues",

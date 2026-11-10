@@ -15,6 +15,17 @@ export function isPageNavigationTab(tab: unknown): tab is "issues" | "releases" 
   return tab === "issues" || tab === "releases" || tab === "usage";
 }
 
+/** Tabs whose provider isn't signed in on any connected environment; they show nowhere. */
+export function unavailableNavigationTabs(signIn: {
+  readonly issuesHidden: boolean;
+  readonly pullRequestsHidden: boolean;
+}): readonly NavigationTab[] {
+  return [
+    ...(signIn.issuesHidden ? (["issues", "releases"] as const) : []),
+    ...(signIn.pullRequestsHidden ? (["pullRequests"] as const) : []),
+  ];
+}
+
 export function navigationCustomizationAvailable(
   registeredSections: number = NAVIGATION_TAB_ORDER.length,
 ) {

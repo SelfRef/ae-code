@@ -21,6 +21,7 @@ import {
 import { primaryServerConfigAtom, primaryServerKeybindingsAtom } from "../../state/server";
 import { cn } from "../../lib/utils";
 import { usePullRequestsSupported } from "../../state/environments";
+import { useSourceControlSignIn } from "../../state/sourceControl";
 import { useProjects } from "../../state/entities";
 import { issueProjects } from "@t3tools/client-runtime/issue-projects";
 import { T3Wordmark } from "../T3Wordmark";
@@ -247,8 +248,9 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
   const isOnUtilityPage = useLocation({
     select: (location) => isSidebarUtilityPage(location.pathname),
   });
-  const pullRequestsSupported = usePullRequestsSupported();
-  const issuesSupported = issueProjects(useProjects()).length > 0;
+  const signIn = useSourceControlSignIn();
+  const pullRequestsSupported = usePullRequestsSupported() && !signIn.pullRequestsHidden;
+  const issuesSupported = issueProjects(useProjects(), signIn.githubSignedOut).length > 0;
   const closeMobileSidebar = () => {
     if (isMobile) {
       setOpenMobile(false);

@@ -4,13 +4,15 @@ import type { EnvironmentProject } from "./state/models.ts";
 /** Projects whose repository is on a host whose issues the server can read. */
 export function issueProjects(
   projects: ReadonlyArray<EnvironmentProject>,
+  githubSignedOut?: ReadonlySet<EnvironmentId>,
 ): ReadonlyArray<EnvironmentProject> {
   return [...projects]
     .filter(
       (project) =>
         project.isScratch !== true &&
         !project.archivedAt &&
-        project.repositoryIdentity?.provider === "github",
+        project.repositoryIdentity?.provider === "github" &&
+        !githubSignedOut?.has(project.environmentId),
     )
     .sort((left, right) => left.title.localeCompare(right.title));
 }
