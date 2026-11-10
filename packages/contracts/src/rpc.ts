@@ -223,6 +223,13 @@ import {
   PullRequestUpdateInput,
 } from "./pullRequest.ts";
 import {
+  IssueDetail,
+  IssueError,
+  IssueListInput,
+  IssueListResult,
+  IssueReadInput,
+} from "./issue.ts";
+import {
   RelayClientInstallFailedError,
   RelayClientInstallProgressEventSchema,
   RelayClientStatusSchema,
@@ -626,6 +633,8 @@ export const WS_METHODS = {
   pullRequestsReviewerCandidates: "pullRequests.reviewerCandidates",
   pullRequestsRequestReviewers: "pullRequests.requestReviewers",
   pullRequestsLabelCandidates: "pullRequests.labelCandidates",
+  issuesList: "issues.list",
+  issuesRead: "issues.read",
   pullRequestsSetLabels: "pullRequests.setLabels",
 
   sourceControlLookupRepository: "sourceControl.lookupRepository",
@@ -1090,6 +1099,8 @@ const PullRequestRpcError = Schema.Union([
   EnvironmentAuthorizationError,
 ]);
 
+const IssueRpcError = Schema.Union([IssueError, EnvironmentAuthorizationError]);
+
 const WsPullRequestsListRpc = Rpc.make(WS_METHODS.pullRequestsList, {
   payload: PullRequestListInput,
   success: PullRequestListResult,
@@ -1307,6 +1318,18 @@ const WsPullRequestsSetLabelsRpc = Rpc.make(WS_METHODS.pullRequestsSetLabels, {
   payload: PullRequestLabelChangeInput,
   success: Schema.Void,
   error: PullRequestRpcError,
+});
+
+const WsIssuesListRpc = Rpc.make(WS_METHODS.issuesList, {
+  payload: IssueListInput,
+  success: IssueListResult,
+  error: IssueRpcError,
+});
+
+const WsIssuesReadRpc = Rpc.make(WS_METHODS.issuesRead, {
+  payload: IssueReadInput,
+  success: IssueDetail,
+  error: IssueRpcError,
 });
 
 const WsSourceControlLookupRepositoryRpc = Rpc.make(WS_METHODS.sourceControlLookupRepository, {
@@ -2298,6 +2321,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsPullRequestsRequestReviewersRpc,
   WsPullRequestsLabelCandidatesRpc,
   WsPullRequestsSetLabelsRpc,
+  WsIssuesListRpc,
+  WsIssuesReadRpc,
   WsSourceControlLookupRepositoryRpc,
   WsSourceControlCloneRepositoryRpc,
   WsSourceControlPublishRepositoryRpc,
