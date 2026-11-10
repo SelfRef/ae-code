@@ -414,6 +414,7 @@ class T3WorkspaceNavigationView(
 
   private fun tabTitle(tab: String) = when (tab) {
     "threads" -> "Chats"
+    "branches" -> "Branches"
     "issues" -> "Issues"
     "releases" -> "Releases"
     "pullRequests" -> "Pulls"
@@ -428,6 +429,7 @@ class T3WorkspaceNavigationView(
   private fun tabIconPainter(tab: String) = painterResource(
     when (tab) {
       "threads" -> R.drawable.t3_chats
+      "branches" -> R.drawable.t3_branches
       "issues" -> R.drawable.t3_issues
       "releases" -> R.drawable.t3_releases
       "pullRequests" -> R.drawable.t3_pull_requests
