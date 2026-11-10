@@ -89,7 +89,7 @@ Icons: `assets/prod` is the Aperte icon on a dark Nord tile; `nightly` and `dev`
 
 Caveats:
 
-- Only the Linux x64 server archive is released (`ae-release.yml`, see "Releases (changes 7 and 9)"); no desktop installer (AppImage, deb, dmg, exe) is built or tested, so the desktop app's in-app updater finds nothing. The install scripts and `t3 update` read `SelfRef/ae-code` releases for upstream's `t3-<version>-<platform>` archives, which the fork does not publish; the release's `ae-code-linux-x64.tar.gz` is unpacked by hand. A server image does not need them: build the CLI archive from source (see the stack's Dockerfile, which follows `release-desktop.yml`'s "Build CLI archive" steps).
+- Only the Linux x64 server archive and the unpacked Linux x64 desktop app are released (`ae-release.yml`, see "Releases (changes 7 and 9)"); no desktop installer (AppImage, deb, dmg, exe) is built or tested, so the desktop app's in-app updater finds nothing. The install scripts and `t3 update` read `SelfRef/ae-code` releases for upstream's `t3-<version>-<platform>` archives, which the fork does not publish; the release's `ae-code-linux-x64.tar.gz` is unpacked by hand. A server image does not need them: build the CLI archive from source (see the stack's Dockerfile, which follows `release-desktop.yml`'s "Build CLI archive" steps).
 - Data written by upstream's T3 Code is not read: see the next section.
 
 ### Moving to the AperteDev org
@@ -364,6 +364,10 @@ disabled.
   upstream's names and the fork's source is left alone. The file name has no version so that
   `releases/latest/download/ae-code-linux-x64.tar.gz` always points at the newest one. The executable still calls itself
   `t3` in its help text.
+- **Desktop archive:** `ae-code-desktop-linux-x64.tar.gz`, the Linux x64 desktop app unpacked (electron-builder's `dir`
+  target: the `ae-code` Electron executable and its resources, no AppImage or deb), built by the `desktop` job without
+  signing, relay or Clerk configuration. The AUR packages `ae-code`, `ae-code-bin` and `ae-code-git` repackage it
+  (`ae-code-bin`) or build the same target from source. The release waits for this job.
 - **Android (change 9):** the `android` job runs after the release exists and attaches `ae-code-<tag>-arm64-v8a.apk` (phones) and
   `ae-code-<tag>-x86_64.apk` (emulators) to it, so an Android failure never withholds the rest. The two are matrix
   jobs, built independently and in parallel (a cold build of both together took about 40 minutes), and one failing
@@ -385,7 +389,7 @@ disabled.
   and `ANDROID_KEYSTORE_PASSWORD` (store and key share it in PKCS12). Create the key once and keep it: an update must be
   signed with the same key as the installed app.
   `keytool -genkeypair -keystore ae-code.jks -alias ae-code -keyalg RSA -keysize 4096 -validity 36500`.
-- **Not built:** the desktop app (AppImage, `.deb`, macOS, Windows), iOS, arm64 server; no relay or Clerk configuration
+- **Not built:** the desktop app as AppImage, `.deb`, macOS or Windows, iOS, arm64 server; no relay or Clerk configuration
   (T3 Connect sign-in is absent, pairing with a server works as before), no npm launcher, no tests or checks. A broken
   `main` shows as a failed build.
 - **First run:** started by hand from the Actions tab. The Android build took about 40 minutes with a cold cache; that

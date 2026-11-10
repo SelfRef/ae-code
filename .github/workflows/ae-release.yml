@@ -172,6 +172,62 @@ jobs:
           compression-level: 0
           retention-days: 1
 
+  # The Linux x64 desktop app, unpacked: electron-builder's `dir` target, which
+  # the AUR packages repackage. No AppImage or deb, no signing, relay or Clerk
+  # configuration. The build runs the server and web builds itself.
+  desktop:
+    name: Linux x64 desktop
+    needs: [prepare]
+    if: needs.prepare.outputs.release == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      T3CODE_TELEMETRY_CHANNEL: dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.ref }}
+
+      - name: Setup dependencies
+        uses: ./.github/actions/setup-ci-deps
+        with:
+          install-args: --filter=@t3tools/desktop... --filter=t3... --filter=@t3tools/scripts...
+
+      - name: Install the desktop build libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsecret-1-dev pkg-config libgtk-3-0t64 libnss3 libasound2t64 libgbm1 imagemagick
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: stable
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Align package versions to the release version
+        run: node scripts/update-release-package-versions.ts "$VERSION"
+
+      - name: Build the desktop app
+        run: node scripts/build-desktop-artifact.ts --platform linux --arch x64 --target dir --build-version "$VERSION" --verbose
+
+      - name: Build the archive
+        run: |
+          set -euo pipefail
+          mkdir -p stage release-assets
+          mv release/linux-unpacked stage/ae-code-desktop-linux-x64
+          tar --owner=0 --group=0 -C stage -czf release-assets/ae-code-desktop-linux-x64.tar.gz ae-code-desktop-linux-x64
+
+      - name: Upload the archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-linux-x64
+          path: release-assets/ae-code-desktop-linux-x64.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
   # The Linux x64 server archive in a lean image on GHCR. A new package starts
   # private: make it public once in the package settings.
   image:
@@ -213,7 +269,7 @@ jobs:
 
   release:
     name: Publish GitHub Release
-    needs: [prepare, cli]
+    needs: [prepare, cli, desktop]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -226,11 +282,12 @@ jobs:
           fetch-depth: 0
           filter: blob:none
 
-      - name: Download the archive
+      - name: Download the archives
         uses: actions/download-artifact@v8
         with:
-          name: cli-linux-x64
+          pattern: "{cli,desktop}-linux-x64"
           path: release-assets
+          merge-multiple: true
 
       # What changed since the previous release: a link to upstream's commits
       # between the two upstream bases, and the fork patches whose subjects the
@@ -284,7 +341,8 @@ jobs:
             --title "AE Code $TAG" \
             --notes-file release-notes.md \
             --latest \
-            release-assets/ae-code-linux-x64.tar.gz
+            release-assets/ae-code-linux-x64.tar.gz \
+            release-assets/ae-code-desktop-linux-x64.tar.gz
 
   # Built after the release exists and attached to it, so an Android failure
   # never withholds the server archive. Signed with the fork's own key
