@@ -491,14 +491,20 @@ export function resolveLiveThreadBranchUpdate(input: {
   };
 }
 
-/** Names how many commits a Push action sends; other labels pass through. */
+/** Names how many files a Commit action stages or commits a Push action sends; other labels pass through. */
 export function formatQuickActionLabel(
   quickAction: Pick<GitQuickAction, "label" | "disabled">,
-  gitStatus: Pick<VcsStatusResult, "aheadCount"> | null,
+  gitStatus: Pick<VcsStatusResult, "aheadCount" | "workingTree"> | null,
 ): string {
-  const count = gitStatus?.aheadCount ?? 0;
-  if (quickAction.disabled || !quickAction.label.startsWith("Push") || count <= 0) {
-    return quickAction.label;
+  if (quickAction.disabled || !gitStatus) return quickAction.label;
+  const plural = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
+  const files = gitStatus.workingTree.files.length;
+  const commits = gitStatus.aheadCount;
+  if (quickAction.label.startsWith("Commit") && files > 0) {
+    return quickAction.label.replace("Commit", `Commit ${plural(files, "file")}`);
   }
-  return quickAction.label.replace("Push", `Push ${count} ${count === 1 ? "commit" : "commits"}`);
+  if (quickAction.label.startsWith("Push") && commits > 0) {
+    return quickAction.label.replace("Push", `Push ${plural(commits, "commit")}`);
+  }
+  return quickAction.label;
 }

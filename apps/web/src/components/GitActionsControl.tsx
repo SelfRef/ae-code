@@ -1537,7 +1537,7 @@ export default function GitActionsControl({
             }}
           >
             <GitActionItemIcon icon={item.icon} SourceControlIcon={SourceControlIcon} />
-            <MenuItemLabel>{item.label}</MenuItemLabel>
+            <MenuItemLabel>{formatQuickActionLabel(item, gitStatusForActions)}</MenuItemLabel>
           </MenuItem>
         );
       })}
