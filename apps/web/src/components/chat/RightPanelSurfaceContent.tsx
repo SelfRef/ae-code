@@ -24,6 +24,7 @@ import { PullRequestDetailPanel } from "../pullRequest/PullRequestDetailPanel";
 import { PullRequestDetailGhost } from "../pullRequest/PullRequestGhosts";
 import { PullRequestsUnavailableState } from "../pullRequest/PullRequestsUnavailableState";
 import { ThreadIssuesPanel } from "../issue/ThreadIssuesPanel";
+import { ThreadReleasesPanel } from "../releases/ThreadReleasesPanel";
 import { ThreadPullRequestsPanel } from "../pullRequest/ThreadPullRequestsPanel";
 
 const PreviewPanel = lazy(() =>
@@ -173,6 +174,14 @@ export function RightPanelSurfaceContent(props: {
     case "issues":
       return props.files.projectId && props.files.workspaceRoot ? (
         <ThreadIssuesPanel
+          environmentId={props.environmentId}
+          projectId={props.files.projectId}
+          workspaceRoot={props.files.workspaceRoot}
+        />
+      ) : null;
+    case "releases":
+      return props.files.projectId && props.files.workspaceRoot ? (
+        <ThreadReleasesPanel
           environmentId={props.environmentId}
           projectId={props.files.projectId}
           workspaceRoot={props.files.workspaceRoot}

@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [36] | GitHub Releases: read-only list and detail per project on the web (`/releases`, right panel)                                                                           | done    |
 | [35] | Android catch-up: tinted Input, Done and draft threads; merge, force push and worktree switching in Git                                                                | done    |
 | [34] | A "Thread actions" section in the thread details card: Settle thread, and the thread's context menu under an arrow                                                     | done    |
 | [33] | Saved environments follow you: a browser signed in to a server shows the environments saved on any other browser signed in to it (kept on that server)                 | done    |
@@ -73,6 +74,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 [27]: #skills-manager-change-27
 [30]: #synced-drafts-change-30
 [33]: #saved-environments-shared-through-the-server-change-33
+[36]: #github-releases-change-36
 [35]: #android-catch-up-change-35
 [26]: #pull-requests-from-the-fork-change-26
 [25]: #in-place-updates-of-the-docker-image-and-a-bare-host-change-25
@@ -1227,6 +1229,25 @@ default for server threads at full card density; **Thread actions** in the card'
 - The menu's Rename starts the header's inline rename through the `threadRename` registry (`apps/web/src/threadRename.ts`),
   so it does nothing when no header is mounted.
 - No data migration: a new key in the sparse `threadDetailsItems` setting, absent meaning the default.
+
+## GitHub Releases (change 36)
+
+Issues' sibling for the project's GitHub releases: what shipped, its notes and downloadable assets, without leaving T3.
+Read-only; nothing writes (no create, edit or publish).
+
+- **Reads** go through GitHub's REST API: `repos/o/r/releases` (30 per page, "Load more") for the list and
+  `repos/o/r/releases/{id}` for the detail. The detail is keyed by id because `releases/tags/…` omits drafts. Drafts
+  show only when the token can push. "Latest" marks the newest release that is neither a draft nor a pre-release.
+- **No new service.** `listReleases` and `getRelease` are two more methods on `IssueProviderApi`, served by
+  `IssueService` (the project → repository resolution, the error mapping and the `IssueError` reasons are the same).
+  Contract `packages/contracts/src/release.ts`, RPCs `releases.list` and `releases.read` (read scope). Other forges have
+  no `issues` and answer "unsupported".
+- **Web**: page `/releases` (project picker when several projects are on GitHub, list next to the release, Markdown
+  notes, asset list with size and download count, "Open on GitHub"), a sidebar button and a command-palette action, both
+  shown only when a project is on GitHub. The right panel has a "Releases" tab (key `R`), offered when the thread's
+  project is on GitHub. Components in `apps/web/src/components/releases/`; the queries sit with the issue ones
+  (`issueEnvironment.releaseList` / `releaseDetail`).
+- No data migration.
 
 ## Android catch-up (change 35)
 

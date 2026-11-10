@@ -157,6 +157,11 @@ export function useRightPanelActions(input: RightPanelActionsInput) {
     useRightPanelStore.getState().open(activeThreadRef, "issues");
   };
   const addIssuesSurfaceStable = useStableCallback(addIssuesSurface);
+  const addReleasesSurface = () => {
+    if (!activeThreadRef || !activeProject) return;
+    useRightPanelStore.getState().open(activeThreadRef, "releases");
+  };
+  const addReleasesSurfaceStable = useStableCallback(addReleasesSurface);
   const addDeviceSurface = () => {
     if (!activeThreadRef) return;
     if (!deviceState.onboardingCompleted || deviceState.hostStatus === "disabled") {
@@ -352,6 +357,7 @@ export function useRightPanelActions(input: RightPanelActionsInput) {
     addDiffSurfaceStable,
     addFilesSurfaceStable,
     addIssuesSurfaceStable,
+    addReleasesSurfaceStable,
     addPullRequestSurfaceStable,
     addPullRequestsSurfaceStable,
     closePreviewPanelStable,

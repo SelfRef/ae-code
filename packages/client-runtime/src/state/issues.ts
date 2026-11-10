@@ -18,5 +18,15 @@ export function createIssueEnvironmentAtoms<R, E>(
       tag: WS_METHODS.issuesRead,
       staleTimeMs: 30_000,
     }),
+    releaseList: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:releases:list",
+      tag: WS_METHODS.releasesList,
+      staleTimeMs: 30_000,
+    }),
+    releaseDetail: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:releases:detail",
+      tag: WS_METHODS.releasesRead,
+      staleTimeMs: 30_000,
+    }),
   };
 }
