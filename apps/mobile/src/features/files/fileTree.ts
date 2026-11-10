@@ -132,3 +132,16 @@ export function flattenFileTree(input: {
   }
   return output;
 }
+
+/** `name` if no sibling has it (ignoring case), else "name copy.ext", "name copy 2.ext", … */
+export function uniqueCopyName(name: string, siblings: Iterable<string>): string {
+  const taken = new Set([...siblings].map((sibling) => sibling.toLowerCase()));
+  if (!taken.has(name.toLowerCase())) return name;
+  const dot = name.lastIndexOf(".");
+  const base = dot > 0 ? name.slice(0, dot) : name;
+  const extension = dot > 0 ? name.slice(dot) : "";
+  for (let copy = 1; ; copy++) {
+    const candidate = `${base} copy${copy === 1 ? "" : ` ${copy}`}${extension}`;
+    if (!taken.has(candidate.toLowerCase())) return candidate;
+  }
+}

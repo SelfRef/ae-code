@@ -10,6 +10,7 @@ import { RefreshControl } from "../../components/ui/RefreshControl";
 
 import { AppText as Text } from "../../components/ui/AppText";
 import { PierreEntryIcon } from "../../components/PierreEntryIcon";
+import { Menu } from "../../components/ui/Menu";
 import { cn } from "../../lib/cn";
 import { useContentBottomInset, useContentTopInset } from "../../components/ui/useBarInset";
 import {
@@ -18,6 +19,7 @@ import {
   type FileTreeNode,
   type VisibleFileTreeNode,
 } from "./fileTree";
+import type { FileEntryActions } from "./useFileEntryActions";
 
 const fileTreeCache = new WeakMap<ReadonlyArray<ProjectEntry>, ReadonlyArray<FileTreeNode>>();
 const OPTIMISTIC_SELECTION_TIMEOUT_MS = 1_000;
@@ -40,13 +42,16 @@ const FileTreeRow = function FileTreeRow(props: {
   readonly onPressDirectory: (path: string, expand: boolean) => void;
   readonly onPreviewFile?: (path: string) => void;
   readonly onPressFile: (path: string) => void;
+  readonly entryActions?: FileEntryActions;
 }) {
   const { node, depth } = props.item;
+  const { entryActions } = props;
 
-  return (
+  const row = (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={node.path}
+      accessibilityHint={entryActions?.canModify ? "Touch and hold for file actions." : undefined}
       accessibilityState={{ selected: props.selected }}
       onPressIn={() => {
         if (node.kind === "file") {
@@ -95,6 +100,19 @@ const FileTreeRow = function FileTreeRow(props: {
       ) : null}
     </Pressable>
   );
+
+  return entryActions?.canModify ? (
+    <Menu
+      shouldOpenOnLongPress
+      title={node.name}
+      actions={entryActions.entryMenuActions}
+      onPressAction={({ nativeEvent }) => entryActions.onMenuAction(node, nativeEvent.event)}
+    >
+      {row}
+    </Menu>
+  ) : (
+    row
+  );
 };
 
 export function FileTreeBrowser(props: {
@@ -116,7 +134,9 @@ export function FileTreeBrowser(props: {
   readonly onPreviewFile?: (path: string) => void;
   readonly onRefresh: () => void;
   readonly onSelectFile: (path: string) => void;
+  readonly entryActions?: FileEntryActions;
 }) {
+  const { entryActions } = props;
   const { expandedPaths, setExpandedPaths } = props;
   const [pendingSelection, setPendingSelection] = useState<{
     readonly path: string;
@@ -207,6 +227,7 @@ export function FileTreeBrowser(props: {
       onPressDirectory={toggleDirectory}
       onPreviewFile={onPreviewFile}
       onPressFile={handleSelectFile}
+      entryActions={entryActions}
     />
   );
 
@@ -214,75 +235,92 @@ export function FileTreeBrowser(props: {
 
   // Keep the list as direct screen content so UIKit can apply header insets.
   return (
-    <LegendList
-      renderScrollComponent={NativeScrollView}
-      nestedScrollEnabled={false}
-      contentInset={{ top: headerInset, bottom: bottomInset }}
-      alwaysBounceVertical
-      className="flex-1"
-      data={visibleNodes}
-      keyExtractor={(item) => item.node.path}
-      contentInsetAdjustmentBehavior="never"
-      automaticallyAdjustsScrollIndicatorInsets
-      keyboardDismissMode="on-drag"
-      keyboardShouldPersistTaps="handled"
-      estimatedItemSize={42}
-      recycleItems
-      maintainVisibleContentPosition
-      extraData={extraData}
-      contentContainerStyle={{ paddingTop: 8, paddingBottom: 8 }}
-      refreshControl={
-        <RefreshControl refreshing={props.isRefreshing} onRefresh={props.onRefresh} />
-      }
-      renderItem={renderItem}
-      ListHeaderComponent={
-        <>
-          {props.error && props.entries.length > 0 ? (
-            <Text accessibilityRole="alert" className="mx-4 my-2 text-xs text-foreground-muted">
-              {props.error}
-            </Text>
-          ) : null}
-          {props.searchTruncated ? (
-            <Text className="mx-4 my-2 text-xs text-foreground-muted">
-              More search results available. Refine your search to see them.
-            </Text>
-          ) : null}
-        </>
-      }
-      ListEmptyComponent={
-        <View className="px-4 py-5">
-          {props.error && props.entries.length === 0 ? (
-            <>
-              <Text className="text-sm font-t3-bold text-foreground">Files unavailable</Text>
-              <Text
-                accessibilityRole="alert"
-                className="mt-1 text-xs leading-normal text-foreground-muted"
-              >
+    <>
+      <LegendList
+        renderScrollComponent={NativeScrollView}
+        nestedScrollEnabled={false}
+        contentInset={{ top: headerInset, bottom: bottomInset }}
+        alwaysBounceVertical
+        className="flex-1"
+        data={visibleNodes}
+        keyExtractor={(item) => item.node.path}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustsScrollIndicatorInsets
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        estimatedItemSize={42}
+        recycleItems
+        maintainVisibleContentPosition
+        extraData={extraData}
+        contentContainerStyle={{ paddingTop: 8, paddingBottom: 8 }}
+        refreshControl={
+          <RefreshControl refreshing={props.isRefreshing} onRefresh={props.onRefresh} />
+        }
+        renderItem={renderItem}
+        ListHeaderComponent={
+          <>
+            {props.error && props.entries.length > 0 ? (
+              <Text accessibilityRole="alert" className="mx-4 my-2 text-xs text-foreground-muted">
                 {props.error}
               </Text>
-              <View className="mt-3">
-                <Button
-                  label="Try again"
-                  tone="secondary"
-                  onPress={props.onRefresh}
-                  disabled={props.isPending}
-                />
-              </View>
-            </>
-          ) : props.isPending ? (
-            <AppActivityIndicator size="small" />
-          ) : (
-            <>
-              <Text className="text-sm font-t3-bold text-foreground">No files found</Text>
-              <Text className="mt-1 text-xs leading-normal text-foreground-muted">
-                {props.searchQuery.trim().length > 0
-                  ? "Try a different search."
-                  : "The workspace is empty."}
+            ) : null}
+            {props.searchTruncated ? (
+              <Text className="mx-4 my-2 text-xs text-foreground-muted">
+                More search results available. Refine your search to see them.
               </Text>
-            </>
-          )}
-        </View>
-      }
-    />
+            ) : null}
+          </>
+        }
+        ListFooterComponent={
+          entryActions?.canModify ? (
+            <Menu
+              shouldOpenOnLongPress
+              title="Files"
+              actions={entryActions.rootMenuActions}
+              onPressAction={({ nativeEvent }) =>
+                entryActions.onMenuAction(null, nativeEvent.event)
+              }
+            >
+              <Pressable accessible={false} className="min-h-40" />
+            </Menu>
+          ) : null
+        }
+        ListEmptyComponent={
+          <View className="px-4 py-5">
+            {props.error && props.entries.length === 0 ? (
+              <>
+                <Text className="text-sm font-t3-bold text-foreground">Files unavailable</Text>
+                <Text
+                  accessibilityRole="alert"
+                  className="mt-1 text-xs leading-normal text-foreground-muted"
+                >
+                  {props.error}
+                </Text>
+                <View className="mt-3">
+                  <Button
+                    label="Try again"
+                    tone="secondary"
+                    onPress={props.onRefresh}
+                    disabled={props.isPending}
+                  />
+                </View>
+              </>
+            ) : props.isPending ? (
+              <AppActivityIndicator size="small" />
+            ) : (
+              <>
+                <Text className="text-sm font-t3-bold text-foreground">No files found</Text>
+                <Text className="mt-1 text-xs leading-normal text-foreground-muted">
+                  {props.searchQuery.trim().length > 0
+                    ? "Try a different search."
+                    : "The workspace is empty."}
+                </Text>
+              </>
+            )}
+          </View>
+        }
+      />
+      {entryActions?.picker}
+    </>
   );
 }

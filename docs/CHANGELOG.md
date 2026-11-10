@@ -10,6 +10,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Added
 
+- Files panel (web and Android): create files and folders, rename, move, copy and delete from a row's menu or the
+  empty area of the tree (right-click on the web, long-press or the "+" menu on Android). Needs the write permission.
 - Issues and Releases hide while GitHub isn't signed in on any connected environment, and Pull requests while no
   source-control provider is (sidebar, command palette, Android tabs). Settings → Navigation tabs marks them "Not signed in".
 - Android: Input, Done and draft threads are tinted in the list, and an unsent draft reads "Draft".
