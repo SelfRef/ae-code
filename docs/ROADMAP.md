@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [39] | File operations in the Files panel: create files and folders, rename, move, copy and delete from a row's or the empty area's menu, on the web and in the Android app   | done    |
 | [38] | Branches: every branch and worktree of a project with what to push, pull and merge, on the web (`/branches`) and in the Android app                                    | done    |
 | [37] | Forgejo and Gitea use the `gt` CLI (Gitea 28+) instead of `tea`; `fj` stays preferred                                                                                  | done    |
 | [36] | GitHub Releases: read-only list and detail per project on the web (`/releases`, right panel) and in the Android app                                                    | done    |
@@ -77,6 +78,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 [30]: #synced-drafts-change-30
 [33]: #saved-environments-shared-through-the-server-change-33
 [38]: #branches-change-38
+[39]: #file-operations-change-39
 [36]: #github-releases-change-36
 [35]: #android-catch-up-change-35
 [26]: #pull-requests-from-the-fork-change-26
@@ -1261,6 +1263,26 @@ branch and from its own upstream. Read-only; nothing here switches, pulls, pushe
 - **Android**: a Branches tab before Issues (a page like Issues and Releases; the row's "Open thread" opens it). The tab bar
   holds four tabs, so with Pulls hidden Usage moves under the overflow entry.
 - No data migration.
+
+## File operations (change 39)
+
+The Files panel only read. Now a row's menu (right-click on the web, long-press on Android) and the empty area of the tree
+offer New file, New folder, Rename, Move to..., Copy to... and Delete; Android also has a "+" menu in the header.
+
+- **Server**: one RPC, `projects.modifyEntry` (`AuthFilesystemWriteScope`, also in `CLIENT_GUARDED_RPC_SCOPES`), a method on
+  `WorkspaceFileSystem`. The operation is a tagged union (`create` file or folder, `move`, `copy`, `delete`); a rename is a
+  move that keeps the parent. It goes through the same path resolution as `projects.writeFile`, so it stays inside the
+  workspace and out of `.git` folders. The entry itself is not followed when it is a symlink: deleting a link removes the
+  link, and a copy keeps links as links.
+- **Never overwrites**: a taken destination fails with `already_exists`, a folder into itself with `invalid_target`, a
+  vanished source with `not_found`. Moves use `rename`, so they stay in one filesystem.
+- **Clients**: names are checked with `entryNameError` (`packages/client-runtime/src/fileEntryPaths.ts`), delete asks for
+  confirmation, and move/copy pick a destination folder in a dialog (breadcrumb, sub-folders, "Move here"/"Copy here").
+  The listing is refreshed after each operation. The menu items hide without the write permission and for host folders
+  (absolute paths outside a project).
+- **Not built**: agents get no MCP tool (they have their own file tools), no undo or trash, no drag and drop, no
+  overwrite-on-conflict, no multi-select.
+- No data migration: nothing persisted changed.
 
 ## GitHub Releases (change 36)
 

@@ -50,6 +50,7 @@ import { ThreadRouteScreen } from "../threads/ThreadRouteScreen";
 import { FilePreviewLoading, FilePreviewNotice } from "./FilePreviewFeedback";
 import { FileMarkdownPreview } from "./FileMarkdownPreview";
 import { FileTreeBrowser } from "./FileTreeBrowser";
+import { useFileEntryActions } from "./useFileEntryActions";
 import { useFileTreeEntries } from "./useFileTreeEntries";
 import { preloadWorkspaceFileContents } from "./preload-workspace-file";
 import { SourceFileSurface } from "./SourceFileSurface";
@@ -80,10 +81,12 @@ function FilesBrowserHeader(props: {
   readonly onSearchQueryChange: (query: string) => void;
   readonly onRefresh: () => void;
   readonly onBack: () => void;
+  readonly menus?: ComponentProps<typeof AppBar>["menus"];
 }) {
   return (
     <AppBar
       title="Files"
+      menus={props.menus}
       subtitle={props.projectName}
       onBack={props.onBack}
       hideBottomBorder
@@ -481,6 +484,13 @@ export function ThreadFilesTreeScreen(props: ThreadFilesRouteScreenProps) {
     cwd: canReadFiles && !hasFileInspector ? cwd : null,
     searchQuery,
   });
+  const entryActions = useFileEntryActions({
+    environmentId,
+    cwd: canReadFiles && !hasFileInspector ? cwd : null,
+    entries: entriesQuery.entries,
+    refresh: entriesQuery.refresh,
+    setExpandedPaths: entriesQuery.setExpandedPaths,
+  });
   const handleReturnToThread = () => {
     if (navigation.canGoBack()) {
       navigation.goBack();
@@ -582,6 +592,7 @@ export function ThreadFilesTreeScreen(props: ThreadFilesRouteScreenProps) {
         onSearchQueryChange={setSearchQuery}
         onRefresh={entriesQuery.refresh}
         onBack={handleReturnToThread}
+        menus={entryActions.createMenu ? [entryActions.createMenu] : undefined}
       />
       <ScreenContent>
         <FileTreeBrowser
@@ -601,6 +612,7 @@ export function ThreadFilesTreeScreen(props: ThreadFilesRouteScreenProps) {
           selectedPath={entriesQuery.selectedPath}
           onPreviewFile={handlePreviewFile}
           onRefresh={entriesQuery.refresh}
+          entryActions={entryActions}
           onSelectFile={(path) => {
             entriesQuery.selectPath(path);
             handleSelectFile(path);
@@ -645,6 +657,13 @@ export function ThreadFileScreen(props: ThreadFileRouteScreenProps) {
     environmentId,
     cwd: canReadFiles ? directoryPath : null,
     searchQuery,
+  });
+  const entryActions = useFileEntryActions({
+    environmentId,
+    cwd: canReadFiles ? directoryPath : null,
+    entries: entriesQuery.entries,
+    refresh: entriesQuery.refresh,
+    setExpandedPaths: entriesQuery.setExpandedPaths,
   });
   const [modeOverride, setModeOverride] = useState<{
     readonly path: string;
@@ -986,6 +1005,7 @@ export function ThreadFileScreen(props: ThreadFileRouteScreenProps) {
           onSearchQueryChange={setSearchQuery}
           onRefresh={entriesQuery.refresh}
           onBack={handleBack}
+          menus={entryActions.createMenu ? [entryActions.createMenu] : undefined}
         />
         <ScreenContent>
           <FileTreeBrowser
@@ -1004,6 +1024,7 @@ export function ThreadFileScreen(props: ThreadFileRouteScreenProps) {
             searchTruncated={entriesQuery.searchTruncated}
             selectedPath={entriesQuery.selectedPath}
             onRefresh={entriesQuery.refresh}
+            entryActions={entryActions}
             onSelectFile={(path) => {
               entriesQuery.selectPath(path);
               handleSelectFile(path);
