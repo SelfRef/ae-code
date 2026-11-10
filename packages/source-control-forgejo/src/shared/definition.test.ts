@@ -137,17 +137,11 @@ describe("Forgejo remotes", () => {
 });
 
 describe("Forgejo CLI commands", () => {
-  it("recognizes shell merges and closes under every spelling tea accepts", () => {
-    for (const command of [
-      "tea pulls merge 7",
-      "tea pull merge 7",
-      "tea pr m 7",
-      "tea pull close 7",
-      "fj pr close 7",
-    ]) {
+  it("recognizes shell merges and closes for both CLIs", () => {
+    for (const command of ["gt pr merge 7", "gt pr close 7", "fj pr close 7"]) {
       expect(definition.changeRequestCloseCommand.test(command), command).toBe(true);
     }
-    expect(definition.changeRequestCloseCommand.test("tea pull checkout 7")).toBe(false);
+    expect(definition.changeRequestCloseCommand.test("gt pr checkout 7")).toBe(false);
   });
 });
 

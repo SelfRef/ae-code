@@ -63,7 +63,7 @@ Optional:
 - `lsof`: list local server ports in the Browser panel.
 - `xdg-utils`: open files and folders in your desktop apps.
 - `github-cli`: GitHub pull requests and issues (`gh auth login`).
-- `glab`, `forgejo-cli` or `tea`: GitLab, Forgejo and Gitea.
+- `glab`, `forgejo-cli` or `gitea-cli`: GitLab, Forgejo and Gitea (`gt auth login`).
 - `tailscale`: remote access with `t3 serve --tailscale-serve` (see [Remote access](./docs/user/remote-access.md)).
 - Device panel with an Android emulator: `nodejs` (the device hub is a Node program; without it the panel reports "Local device support requires Node.js"), `android-tools` and `ffmpeg` (Arch's build includes libx264), plus `android-emulator` and `android-sdk-cmdline-tools-latest` from the AUR and an AVD created with `avdmanager`. The emulator's bundled qemu also needs `libxkbfile` (`extra`), or it fails with `error while loading shared libraries: libxkbfile.so.1`. The panel finds the SDK through `ANDROID_HOME`, which a service started by systemd does not inherit from your shell: set it in the unit (`Environment=ANDROID_HOME=%h/Android/Sdk`) and restart.
 - Building the Android app yourself (`vp run mobile:install android` when no prebuilt client is cached): `jdk21-openjdk` (it replaces `jre21-openjdk-headless`; Gradle needs `javac`), plus the SDK packages the React Native version in `apps/mobile` pins, installed with `sdkmanager` after `yes | sdkmanager --licenses`: `platforms;android-37.0`, `build-tools;37.0.0` and `ndk;27.1.12297006` (see `node_modules/react-native/gradle/libs.versions.toml`). Set `JAVA_HOME=/usr/lib/jvm/java-21-openjdk`.
