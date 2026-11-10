@@ -1,3 +1,5 @@
+import { formatCompactMagnitude } from "@t3tools/client-runtime/diff-count";
+
 export function formatContextWindowTokens(value: number | null): string {
   if (value === null || !Number.isFinite(value)) {
     return "0";
@@ -6,10 +8,10 @@ export function formatContextWindowTokens(value: number | null): string {
     return `${Math.round(value)}`;
   }
   if (value < 10_000) {
-    return `${(value / 1_000).toFixed(1).replace(/\.0$/, "")}k`;
+    return `${formatCompactMagnitude(value / 1_000)}k`;
   }
   if (value < 999_500) {
     return `${Math.round(value / 1_000)}k`;
   }
-  return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, "")}m`;
+  return `${formatCompactMagnitude(value / 1_000_000)}m`;
 }

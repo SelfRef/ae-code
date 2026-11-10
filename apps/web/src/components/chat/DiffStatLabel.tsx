@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { formatCompactMagnitude } from "@t3tools/client-runtime/diff-count";
 import { cn } from "~/lib/utils";
 
 export function hasNonZeroStat(stat: { additions: number; deletions: number }): boolean {
@@ -9,14 +10,14 @@ export function formatCompactDiffCount(value: number): string {
   if (value < 1000) return String(value);
   if (value < 999_500) {
     const k = value / 1000;
-    return `${k < 10 ? k.toFixed(1).replace(/\.0$/, "") : Math.round(k)}k`;
+    return `${formatCompactMagnitude(k)}k`;
   }
   if (value < 999_500_000) {
     const m = value / 1_000_000;
-    return `${m < 10 ? m.toFixed(1).replace(/\.0$/, "") : Math.round(m)}m`;
+    return `${formatCompactMagnitude(m)}m`;
   }
   const b = value / 1_000_000_000;
-  return `${b < 10 ? b.toFixed(1).replace(/\.0$/, "") : Math.round(b)}b`;
+  return `${formatCompactMagnitude(b)}b`;
 }
 
 export const DiffStatLabel = memo(function DiffStatLabel(props: {
