@@ -5,12 +5,18 @@ import type {
 } from "@t3tools/contracts";
 import { type ChangeRequestTerminology, sourceControlClients } from "../sourceControlClients.ts";
 
-export type GitActionIconName = "commit" | "push" | "pr";
+export type GitActionIconName = "commit" | "push" | "pr" | "merge";
 
-export type GitDialogAction = "commit" | "push" | "force_push" | "create_pr";
+export type GitDialogAction =
+  | "commit"
+  | "push"
+  | "force_push"
+  | "create_pr"
+  | "merge"
+  | "merge_push";
 
 export interface GitActionMenuItem {
-  id: "commit" | "push" | "force_push" | "pr";
+  id: "commit" | "push" | "force_push" | "pr" | "merge" | "merge_push";
   label: string;
   disabled: boolean;
   icon: GitActionIconName;

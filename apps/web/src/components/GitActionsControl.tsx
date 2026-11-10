@@ -43,7 +43,8 @@ import { RadioGroup } from "~/components/ui/radio-group";
 import { Spinner } from "~/components/ui/spinner";
 import { Toggle, ToggleGroup } from "~/components/ui/toggle-group";
 import { cn } from "~/lib/utils";
-import { useClientSettings } from "~/hooks/useSettings";
+import { useClientSettings, useQuickMergeAction } from "~/hooks/useSettings";
+import { PullRequestGlyph } from "./pullRequest/pullRequestIcons";
 import {
   buildMenuItems,
   formatQuickActionLabel,
@@ -242,6 +243,7 @@ function GitActionItemIcon({
 }) {
   if (icon === "commit") return <GitCommitIcon />;
   if (icon === "push") return <CloudUploadIcon />;
+  if (icon === "merge") return <PullRequestGlyph.merged />;
   return <SourceControlIcon />;
 }
 
@@ -258,6 +260,9 @@ function GitQuickActionIcon({
   if (quickAction.kind === "run_pull") return <CloudDownloadIcon className={className} />;
   if (quickAction.kind === "run_action") {
     if (quickAction.action === "commit") return <GitCommitIcon className={className} />;
+    if (quickAction.action === "merge" || quickAction.action === "merge_push") {
+      return <PullRequestGlyph.merged className={className} />;
+    }
     if (quickAction.action === "push" || quickAction.action === "commit_push") {
       return <CloudUploadIcon className={className} />;
     }
@@ -1106,11 +1111,16 @@ export default function GitActionsControl({
     isGitActionRunning,
     hasPrimaryRemote,
   );
+  const quickMergeAction = useQuickMergeAction(
+    activeEnvironmentId,
+    activeServerThreadShell?.projectId ?? activeDraftThread?.projectId ?? null,
+  );
   const quickAction = resolveQuickAction(
     gitStatusForActions,
     isGitActionRunning,
     isDefaultRef,
     hasPrimaryRemote,
+    quickMergeAction,
   );
   const quickActionLabel = formatQuickActionLabel(quickAction, gitStatusForActions);
   const quickActionDisabledReason = !canWriteSourceControl
@@ -1173,7 +1183,11 @@ export default function GitActionsControl({
     const actionBranch = actionStatus?.refName ?? null;
     const actionIsDefaultBranch = featureBranch ? false : isDefaultRef;
     const actionCanCommit =
-      action === "commit" || action === "commit_push" || action === "commit_push_pr";
+      action === "commit" ||
+      action === "commit_push" ||
+      action === "commit_push_pr" ||
+      action === "merge" ||
+      action === "merge_push";
     const includesCommit =
       actionCanCommit &&
       (action === "commit" || !!actionStatus?.hasWorkingTreeChanges || featureBranch);
@@ -1403,6 +1417,10 @@ export default function GitActionsControl({
     }
     if (item.dialogAction === "create_pr") {
       void runGitActionWithToast({ action: "create_pr" });
+      return;
+    }
+    if (item.dialogAction === "merge" || item.dialogAction === "merge_push") {
+      void runGitActionWithToast({ action: item.dialogAction });
       return;
     }
     setExcludedFiles(new Set());

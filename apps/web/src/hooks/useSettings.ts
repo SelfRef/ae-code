@@ -6,12 +6,15 @@ import {
   AuthSettingsWriteScope,
   requiredScopesForServerSettingsPatch,
   type EnvironmentId,
+  type ProjectId,
   type ProviderInstanceMutation,
   type ProviderInstanceId,
   ServerSettings,
   type ServerSettingsPatch,
+  type QuickMergeAction,
   sessionGrantsScope,
 } from "@t3tools/contracts";
+import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import {
   type ClientSettingsPatch,
   type ClientSettings,
@@ -543,6 +546,17 @@ export function useEnvironmentModelPreferences(environmentId: EnvironmentId | nu
   );
   const legacy = useClientSettings(selectLegacyModelPreferences);
   return resolveModelPreferences(settings ?? DEFAULT_SERVER_SETTINGS, legacy);
+}
+
+export function useQuickMergeAction(
+  environmentId: EnvironmentId | null,
+  projectId: ProjectId | null,
+): QuickMergeAction {
+  const settings = useAtomValue(
+    environmentId ? serverEnvironment.settingsValueAtom(environmentId) : noEnvironmentSettingsAtom,
+  );
+  return resolveProjectSettings(settings ?? DEFAULT_SERVER_SETTINGS, projectId).settings
+    .quickMergeAction;
 }
 
 export function useEnvironmentSettings<T = UnifiedSettings>(

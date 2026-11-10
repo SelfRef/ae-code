@@ -1,3 +1,4 @@
+import { mergeIntoDefault, type MergeIntoDefaultResult } from "./mergeIntoDefault.ts";
 import * as Arr from "effect/Array";
 import * as Cache from "effect/Cache";
 import * as Clock from "effect/Clock";
@@ -582,10 +583,37 @@ interface CommitAndBranchSuggestion {
   commitMessage: string;
 }
 
-function isCommitAction(
-  action: GitStackedAction,
-): action is "commit" | "commit_push" | "commit_push_pr" {
-  return action === "commit" || action === "commit_push" || action === "commit_push_pr";
+type CommitAction = "commit" | "commit_push" | "commit_push_pr" | "merge" | "merge_push";
+
+function isCommitAction(action: GitStackedAction): action is CommitAction {
+  return (
+    action === "commit" ||
+    action === "commit_push" ||
+    action === "commit_push_pr" ||
+    isMergeAction(action)
+  );
+}
+
+function isMergeAction(action: GitStackedAction): action is "merge" | "merge_push" {
+  return action === "merge" || action === "merge_push";
+}
+
+function mergeCompletionToast(merge: MergeIntoDefaultResult, committed: boolean) {
+  const pushed = merge.push?.status === "pushed";
+  return {
+    title:
+      merge.status === "already_merged"
+        ? `${merge.baseBranch} already has these commits`
+        : `Merged into ${merge.baseBranch}`,
+    description:
+      [
+        committed ? "Committed first." : null,
+        pushed ? `Pushed ${merge.push?.upstreamBranch}.` : null,
+      ]
+        .filter((part) => part !== null)
+        .join(" ") || undefined,
+    cta: { kind: "none" as const },
+  };
 }
 
 function formatCommitMessage(subject: string, body: string): string {
@@ -2252,7 +2280,7 @@ export const make = Effect.gen(function* () {
   const runCommitStep = Effect.fn("runCommitStep")(function* (
     settings: SourceControlTextGenerationSettings,
     cwd: string,
-    action: "commit" | "commit_push" | "commit_push_pr",
+    action: CommitAction,
     branch: string | null,
     commitMessage?: string,
     preResolvedSuggestion?: CommitAndBranchSuggestion,
@@ -3458,8 +3486,9 @@ export const make = Effect.gen(function* () {
               initialStatus.aheadCount > 0 ||
               pushTarget?.viaPushRemote === true));
         const wantsPr = input.action === "create_pr" || input.action === "commit_push_pr";
+        const wantsMerge = isMergeAction(input.action);
 
-        if (input.featureBranch && !wantsCommit) {
+        if (input.featureBranch && (!wantsCommit || wantsMerge)) {
           return yield* new GitManagerError({
             operation: "runStackedAction",
             cwd: input.cwd,
@@ -3469,7 +3498,8 @@ export const make = Effect.gen(function* () {
         const phases: GitActionProgressPhase[] = [
           ...(input.featureBranch ? (["branch"] as const) : []),
           ...(wantsCommit ? (["commit"] as const) : []),
-          ...(wantsPush ? (["push"] as const) : []),
+          ...(wantsMerge ? (["merge"] as const) : []),
+          ...(wantsPush || input.action === "merge_push" ? (["push"] as const) : []),
           ...(wantsPr ? (["pr"] as const) : []),
         ];
 
@@ -3478,6 +3508,13 @@ export const make = Effect.gen(function* () {
           phases,
         });
 
+        if (wantsMerge && !initialStatus.branch) {
+          return yield* new GitManagerError({
+            operation: "runStackedAction",
+            cwd: input.cwd,
+            detail: "Cannot merge from detached HEAD.",
+          });
+        }
         if (!input.featureBranch && wantsPush && !initialStatus.branch) {
           return yield* new GitManagerError({
             operation: "runStackedAction",
@@ -3580,6 +3617,22 @@ export const make = Effect.gen(function* () {
             )
           : { status: "skipped_not_requested" as const };
 
+        const merge =
+          wantsMerge && currentBranch
+            ? yield* progress
+                .emit({ kind: "phase_started", phase: "merge", label: "Merging..." })
+                .pipe(
+                  Effect.tap(() => Ref.set(currentPhase, Option.some("merge"))),
+                  Effect.flatMap(() =>
+                    mergeIntoDefault(gitCore, {
+                      cwd: input.cwd,
+                      branch: currentBranch,
+                      push: input.action === "merge_push",
+                    }),
+                  ),
+                )
+            : undefined;
+
         const push = wantsPush
           ? yield* progress
               .emit({
@@ -3591,7 +3644,13 @@ export const make = Effect.gen(function* () {
                 Effect.tap(() => Ref.set(currentPhase, Option.some("push"))),
                 Effect.flatMap(() => pushCurrentBranch(input.cwd, currentBranch)),
               )
-          : { status: "skipped_not_requested" as const };
+          : merge?.push
+            ? {
+                status: merge.push.status,
+                branch: merge.baseBranch,
+                upstreamBranch: merge.push.upstreamBranch,
+              }
+            : { status: "skipped_not_requested" as const };
 
         const pr = wantsPr
           ? yield* progress
@@ -3617,13 +3676,15 @@ export const make = Effect.gen(function* () {
               )
           : { status: "skipped_not_requested" as const };
 
-        const toast = yield* buildCompletionToast(input.cwd, {
-          action: input.action,
-          branch: branchStep,
-          commit,
-          push,
-          pr,
-        });
+        const toast = merge
+          ? mergeCompletionToast(merge, commit.status === "created")
+          : yield* buildCompletionToast(input.cwd, {
+              action: input.action,
+              branch: branchStep,
+              commit,
+              push,
+              pr,
+            });
 
         const result = {
           action: input.action,
@@ -3631,6 +3692,15 @@ export const make = Effect.gen(function* () {
           commit,
           push,
           pr,
+          ...(merge
+            ? {
+                merge: {
+                  status: merge.status,
+                  baseBranch: merge.baseBranch,
+                  commitSha: merge.commitSha,
+                },
+              }
+            : {}),
           toast,
         };
         yield* progress.emit({

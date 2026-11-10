@@ -21,9 +21,12 @@ export const GitStackedAction = Schema.Literals([
   "create_pr",
   "commit_push",
   "commit_push_pr",
+  // Commit any changes, then fast-forward the default branch to this one; `merge_push` also pushes it.
+  "merge",
+  "merge_push",
 ]);
 export type GitStackedAction = typeof GitStackedAction.Type;
-export const GitActionProgressPhase = Schema.Literals(["branch", "commit", "push", "pr"]);
+export const GitActionProgressPhase = Schema.Literals(["branch", "commit", "merge", "push", "pr"]);
 export type GitActionProgressPhase = typeof GitActionProgressPhase.Type;
 export const GitActionProgressKind = Schema.Literals([
   "action_started",
@@ -48,6 +51,7 @@ const GitPushStepStatus = Schema.Literals([
   "skipped_up_to_date",
 ]);
 const GitBranchStepStatus = Schema.Literals(["created", "skipped_not_requested"]);
+const GitMergeStepStatus = Schema.Literals(["merged", "already_merged", "skipped_not_requested"]);
 const GitPrStepStatus = Schema.Literals(["created", "opened_existing", "skipped_not_requested"]);
 const VcsStatusChangeRequestState = Schema.Literals(["open", "closed", "merged"]);
 const GitPullRequestReference = TrimmedNonEmptyStringSchema;
@@ -355,6 +359,14 @@ export const GitRunStackedActionResult = Schema.Struct({
     headBranch: Schema.optional(TrimmedNonEmptyStringSchema),
     title: Schema.optional(TrimmedNonEmptyStringSchema),
   }),
+  /** Absent from older servers, which do not offer the merge actions. */
+  merge: Schema.optional(
+    Schema.Struct({
+      status: GitMergeStepStatus,
+      baseBranch: Schema.optional(TrimmedNonEmptyStringSchema),
+      commitSha: Schema.optional(TrimmedNonEmptyStringSchema),
+    }),
+  ),
   toast: GitRunStackedActionToast,
 });
 export type GitRunStackedActionResult = typeof GitRunStackedActionResult.Type;
