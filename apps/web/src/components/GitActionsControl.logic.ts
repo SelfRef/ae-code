@@ -15,6 +15,7 @@ import {
 } from "@t3tools/client-runtime/state/vcs";
 
 export {
+  formatQuickActionLabel,
   requiresDefaultBranchConfirmation,
   type DefaultBranchConfirmableAction,
   type GitActionIconName,
@@ -504,26 +505,4 @@ export function resolveLiveThreadBranchUpdate(input: {
   return {
     branch: input.gitStatus.refName,
   };
-}
-
-/** Names how many files a Commit action stages, or how many commits a Merge or Push action takes; other labels pass through. */
-export function formatQuickActionLabel(
-  quickAction: Pick<GitQuickAction, "label" | "disabled">,
-  gitStatus: Pick<VcsStatusResult, "aheadCount" | "aheadOfDefaultCount" | "workingTree"> | null,
-): string {
-  if (quickAction.disabled || !gitStatus) return quickAction.label;
-  const plural = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
-  const files = gitStatus.workingTree.files.length;
-  const commits = gitStatus.aheadCount;
-  if (quickAction.label.startsWith("Commit") && files > 0) {
-    return quickAction.label.replace("Commit", `Commit ${plural(files, "file")}`);
-  }
-  const mergeCommits = gitStatus.aheadOfDefaultCount ?? commits;
-  if (quickAction.label.startsWith("Merge") && mergeCommits > 0) {
-    return quickAction.label.replace("Merge", `Merge ${plural(mergeCommits, "commit")}`);
-  }
-  if (quickAction.label.startsWith("Push") && commits > 0) {
-    return quickAction.label.replace("Push", `Push ${plural(commits, "commit")}`);
-  }
-  return quickAction.label;
 }
