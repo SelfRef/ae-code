@@ -8,6 +8,14 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+### Changed
+
+- Merging into the default branch moved out of the Git actions menu into its own **Default branch** section of the thread
+  details card (off by default; turn it on from the card's show/hide list). Its button merges the branch, with
+  **Merge & push** and **Push n commits** (the default branch as it is) under the arrow; with nothing to merge, the push is
+  the button. Android: the Git menu and sheet list the same actions under "Default branch". The project setting now only
+  picks between Merge and Merge & push as the main action.
+
 ### Fixed
 
 - Forgejo / Gitea: a `GITEA_TOKEN` in the server's environment without an instance no longer hides the signed-in `gt` account (the provider read as not authenticated).

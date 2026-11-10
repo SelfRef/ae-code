@@ -522,11 +522,11 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
             settingKeys={["quickMergeAction"]}
             mixed={mixedQuickMerge}
             {...searchableSetting("quick-merge-action")}
-            description="The main Git action of a thread's branch. Merging fast-forwards the default branch in its own checkout, which must be clean, and rebases the branch first if needed. All stay in the menu."
+            description="The main action of a thread's Default branch button. Merging fast-forwards the default branch in its own checkout, which must be clean, and rebases the branch first if needed. Both stay in its menu."
             resetAction={
               settings.quickMergeAction !== "merge" ? (
                 <SettingResetButton
-                  label="main Git action"
+                  label="default branch action"
                   tooltip="Reset to merge into default branch"
                   onClick={() => updateSettings({ quickMergeAction: "merge" })}
                 />
@@ -540,23 +540,20 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
                     updateSettings({ quickMergeAction: value });
                 }}
               >
-                <SelectTrigger size="sm" aria-label="Main Git action">
+                <SelectTrigger size="sm" aria-label="Default branch action">
                   <SelectValue>
                     {(value: string | null) =>
-                      value === "pull_request"
-                        ? "Open a pull request"
-                        : value === "merge"
-                          ? "Merge into default branch"
-                          : value === "merge_push"
-                            ? "Merge into default branch & push"
-                            : "Mixed"
+                      value === "merge_push"
+                        ? "Merge into default branch & push"
+                        : value === null
+                          ? "Mixed"
+                          : "Merge into default branch"
                     }
                   </SelectValue>
                 </SelectTrigger>
                 <SelectPopup align="end" alignItemWithTrigger={false}>
                   <SelectItem value="merge">Merge into default branch</SelectItem>
                   <SelectItem value="merge_push">Merge into default branch & push</SelectItem>
-                  <SelectItem value="pull_request">Open a pull request</SelectItem>
                 </SelectPopup>
               </Select>
             }

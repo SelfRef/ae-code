@@ -1,12 +1,16 @@
-import { SourceControlProviderKind, type VcsStatusResult } from "@t3tools/contracts";
+import {
+  SourceControlProviderKind,
+  type QuickMergeAction,
+  type VcsStatusResult,
+} from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { sourceControlClients } from "../sourceControlClients.ts";
 import {
   buildMenuItems,
-  formatQuickActionLabel,
   getGitActionDisabledReason,
   resolveDefaultBranchActionDialogCopy,
+  resolveDefaultBranchActions,
   resolveQuickAction,
 } from "./gitActions.ts";
 
@@ -43,62 +47,52 @@ const openPr = {
   state: "open" as const,
 };
 
-describe("merge into the default branch", () => {
+describe("default branch actions", () => {
   const ahead = status({ aheadCount: 2, aheadOfDefaultCount: 2 });
+  const resolve = (s: VcsStatusResult, remote = true, mode: QuickMergeAction = "merge") =>
+    resolveDefaultBranchActions(s, false, remote, mode)!;
 
-  it("lists Merge and Merge & push for a feature branch, none on the default ref", () => {
+  it("leaves them out of the Git actions", () => {
     const labels = (s: VcsStatusResult) => buildMenuItems(s, false).map((item) => item.label);
-    expect(labels(ahead)).toEqual(["Commit", "Push", "Merge", "Merge & push", "Create PR"]);
-    expect(labels(status({ ...ahead, hasWorkingTreeChanges: true }))).toContain("Commit & merge");
-    expect(labels(status({ ...ahead, isDefaultRef: true }))).toEqual([
-      "Commit",
-      "Push",
-      "Create PR",
+    expect(labels(ahead)).toEqual(["Commit", "Push", "Create PR"]);
+    expect(resolveQuickAction(ahead, false)).toMatchObject({ action: "create_pr" });
+  });
+
+  it("is absent on the default ref and a detached HEAD", () => {
+    expect(resolveDefaultBranchActions(status({ isDefaultRef: true }), false, true, "merge")).toBe(
+      null,
+    );
+    expect(resolveDefaultBranchActions(status({ refName: null }), false, true, "merge")).toBe(null);
+  });
+
+  it("merges by default, naming the commits, and lists the push under it", () => {
+    const actions = resolve({ ...ahead, defaultAheadCount: 3 });
+    expect(actions.primary).toMatchObject({ id: "merge", label: "Merge 2 commits" });
+    expect(actions.items.map((item) => item.label)).toEqual([
+      "Merge 2 commits",
+      "Merge 2 commits & push",
+      "Push 3 commits",
     ]);
-    expect(buildMenuItems(ahead, false, false).map((item) => item.id)).not.toContain("merge_push");
+    expect(resolve(ahead, true, "merge_push").primary.id).toBe("merge_push");
+    expect(resolve({ ...ahead, hasWorkingTreeChanges: true }).primary.label).toBe("Commit & merge");
   });
 
-  it("locks Merge when there is nothing to merge", () => {
-    const merge = buildMenuItems(status(), false).find((item) => item.id === "merge")!;
-    expect(merge.disabled).toBe(true);
-    expect(
-      getGitActionDisabledReason({
-        item: merge,
-        gitStatus: status(),
-        isBusy: false,
-        hasOriginRemote: true,
-      }),
-    ).toBe("No commits or changes to merge into the default branch.");
-  });
-
-  it("offers a force push for a rewritten history", () => {
-    const diverged = status({ aheadCount: 1, behindCount: 1 });
-    expect(buildMenuItems(diverged, false).find((item) => item.id === "force_push")).toMatchObject({
-      dialogAction: "force_push",
+  it("puts the push on the button when there is nothing to merge", () => {
+    const actions = resolve(status({ defaultAheadCount: 1 }));
+    expect(actions.primary).toMatchObject({
+      id: "push_default",
+      label: "Push 1 commit",
       disabled: false,
     });
+    expect(actions.items.find((item) => item.id === "merge")?.disabled).toBe(true);
   });
 
-  it("makes Merge the main action when the project merges directly", () => {
-    expect(resolveQuickAction(ahead, false, false, true, "merge")).toMatchObject({
-      label: "Merge",
-      action: "merge",
-    });
-    expect(resolveQuickAction(ahead, false, false, true, "merge_push")).toMatchObject({
-      label: "Merge & push",
-      action: "merge_push",
-    });
-    expect(resolveQuickAction(status(), false, false, true, "merge")).toMatchObject({
-      label: "Merge",
-      disabled: true,
-    });
-  });
-
-  it("offers a pull request for a pushed branch that is ahead of the default branch", () => {
-    expect(resolveQuickAction(ahead, false)).toMatchObject({ action: "create_pr" });
-    expect(
-      formatQuickActionLabel(resolveQuickAction(ahead, false, false, true, "merge"), ahead),
-    ).toBe("Merge 2 commits");
+  it("locks everything when there is nothing to merge or push, and offers only a merge without a remote", () => {
+    const idle = resolve(status());
+    expect(idle.primary).toMatchObject({ id: "merge", disabled: true });
+    expect(idle.items.find((item) => item.id === "push_default")?.disabled).toBe(true);
+    expect(resolve(ahead, false).items.map((item) => item.id)).toEqual(["merge"]);
+    expect(resolveDefaultBranchActions(ahead, true, true, "merge")!.primary.disabled).toBe(true);
   });
 });
 

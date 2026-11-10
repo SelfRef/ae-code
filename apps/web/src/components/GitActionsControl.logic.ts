@@ -1,7 +1,6 @@
 import type {
   GitRunStackedActionResult,
   GitStackedAction,
-  QuickMergeAction,
   VcsStatusResult,
 } from "@t3tools/contracts";
 import { isTemporaryWorktreeBranch } from "@t3tools/shared/git";
@@ -16,17 +15,18 @@ import {
 
 export {
   formatQuickActionLabel,
+  resolveDefaultBranchActions,
   requiresDefaultBranchConfirmation,
   type DefaultBranchConfirmableAction,
   type GitActionIconName,
 } from "@t3tools/client-runtime/state/vcs";
 
 export interface GitActionMenuItem {
-  id: "commit" | "push" | "force_push" | "pr" | "merge" | "merge_push";
+  id: "commit" | "push" | "force_push" | "pr" | "merge" | "merge_push" | "push_default";
   label: string;
   disabled: boolean;
   icon: GitActionIconName;
-  kind: "open_dialog";
+  kind: "open_dialog" | "open_pr";
   dialogAction?: GitDialogAction;
 }
 
@@ -122,8 +122,6 @@ export function buildMenuItems(
   const hasDefaultBranchDelta = (gitStatus.aheadOfDefaultCount ?? gitStatus.aheadCount) > 0;
   const canPushWithoutUpstream = hasPrimaryRemote && !gitStatus.hasUpstream;
   const canCommit = !isBusy && hasChanges;
-  const canMerge =
-    !isBusy && hasBranch && !gitStatus.isDefaultRef && (hasChanges || hasDefaultBranchDelta);
   const canPush =
     !isBusy &&
     hasBranch &&
@@ -138,33 +136,6 @@ export function buildMenuItems(
     !isBehind &&
     (gitStatus.hasUpstream || canPushWithoutUpstream);
 
-  // Merging into the default branch is for a feature branch, whether or not there is a remote.
-  const mergeItems: GitActionMenuItem[] =
-    hasBranch && !gitStatus.isDefaultRef
-      ? [
-          {
-            id: "merge",
-            label: hasChanges ? "Commit & merge" : "Merge",
-            disabled: !canMerge,
-            icon: "merge",
-            kind: "open_dialog",
-            dialogAction: "merge",
-          },
-          ...(hasPrimaryRemote
-            ? [
-                {
-                  id: "merge_push" as const,
-                  label: hasChanges ? "Commit, merge & push" : "Merge & push",
-                  disabled: !canMerge,
-                  icon: "merge" as const,
-                  kind: "open_dialog" as const,
-                  dialogAction: "merge_push" as const,
-                },
-              ]
-            : []),
-        ]
-      : [];
-
   const commitItem: GitActionMenuItem = {
     id: "commit",
     label: "Commit",
@@ -175,7 +146,7 @@ export function buildMenuItems(
   };
 
   if (!hasPrimaryRemote) {
-    return [commitItem, ...mergeItems];
+    return [commitItem];
   }
 
   const pushItem: GitActionMenuItem = {
@@ -203,14 +174,13 @@ export function buildMenuItems(
       : [];
 
   if (hasOpenPr) {
-    return [commitItem, pushItem, ...forcePushItem, ...mergeItems];
+    return [commitItem, pushItem, ...forcePushItem];
   }
 
   return [
     commitItem,
     pushItem,
     ...forcePushItem,
-    ...mergeItems,
     {
       id: "pr",
       label: `Create ${terminology.shortLabel}`,
@@ -227,7 +197,6 @@ export function resolveQuickAction(
   isBusy: boolean,
   isDefaultRef = false,
   hasPrimaryRemote = true,
-  quickMergeAction: QuickMergeAction = "pull_request",
 ): GitQuickAction {
   if (isBusy) {
     return { label: "Commit", disabled: true, kind: "show_hint", hint: "Git action in progress." };
@@ -257,25 +226,6 @@ export function resolveQuickAction(
       disabled: true,
       kind: "show_hint",
       hint: `Create and checkout a ref before pushing or opening a ${terminology.singular}.`,
-    };
-  }
-
-  // A project that merges directly makes that its main action, in place of the pull request one.
-  if (quickMergeAction !== "pull_request" && !isDefaultRef) {
-    const push = quickMergeAction === "merge_push" && hasPrimaryRemote;
-    if (!hasChanges && !hasDefaultBranchDelta) {
-      return {
-        label: `Merge${push ? " & push" : ""}`,
-        disabled: true,
-        kind: "show_hint",
-        hint: "No commits to merge into the default branch.",
-      };
-    }
-    return {
-      label: `${hasChanges ? "Commit & merge" : "Merge"}${push ? " & push" : ""}`,
-      disabled: false,
-      kind: "run_action",
-      action: push ? "merge_push" : "merge",
     };
   }
 

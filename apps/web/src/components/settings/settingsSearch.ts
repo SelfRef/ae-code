@@ -1110,7 +1110,7 @@ export const SETTINGS_SEARCH_ITEMS = [
   },
   {
     id: "quick-merge-action",
-    title: "Main Git action",
+    title: "Default branch action",
     to: "/settings/source-control",
     scope: "project-defaults",
     searchTerms: ["merge default branch main push fast-forward pull request quick action direct"],

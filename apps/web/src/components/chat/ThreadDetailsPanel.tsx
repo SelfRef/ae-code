@@ -162,6 +162,11 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
             props.gitCwd !== null &&
             props.activeProjectName !== undefined &&
             (visible.gitActions || (visible.changes && props.isGitRepo)),
+          defaultBranch:
+            props.gitCwd !== null &&
+            props.isGitRepo &&
+            props.activeProjectName !== undefined &&
+            visible.defaultBranch,
         };
         return (
           <>
@@ -238,6 +243,24 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
                         {...(props.onOpenChanges ? { onOpenChanges: props.onOpenChanges } : {})}
                       />
                     ) : null}
+                  </div>
+                </ThreadDetailsSection>
+              ) : null}
+
+              {show.defaultBranch && props.gitCwd ? (
+                <ThreadDetailsSection
+                  headingId="thread-details-default-branch-heading"
+                  title="Default branch"
+                  showHeading={false}
+                >
+                  <div className="flex flex-col">
+                    <GitActionsControl
+                      scope="defaultBranch"
+                      compact={density !== "full"}
+                      gitCwd={props.gitCwd}
+                      activeThreadRef={activeThreadRef}
+                      {...(props.draftId ? { draftId: props.draftId } : {})}
+                    />
                   </div>
                 </ThreadDetailsSection>
               ) : null}
