@@ -430,6 +430,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["long lines code blocks diffs file previews"],
   },
   {
+    id: "header-version",
+    title: "Show version in header",
+    to: "/settings/appearance",
+    searchTerms: ["sidebar app version number"],
+  },
+  {
     id: "composer-context",
     title: "Composer context",
     to: "/settings/appearance",

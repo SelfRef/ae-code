@@ -3,6 +3,9 @@ import { describe, expect, it, vi } from "vite-plus/test";
 
 import "~/index.css";
 
+import { DEFAULT_CLIENT_SETTINGS } from "@t3tools/contracts/settings";
+
+import { __setClientSettingsForTests } from "../../hooks/useSettings";
 import { render } from "../../../test/render";
 import { Sidebar, SidebarProvider, SidebarRail, SidebarTrigger, useSidebar } from "./sidebar";
 
@@ -48,6 +51,7 @@ describe("Sidebar", () => {
   });
 
   it("abandons a rail drag when the sidebar collapses mid-drag", async () => {
+    __setClientSettingsForTests({ ...DEFAULT_CLIENT_SETTINGS, panelAnimationDurationMs: 0 });
     await page.viewport(1280, 800);
     const onResize = vi.fn();
     await using screen = await render(<Harness onResize={onResize} />, {
@@ -164,6 +168,7 @@ it("keeps closed mobile sheet contents mounted and reports the sheet only while 
 });
 
 it("opens the mobile sheet without a transition while panel animations are off", async () => {
+  __setClientSettingsForTests({ ...DEFAULT_CLIENT_SETTINGS, panelAnimationDurationMs: 0 });
   await page.viewport(390, 844);
   await using screen = await render(
     <div data-panel-animations="false">

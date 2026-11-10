@@ -10,14 +10,14 @@ import { memo } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 
 import { useAtomValue } from "@effect/atom-react";
-import { useEnvironmentIdentificationMode } from "../../hooks/useSettings";
+import { useClientSettings, useEnvironmentIdentificationMode } from "../../hooks/useSettings";
 import { shortcutLabelForCommand } from "../../keybindings";
 import {
   navigateHistory,
   useCanNavigateHistory,
   type HistoryDirection,
 } from "../../navigationHistory";
-import { primaryServerKeybindingsAtom } from "../../state/server";
+import { primaryServerConfigAtom, primaryServerKeybindingsAtom } from "../../state/server";
 import { cn } from "../../lib/utils";
 import { usePullRequestsSupported } from "../../state/environments";
 import { useProjects } from "../../state/entities";
@@ -59,6 +59,8 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
     stageLabel,
     environmentIdentificationMode,
   );
+  const showVersion = useClientSettings((settings) => settings.showVersionInHeader);
+  const version = useAtomValue(primaryServerConfigAtom)?.environment.serverVersion ?? null;
   const pillLabel =
     environmentIdentificationMode === "pill"
       ? resolveEnvironmentIdentificationPillLabel(stageLabel)
@@ -71,7 +73,7 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
         isElectron && "drag-region",
       )}
     >
-      {backdropVariant ? <SidebarStageBackdrop variant={backdropVariant} /> : null}
+      {backdropVariant ? <SidebarStageBackdrop /> : null}
       <div className="relative top-[calc(var(--workspace-controls-top)-env(safe-area-inset-top))] z-10 ml-[calc(var(--workspace-controls-left)+1px-env(safe-area-inset-left))] flex shrink-0 items-center md:hidden">
         <SidebarTrigger
           variant={backdropVariant ? "media-navigation" : "ghost"}
@@ -89,6 +91,17 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
             </div>
           ) : null}
         </div>
+        {showVersion && version ? (
+          <span
+            className={cn(
+              "truncate text-xs tabular-nums",
+              backdropVariant ? "text-white/70" : "text-muted-foreground",
+            )}
+            data-sidebar-version
+          >
+            {version}
+          </span>
+        ) : null}
         {pillLabel ? (
           <div className="ml-1 flex h-7 items-center">
             <Badge data-environment-identification="pill" size="sm" variant="secondary">

@@ -39,37 +39,18 @@ import { ThreadDetailsItemsRow } from "./ThreadDetailsItemsRow";
 
 const ENVIRONMENT_IDENTIFICATION_LABELS: Record<EnvironmentIdentificationMode, string> = {
   artwork: "Artwork",
-  "nightly-artwork": "Nightly artwork",
   "dev-artwork": "Dev artwork",
   pill: "Version pill",
   none: "None",
 };
 
-// The default "artwork" follows the running channel, so it is labeled as that channel's art,
-// or as "None" on Latest. The other channel's art is offered as a fixed choice.
 function environmentIdentificationOptions(
   stageVariant: SidebarStageBackdropVariant | null,
 ): ReadonlyArray<readonly [EnvironmentIdentificationMode, string]> {
-  if (stageVariant === "dev") {
-    return [
-      ["artwork", "Dev artwork"],
-      ["nightly-artwork", "Nightly artwork"],
-      ["pill", "Version pill"],
-      ["none", "None"],
-    ];
-  }
-  if (stageVariant === "nightly") {
-    return [
-      ["artwork", "Nightly artwork"],
-      ["dev-artwork", "Dev artwork"],
-      ["pill", "Version pill"],
-      ["none", "None"],
-    ];
-  }
   return [
-    ["artwork", "None"],
-    ["nightly-artwork", "Nightly artwork"],
     ["dev-artwork", "Dev artwork"],
+    ...(stageVariant ? ([["pill", "Version pill"]] as const) : []),
+    ["none", "None"],
   ];
 }
 
@@ -120,7 +101,7 @@ export function AppearanceSettingsPanel() {
       : "Only built-in themes show artwork."
     : environmentStageVariant
       ? "Choose how Dev and Nightly environments are identified."
-      : "Show Dev or Nightly artwork in the sidebar header.";
+      : "Show Dev artwork in the sidebar header.";
   const glassOpacityRatio =
     (settings.glassOpacity - MIN_GLASS_OPACITY) / (MAX_GLASS_OPACITY - MIN_GLASS_OPACITY);
   const glassOpacitySliderStyle = {
@@ -355,6 +336,7 @@ export function AppearanceSettingsPanel() {
             // Environment identification's search result lands on this section.
             "appearance-interface",
             searchableSetting("composer-context").id,
+            searchableSetting("header-version").id,
           ]}
         >
           <SettingsRow
@@ -474,6 +456,31 @@ export function AppearanceSettingsPanel() {
                   updateSettings({ persistComposerContextStrip: Boolean(checked) })
                 }
                 aria-label="Keep composer context visible in active threads"
+              />
+            }
+          />
+          <SettingsRow
+            {...searchableSetting("header-version")}
+            description="Show the app version next to the name in the sidebar header."
+            resetAction={
+              settings.showVersionInHeader !== DEFAULT_UNIFIED_SETTINGS.showVersionInHeader ? (
+                <SettingResetButton
+                  label="show version in header"
+                  onClick={() =>
+                    updateSettings({
+                      showVersionInHeader: DEFAULT_UNIFIED_SETTINGS.showVersionInHeader,
+                    })
+                  }
+                />
+              ) : null
+            }
+            control={
+              <Switch
+                checked={settings.showVersionInHeader}
+                onCheckedChange={(checked) =>
+                  updateSettings({ showVersionInHeader: Boolean(checked) })
+                }
+                aria-label="Show version in header"
               />
             }
           />
