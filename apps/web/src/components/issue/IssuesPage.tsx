@@ -1,10 +1,24 @@
-import type { IssueListState, IssueSummary } from "@t3tools/contracts";
+import type { IssueListSort, IssueListState, IssueSummary } from "@t3tools/contracts";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { ArrowLeftIcon } from "lucide-react";
+import {
+  ArrowDownUpIcon,
+  ArrowLeftIcon,
+  CalendarArrowDownIcon,
+  CalendarArrowUpIcon,
+  CircleCheckIcon,
+  CircleDotIcon,
+  ClockIcon,
+  LayersIcon,
+  MessageSquareIcon,
+  PenLineIcon,
+  SearchIcon,
+  UserRoundIcon,
+} from "lucide-react";
 import { useState, type FormEvent } from "react";
 
 import { issueEnvironment } from "~/state/issues";
 import { useEnvironmentQuery } from "~/state/query";
+import { usePageProject } from "~/hooks/usePageProject";
 import { useProjects } from "~/state/entities";
 import { useSourceControlSignIn } from "~/state/sourceControl";
 import { formatRelativeTimeLabel } from "~/timestampFormat";
@@ -12,28 +26,63 @@ import { cn } from "~/lib/utils";
 
 import { Button } from "../ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../ui/empty";
-import { Input } from "../ui/input";
-import { RefreshIcon } from "../ui/refresh-icon";
-import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group";
 import { SidebarInset } from "../ui/sidebar";
 import { Spinner } from "../ui/spinner";
+import { ListFiltersMenu, ListRefreshButton } from "../ListToolbar";
+import { ProjectPageHeader } from "../ProjectPageHeader";
+import { PullRequestCompactFilterMenu } from "../pullRequest/PullRequestCompactFilterMenu";
+import {
+  PullRequestFilterRadioSubmenu,
+  type PullRequestFilterOption,
+} from "../pullRequest/PullRequestListFilters";
 import { PullRequestLabelChip } from "../pullRequest/pullRequestPresentation";
 import { IssueDetailPane } from "./IssueDetailPane";
 import { IssueStateGlyph } from "./IssueStateGlyph";
-import {
-  issueProjects,
-  projectKey,
-  selectIssueProject,
-} from "@t3tools/client-runtime/issue-projects";
+import { issueProjects, projectKey } from "@t3tools/client-runtime/issue-projects";
 
-export const ISSUE_STATES: ReadonlyArray<{
-  readonly value: IssueListState;
-  readonly label: string;
-}> = [
-  { value: "open", label: "Open" },
-  { value: "closed", label: "Closed" },
-  { value: "all", label: "All" },
-];
+export const ISSUE_STATES = [
+  { value: "open", label: "Open", Icon: CircleDotIcon },
+  { value: "closed", label: "Closed", Icon: CircleCheckIcon },
+  { value: "all", label: "All", Icon: LayersIcon },
+] as const satisfies ReadonlyArray<PullRequestFilterOption<IssueListState>>;
+
+const SORT_OPTIONS = [
+  { value: "updated", label: "Recently updated", Icon: ClockIcon },
+  { value: "newest", label: "Newest", Icon: CalendarArrowDownIcon },
+  { value: "oldest", label: "Oldest", Icon: CalendarArrowUpIcon },
+  { value: "comments", label: "Most commented", Icon: MessageSquareIcon },
+] as const satisfies ReadonlyArray<PullRequestFilterOption<IssueListSort>>;
+
+const INVOLVEMENT_OPTIONS = [
+  { value: "all", label: "Everyone", Icon: LayersIcon },
+  { value: "author", label: "Created by me", Icon: PenLineIcon },
+  { value: "assignee", label: "Assigned to me", Icon: UserRoundIcon },
+] as const satisfies ReadonlyArray<PullRequestFilterOption<string>>;
+
+/** GitHub's own search syntax: `@me` is the signed-in user. */
+const INVOLVEMENT_QUALIFIER = { author: "author:@me", assignee: "assignee:@me" } as const;
+
+const issueListQuery = (
+  environmentId: Parameters<typeof issueEnvironment.list>[0]["environmentId"],
+  input: {
+    projectId: Parameters<typeof issueEnvironment.list>[0]["input"]["projectId"];
+    state: IssueListState;
+    sort?: IssueListSort | undefined;
+    query: string | undefined;
+    page: number;
+  },
+) =>
+  issueEnvironment.list({
+    environmentId,
+    input: {
+      projectId: input.projectId,
+      state: input.state,
+      ...(input.sort ? { sort: input.sort } : {}),
+      ...(input.query ? { query: input.query } : {}),
+      page: input.page,
+    },
+  });
 
 function IssueRow({
   issue,
@@ -79,6 +128,7 @@ export function IssueListPage({
   environmentId,
   projectId,
   state,
+  sort,
   query,
   page,
   selectedNumber,
@@ -89,6 +139,7 @@ export function IssueListPage({
   environmentId: Parameters<typeof issueEnvironment.list>[0]["environmentId"];
   projectId: Parameters<typeof issueEnvironment.list>[0]["input"]["projectId"];
   state: IssueListState;
+  sort?: IssueListSort | undefined;
   query: string | undefined;
   page: number;
   selectedNumber: number | undefined;
@@ -97,10 +148,7 @@ export function IssueListPage({
   onMore: () => void;
 }) {
   const result = useEnvironmentQuery(
-    issueEnvironment.list({
-      environmentId,
-      input: { projectId, state, ...(query ? { query } : {}), page },
-    }),
+    issueListQuery(environmentId, { projectId, state, sort, query, page }),
   );
   if (result.data === null) {
     return result.error !== null ? (
@@ -151,10 +199,26 @@ export function IssuesPage() {
   const search = useSearch({ from: "/_chat/issues" });
   const navigate = useNavigate();
   const projects = issueProjects(useProjects(), useSourceControlSignIn().githubSignedOut);
-  const project = selectIssueProject(projects, search);
+  const project = usePageProject(projects, search);
   const [pages, setPages] = useState(1);
   const [draft, setDraft] = useState(search.q ?? "");
   const [refreshToken, setRefreshToken] = useState(0);
+  const query =
+    [search.involves ? INVOLVEMENT_QUALIFIER[search.involves] : "", search.q ?? ""]
+      .filter(Boolean)
+      .join(" ") || undefined;
+  // The first page stays mounted through a refresh, so its spinner can show here.
+  const firstPage = useEnvironmentQuery(
+    project === null
+      ? null
+      : issueListQuery(project.environmentId, {
+          projectId: project.id,
+          state: search.state,
+          sort: search.issueSort,
+          query,
+          page: 1,
+        }),
+  );
 
   // An undefined value clears that search param.
   const update = (
@@ -174,6 +238,7 @@ export function IssuesPage() {
   const detail =
     project !== null && selectedNumber !== undefined ? { project, number: selectedNumber } : null;
   const detailOpen = detail !== null;
+  const filterCount = [search.state !== "open", search.involves].filter(Boolean).length;
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none">
       <div className="flex min-h-0 flex-1">
@@ -183,71 +248,72 @@ export function IssuesPage() {
             detailOpen && "hidden md:flex",
           )}
         >
-          <header className="flex flex-col gap-2 border-b p-3">
+          <ProjectPageHeader
+            title="Issues"
+            project={project}
+            projects={projects}
+            reserveNativeControls={false}
+            onProject={(next) =>
+              update({ environmentId: next.environmentId, projectId: next.id, number: undefined })
+            }
+          />
+          <div className="flex flex-col gap-2 border-b p-3">
+            <form onSubmit={submitQuery}>
+              <InputGroup className="**:[input]:h-9 sm:**:[input]:h-8">
+                <InputGroupAddon>
+                  <SearchIcon aria-hidden />
+                </InputGroupAddon>
+                <InputGroupInput
+                  type="search"
+                  placeholder="Search issues"
+                  aria-label="Search issues"
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                />
+              </InputGroup>
+            </form>
             <div className="flex items-center gap-2">
-              <h1 className="text-sm font-semibold">Issues</h1>
-              <Button
-                size="icon-sm"
-                variant="ghost-muted"
-                aria-label="Refresh"
-                className="ms-auto"
-                onClick={() => {
+              <PullRequestCompactFilterMenu
+                label="Sort issues"
+                triggerIcon={<ArrowDownUpIcon aria-hidden className="size-4" />}
+                triggerLabel="Sort"
+                outlined
+                value={search.issueSort ?? "updated"}
+                options={SORT_OPTIONS}
+                onChange={(sort) =>
+                  update({ issueSort: sort === "updated" ? undefined : sort, number: undefined })
+                }
+              />
+              <ListFiltersMenu count={filterCount}>
+                <PullRequestFilterRadioSubmenu
+                  label="State"
+                  value={search.state}
+                  options={ISSUE_STATES}
+                  onChange={(state) => update({ state, number: undefined })}
+                />
+                <PullRequestFilterRadioSubmenu
+                  label="Involvement"
+                  value={search.involves ?? "all"}
+                  options={INVOLVEMENT_OPTIONS}
+                  onChange={(next) =>
+                    update({
+                      involves: next === "all" ? undefined : (next as "author" | "assignee"),
+                      number: undefined,
+                    })
+                  }
+                />
+              </ListFiltersMenu>
+              <ListRefreshButton
+                label="Refresh issues"
+                refreshing={firstPage.isPending}
+                onRefresh={() => {
                   setPages(1);
                   setRefreshToken((token) => token + 1);
+                  firstPage.refresh();
                 }}
-              >
-                <RefreshIcon className="size-3.5" />
-              </Button>
-            </div>
-            {projects.length > 1 && project !== null ? (
-              <Select
-                value={projectKey(project)}
-                onValueChange={(key) => {
-                  const next = projects.find((candidate) => projectKey(candidate) === key);
-                  if (next)
-                    update({
-                      environmentId: next.environmentId,
-                      projectId: next.id,
-                      number: undefined,
-                    });
-                }}
-              >
-                <SelectTrigger size="compact" aria-label="Project">
-                  <SelectValue>{project.title}</SelectValue>
-                </SelectTrigger>
-                <SelectPopup alignItemWithTrigger={false}>
-                  {projects.map((candidate) => (
-                    <SelectItem key={projectKey(candidate)} value={projectKey(candidate)}>
-                      {candidate.title}
-                    </SelectItem>
-                  ))}
-                </SelectPopup>
-              </Select>
-            ) : null}
-            <form onSubmit={submitQuery}>
-              <Input
-                size="compact"
-                placeholder="Search issues"
-                aria-label="Search issues"
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
               />
-            </form>
-            <div className="flex gap-1" role="tablist" aria-label="State">
-              {ISSUE_STATES.map((entry) => (
-                <Button
-                  key={entry.value}
-                  size="compact"
-                  role="tab"
-                  aria-selected={search.state === entry.value}
-                  variant={search.state === entry.value ? "outline" : "ghost-muted"}
-                  onClick={() => update({ state: entry.value, number: undefined })}
-                >
-                  {entry.label}
-                </Button>
-              ))}
             </div>
-          </header>
+          </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {project === null ? (
               <Empty size="compact">
@@ -261,11 +327,12 @@ export function IssuesPage() {
             ) : (
               Array.from({ length: pages }, (_, index) => (
                 <IssueListPage
-                  key={`${projectKey(project)}:${search.state}:${search.q ?? ""}:${refreshToken}:${index + 1}`}
+                  key={`${projectKey(project)}:${search.state}:${search.issueSort ?? ""}:${query ?? ""}:${index === 0 ? "" : refreshToken}:${index + 1}`}
                   environmentId={project.environmentId}
                   projectId={project.id}
                   state={search.state}
-                  query={search.q}
+                  sort={search.issueSort}
+                  query={query}
                   page={index + 1}
                   selectedNumber={search.number}
                   isLast={index + 1 === pages}

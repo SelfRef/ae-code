@@ -59,7 +59,10 @@ export function ProjectSwitcher(props: {
   readonly activeProject: EnvironmentProject;
   readonly trigger: ReactElement;
   readonly children: ReactNode;
-  readonly onNewThreadInProject: () => void;
+  readonly onNewThreadInProject?: (() => void) | undefined;
+  /** Picks the project instead of opening one of its threads. */
+  readonly onSelectProject?: ((project: EnvironmentProject) => void) | undefined;
+  readonly projectFilter?: ((project: EnvironmentProject) => boolean) | undefined;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -69,6 +72,8 @@ export function ProjectSwitcher(props: {
         <ProjectSwitcherContent
           activeProject={props.activeProject}
           onNewThreadInProject={props.onNewThreadInProject}
+          onSelectProject={props.onSelectProject}
+          projectFilter={props.projectFilter}
           onOpenChange={setOpen}
         />
       </MenuPopup>
@@ -78,7 +83,9 @@ export function ProjectSwitcher(props: {
 
 function ProjectSwitcherContent(props: {
   readonly activeProject: EnvironmentProject;
-  readonly onNewThreadInProject: () => void;
+  readonly onNewThreadInProject?: (() => void) | undefined;
+  readonly onSelectProject?: ((project: EnvironmentProject) => void) | undefined;
+  readonly projectFilter?: ((project: EnvironmentProject) => boolean) | undefined;
   readonly onOpenChange: (open: boolean) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -104,7 +111,11 @@ function ProjectSwitcherContent(props: {
   });
   const normalizedQuery = query.toLowerCase();
   const visible = entries
-    .filter(({ group }) => group.displayName.toLowerCase().includes(normalizedQuery))
+    .filter(
+      ({ group, targetProject }) =>
+        group.displayName.toLowerCase().includes(normalizedQuery) &&
+        (props.projectFilter?.(targetProject) ?? true),
+    )
     .slice(0, PROJECT_ROW_CAP);
   const activeProjectName = props.activeProject.isScratch
     ? "No project"
@@ -118,12 +129,12 @@ function ProjectSwitcherContent(props: {
         placeholder="Search projects"
         aria-label="Search projects"
       />
-      {query === "" ? (
+      {query === "" && props.onNewThreadInProject ? (
         <>
           <MenuItem
             onClick={() => {
               props.onOpenChange(false);
-              props.onNewThreadInProject();
+              props.onNewThreadInProject?.();
             }}
           >
             <PlusIcon aria-hidden />
@@ -139,6 +150,10 @@ function ProjectSwitcherContent(props: {
           if (value === activeGroupKey) return;
           const entry = entries.find(({ group }) => group.projectKey === value);
           if (!entry) return;
+          if (props.onSelectProject) {
+            props.onSelectProject(entry.targetProject);
+            return;
+          }
           const target = resolveProjectSwitchTarget({
             threads,
             projectRefs: entry.group.memberProjectRefs,

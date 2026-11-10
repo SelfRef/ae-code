@@ -2,7 +2,7 @@ import type { EnvironmentId, ProjectId } from "@t3tools/contracts";
 import type { EnvironmentProject } from "./state/models.ts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { issueProjects, selectIssueProject } from "./issueProjects.ts";
+import { issueProjects, lastOpenedProject, selectIssueProject } from "./issueProjects.ts";
 
 const project = (
   id: string,
@@ -41,5 +41,25 @@ describe("issueProjects", () => {
     ).toBe("b");
     expect(selectIssueProject(projects, { projectId: "gone" as ProjectId })?.id).toBe("a");
     expect(selectIssueProject([], {})).toBeNull();
+  });
+
+  it("falls back to the last chat's project before the first one", () => {
+    const projects = [project("a", "Alpha", "github"), project("b", "Beta", "github")];
+    const thread = (projectId: string, openedAt?: number) =>
+      ({
+        environmentId: "env" as EnvironmentId,
+        projectId: projectId as ProjectId,
+        opens: openedAt === undefined ? null : { openedAt, score: 1, picks: [] },
+      }) as unknown as Parameters<typeof lastOpenedProject>[1][number];
+    const last = lastOpenedProject(projects, [
+      thread("a", 1),
+      thread("b", 2),
+      thread("gone", 3),
+      thread("a"),
+    ]);
+    expect(last?.id).toBe("b");
+    expect(selectIssueProject(projects, {}, last)?.id).toBe("b");
+    expect(selectIssueProject(projects, { projectId: "gone" as ProjectId }, last)?.id).toBe("b");
+    expect(lastOpenedProject(projects, [thread("a")])).toBeNull();
   });
 });
