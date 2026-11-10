@@ -2,6 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { expect, it } from "@effect/vitest";
 import type { ManagedPolicyDocument } from "@t3tools/contracts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
+import * as ConfigProvider from "effect/ConfigProvider";
 import * as Deferred from "effect/Deferred";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -456,4 +457,182 @@ it("a host crosses tracks only to a release that knows its whole database", () =
       databaseMigration: () => undefined,
     }),
   ).toContain("Cannot confirm");
+});
+
+it.layer(NodeServices.layer)("server self update in a container", (it) => {
+  const newVersion = "2099.101.0";
+  const releaseJson = (digest: string) =>
+    JSON.stringify({
+      tag_name: "v2099.01.01",
+      assets: [
+        {
+          name: "ae-code-linux-x64.tar.gz",
+          browser_download_url: "https://example.test/ae-code-linux-x64.tar.gz",
+          digest: `sha256:${digest}`,
+        },
+      ],
+    });
+
+  // A real archive, as the release workflow lays it out: <dir>/ae-code, a shell script here.
+  const makeArchive = Effect.fn("test.make_release_archive")(function* (reportedVersion: string) {
+    const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const work = yield* fs.makeTempDirectoryScoped({ prefix: "ae-release-archive-" });
+    yield* fs.makeDirectory(path.join(work, "ae-code-linux-x64"));
+    yield* fs.writeFileString(
+      path.join(work, "ae-code-linux-x64", "ae-code"),
+      `#!/bin/sh\necho ${reportedVersion}\n`,
+      { mode: 0o755 },
+    );
+    const runner = yield* ProcessRunner.ProcessRunner;
+    yield* runner.run({
+      command: "tar",
+      args: ["-czf", "release.tar.gz", "ae-code-linux-x64"],
+      cwd: work,
+    });
+    const bytes = yield* fs.readFile(path.join(work, "release.tar.gz"));
+    const digest = yield* Effect.promise(() => crypto.subtle.digest("SHA-256", bytes));
+    return {
+      bytes,
+      hex: Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join(
+        "",
+      ),
+    };
+  });
+
+  const makeContainerHarness = Effect.fn("test.make_container_update_harness")(function* (input: {
+    readonly archiveVersion: string;
+    readonly digestOf?: (hex: string) => string;
+  }) {
+    const fs = yield* FileSystem.FileSystem;
+    const baseDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3-container-update-test-" });
+    const archive = yield* makeArchive(input.archiveVersion).pipe(
+      Effect.provide(ProcessRunner.layer),
+    );
+    const restarts: string[] = [];
+    const http = HttpClient.make((request) =>
+      Effect.succeed(
+        HttpClientResponse.fromWeb(
+          request,
+          request.url.includes("api.github.com")
+            ? new Response(releaseJson(input.digestOf?.(archive.hex) ?? archive.hex))
+            : new Response(archive.bytes),
+        ),
+      ),
+    );
+    const config = yield* ServerConfig.ServerConfig.pipe(
+      Effect.provide(ServerConfig.layerTest(process.cwd(), baseDir)),
+    );
+    const selfUpdate = yield* ServerSelfUpdate.make().pipe(
+      Effect.provideService(ServiceLauncherClient.ServiceLauncherClient, {
+        managed: false,
+        requestUpdate: () => Effect.die("the launcher is not involved"),
+        prepareTrial: Effect.undefined,
+      }),
+      Effect.provideService(DesktopAppUpdate.DesktopAppUpdate, {
+        available: false,
+        run: () => Effect.die("unexpected desktop app update run"),
+      }),
+      Effect.provideService(HttpClient.HttpClient, http),
+      Effect.provideService(
+        ServerSelfUpdate.SelfUpdateRestart,
+        Effect.sync(() => void restarts.push("restart")),
+      ),
+      Effect.provideService(HostProcess.Platform, "linux"),
+      Effect.provideService(HostProcess.Architecture, "x64"),
+      Effect.provide(
+        Layer.mergeAll(
+          ServerConfig.layer({ ...config, mode: "web" }),
+          ManagedPolicy.layerTest(undefined),
+          ProcessRunner.layer,
+          ConfigProvider.layer(
+            ConfigProvider.fromEnv({ env: { T3CODE_UPDATE_SUPERVISED: "true" } }),
+          ),
+        ),
+      ),
+    );
+    return { selfUpdate, baseDir, restarts };
+  });
+
+  it.effect("installs the newest release, points the entrypoint at it and restarts", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const { selfUpdate, baseDir, restarts } = yield* makeContainerHarness({
+        archiveVersion: newVersion,
+      });
+      yield* fs.makeDirectory(path.join(baseDir, "updates", "2098.101.0"), { recursive: true });
+
+      const stages: string[] = [];
+      const result = yield* selfUpdate.update({ targetVersion: newVersion }, (stage) =>
+        Effect.sync(() => void stages.push(stage)),
+      );
+      expect(result).toEqual({ targetVersion: newVersion, method: "respawn" });
+      expect(stages).toEqual(["downloading", "installing"]);
+      expect(yield* fs.readFileString(path.join(baseDir, "updates", "current"))).toBe(
+        `${newVersion}\n`,
+      );
+      expect(
+        (yield* fs.stat(path.join(baseDir, "updates", newVersion, "ae-code"))).mode & 0o111,
+      ).not.toBe(0);
+      // Older unpacked releases are gone.
+      expect((yield* fs.readDirectory(path.join(baseDir, "updates"))).toSorted()).toEqual([
+        newVersion,
+        "current",
+      ]);
+      // The restart waits for the progress stream to deliver its last event.
+      expect(restarts).toEqual([]);
+      yield* TestClock.adjust("1 second");
+      expect(restarts).toEqual(["restart"]);
+    }),
+  );
+
+  it.effect.each([
+    {
+      name: "a target that is not the newest release",
+      target: "2099.101.5",
+      reason: "is not the newest release",
+    },
+    { name: "a target that is not newer than this server", target: "0.1.7", reason: "newest" },
+  ])("refuses $name", ({ target, reason }) =>
+    Effect.gen(function* () {
+      const { selfUpdate, restarts } = yield* makeContainerHarness({ archiveVersion: newVersion });
+      const error = yield* selfUpdate.update({ targetVersion: target }).pipe(Effect.flip);
+      expect(error.reason).toContain(reason);
+      yield* TestClock.adjust("2 seconds");
+      expect(restarts).toEqual([]);
+    }),
+  );
+
+  it.effect("leaves the server alone when the download does not match its checksum", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const { selfUpdate, baseDir, restarts } = yield* makeContainerHarness({
+        archiveVersion: newVersion,
+        digestOf: () => "0".repeat(64),
+      });
+      const error = yield* selfUpdate.update({ targetVersion: newVersion }).pipe(Effect.flip);
+      expect(error.reason).toContain("checksum");
+      expect(yield* fs.exists(path.join(baseDir, "updates", "current"))).toBe(false);
+      yield* TestClock.adjust("2 seconds");
+      expect(restarts).toEqual([]);
+      // A failed attempt does not block the next one.
+      expect(
+        (yield* selfUpdate.update({ targetVersion: newVersion }).pipe(Effect.flip)).reason,
+      ).toContain("checksum");
+    }),
+  );
+
+  it.effect("does not point at an unpacked server that reports another version", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const { selfUpdate, baseDir } = yield* makeContainerHarness({ archiveVersion: "9.9.9" });
+      const error = yield* selfUpdate.update({ targetVersion: newVersion }).pipe(Effect.flip);
+      expect(error.reason).toContain("another version");
+      expect(yield* fs.exists(path.join(baseDir, "updates", "current"))).toBe(false);
+      expect(yield* fs.exists(path.join(baseDir, "updates", newVersion))).toBe(false);
+    }),
+  );
 });

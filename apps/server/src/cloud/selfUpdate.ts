@@ -34,6 +34,12 @@ import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
 import { managedUpdateMirror, managedUpdateRefusal } from "../policy/managedUpdates.ts";
 import * as ProcessRunner from "../processRunner.ts";
 import {
+  fetchLatestRelease,
+  installRelease,
+  SELF_UPDATE_ENV,
+  selfUpdateEnabled,
+} from "./forkRelease.ts";
+import {
   ensurePinnedRuntimeInstalled,
   isUnpublishedRelease,
   pinnedRuntimeCommand,
@@ -42,6 +48,7 @@ import {
   PinnedRuntimePreflightBlockedError,
   prunePinnedRuntimes,
 } from "./pinnedRuntime.ts";
+import { compareSemverVersions } from "@t3tools/shared/semver";
 import { decodeServicePreflightResult } from "./servicePreflight.ts";
 import * as ServiceLauncherClient from "./serviceLauncherClient.ts";
 import { isExactServiceVersion, SERVICE_LAUNCHER_PROTOCOL } from "./serviceProtocol.ts";
@@ -52,10 +59,19 @@ const PREFLIGHT_TIMEOUT = Duration.minutes(3);
 export function resolveServerSelfUpdateCapability(input: {
   readonly desktopManaged: boolean;
   readonly launcherManaged: boolean;
+  /** The container's entrypoint starts the server again from the newest release in its home. */
+  readonly respawnManaged: boolean;
 }): ServerSelfUpdateCapability | null {
   if (input.desktopManaged) return "desktop-managed" as const;
-  return input.launcherManaged ? ("boot-service" as const) : null;
+  if (input.launcherManaged) return "boot-service" as const;
+  return input.respawnManaged ? ("respawn" as const) : null;
 }
+
+/** Stops the server as a SIGTERM would, so its shutdown runs and the entrypoint starts it again. */
+export const SelfUpdateRestart = Context.Reference<Effect.Effect<void>>(
+  "t3/cloud/selfUpdate/SelfUpdateRestart",
+  { defaultValue: () => Effect.sync(() => void process.emit("SIGTERM")) },
+);
 
 export class ServerSelfUpdate extends Context.Service<
   ServerSelfUpdate,
@@ -138,13 +154,21 @@ export const make = Effect.fn("cloud.server_self_update.make")(function* () {
     mirror?.feedUrl ??
     Option.getOrUndefined(yield* Config.String(CLI_RELEASE_BASE_URL_ENV).pipe(Config.option));
   const inFlight = yield* Ref.make(false);
+  const respawnManaged = yield* selfUpdateEnabled;
+  const restart = yield* SelfUpdateRestart;
+  const releaseServices = yield* Effect.context<
+    HttpClient.HttpClient | ProcessRunner.ProcessRunner | FileSystem.FileSystem | Path.Path
+  >();
 
   yield* pruneRuntimesOnStart({ baseDir: serverConfig.baseDir, managed: launcher.managed }).pipe(
     Effect.forkScoped,
   );
 
-  const capability: ServerSelfUpdateCapability | null =
-    serverConfig.mode === "desktop" ? "desktop-managed" : launcher.managed ? "boot-service" : null;
+  const capability = resolveServerSelfUpdateCapability({
+    desktopManaged: serverConfig.mode === "desktop",
+    launcherManaged: launcher.managed,
+    respawnManaged,
+  });
   const failWith = (reason: string, cause?: unknown) =>
     cause === undefined
       ? new ServerSelfUpdateError({ reason })
@@ -185,7 +209,38 @@ export const make = Effect.fn("cloud.server_self_update.make")(function* () {
     }
     if (capability === null) {
       return yield* failWith(
-        "Remote updates require the T3 Code background service. Run `t3 service install` on the server machine.",
+        `Updates from the app are off. In the Docker image, set ${SELF_UPDATE_ENV}=true to turn them on.`,
+      );
+    }
+    if (capability === "respawn") {
+      const targetVersion = input.targetVersion.trim();
+      if (yield* Ref.getAndSet(inFlight, true)) {
+        return yield* failWith("A server update is already in progress.");
+      }
+      return yield* Effect.gen(function* () {
+        yield* reportProgress("downloading");
+        const release = yield* fetchLatestRelease().pipe(
+          Effect.mapError((error) => failWith(error.reason, error)),
+        );
+        if (release.version !== targetVersion) {
+          return yield* failWith(
+            `${targetVersion} is not the newest release (${release.version}); check for updates again.`,
+          );
+        }
+        if (compareSemverVersions(release.version, packageJson.version) <= 0) {
+          return yield* failWith(`This server already runs ${packageJson.version}.`);
+        }
+        yield* installRelease({ baseDir: serverConfig.baseDir, release }).pipe(
+          Effect.mapError((error) => failWith(error.reason, error)),
+        );
+        yield* reportProgress("installing");
+        yield* Effect.logInfo("Server update prepared; restarting.", { targetVersion });
+        // Late enough for the progress stream to deliver its last event first.
+        yield* restart.pipe(Effect.delay(Duration.seconds(1)), Effect.forkDetach);
+        return { targetVersion, method: "respawn" as const };
+      }).pipe(
+        Effect.provideContext(releaseServices),
+        Effect.onError(() => Ref.set(inFlight, false)),
       );
     }
 
