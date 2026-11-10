@@ -399,6 +399,13 @@ disabled.
   and `ANDROID_KEYSTORE_PASSWORD` (store and key share it in PKCS12). Create the key once and keep it: an update must be
   signed with the same key as the installed app.
   `keytool -genkeypair -keystore ae-code.jks -alias ae-code -keyalg RSA -keysize 4096 -validity 36500`.
+- **AUR (change 9):** the `aur` job runs after the release exists and runs `scripts/ae-aur.sh` in an Arch container: for
+  `ae-code` and `ae-code-bin` it sets `pkgver` to the tag without the `v`, resets `pkgrel`, refreshes the checksums
+  (`updpkgsums`) and `.SRCINFO` and pushes to the AUR as commits by the repository owner. `ae-code-git` follows on its
+  own, and a packaging change (dependencies, files, build steps) is still made by hand. Secret `AUR_SSH_KEY`: the
+  passphrase-less private SSH key of an AUR account that is a co-maintainer of both packages (add its public key in that
+  account's AUR profile). A failure leaves the release in place; rerun the failed job. `scripts/ae-aur.sh <tag> --dry-run`
+  commits without pushing.
 - **Not built:** the desktop app as AppImage, `.deb`, macOS or Windows, iOS, arm64 server; no relay or Clerk configuration
   (T3 Connect sign-in is absent, pairing with a server works as before), no npm launcher, no tests or checks. A broken
   `main` shows as a failed build.
