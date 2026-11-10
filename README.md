@@ -64,7 +64,7 @@ Optional:
 - `github-cli`: GitHub pull requests and issues (`gh auth login`).
 - `glab`, `forgejo-cli` or `tea`: GitLab, Forgejo and Gitea.
 - `tailscale`: remote access with `t3 serve --tailscale-serve` (see [Remote access](./docs/user/remote-access.md)).
-- Device panel with an Android emulator: `android-tools` and `ffmpeg` (Arch's build includes libx264), plus `android-emulator` and `android-sdk-cmdline-tools-latest` from the AUR and an AVD created with `avdmanager`. Set `ANDROID_HOME` if the SDK is not in a standard location.
+- Device panel with an Android emulator: `android-tools` and `ffmpeg` (Arch's build includes libx264), plus `android-emulator` and `android-sdk-cmdline-tools-latest` from the AUR and an AVD created with `avdmanager`. The emulator's bundled qemu also needs `libxkbfile` (`extra`), or it fails with `error while loading shared libraries: libxkbfile.so.1`. Set `ANDROID_HOME` if the SDK is not in a standard location.
 - Device panel with a physical Android phone: `android-tools`. The device hub brings its own scrcpy.
 
 The iOS Simulator needs macOS, so the Device panel offers Android only on Arch.
