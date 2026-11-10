@@ -82,6 +82,8 @@ action for your draft, move focus outside the composer to steer the queued messa
 Press `Option+Up` on macOS or `Alt+Up` on Windows and Linux with the cursor at the
 start of the composer to edit the most recently queued message. Change
 `thread.editQueuedMessage` to use another shortcut.
+The queue is held while you edit, so the message waits for you instead of starting when the
+turn ends, and the steer shortcut skips it. Saving or cancelling the edit releases the queue.
 
 Mobile has the same choice under **Settings → Chat**. While a turn is
 running the send button shows which action it will take. Long-press it to use the

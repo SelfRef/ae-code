@@ -637,6 +637,7 @@ function commandThreadId(command: OrchestrationV2ServerCommand): ThreadId {
     case "run.interrupt":
     case "queued-message.promote-to-steer":
     case "queued-run.start":
+    case "queue.hold":
     case "queue.resume":
     case "queued-run.reorder":
     case "queued-run.cancel":
@@ -13886,6 +13887,37 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           effects,
         );
         break;
+      case "queue.hold": {
+        const projection = yield* loadProjectionForCommand(command, ["runs"]);
+        const now = yield* DateTime.now;
+        const unheld = projection.runs.filter((run) => run.status === "queued" && !run.queueHeld);
+        for (const run of unheld) {
+          yield* emit(
+            events,
+            command,
+          )({
+            type: "run.updated",
+            threadId: command.threadId,
+            runId: run.id,
+            providerInstanceId: run.providerInstanceId,
+            occurredAt: now,
+            payload: { ...run, queueHeld: true },
+          });
+        }
+        // A command must commit an event, so holding an already held queue is a no-op update.
+        if (unheld.length === 0) {
+          yield* emit(
+            events,
+            command,
+          )({
+            type: "thread.metadata-updated",
+            threadId: command.threadId,
+            occurredAt: now,
+            payload: projection.thread,
+          });
+        }
+        break;
+      }
       case "queued-run.start":
       case "queue.resume": {
         const projection = yield* loadProjectionForCommand(

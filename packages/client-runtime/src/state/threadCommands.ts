@@ -27,6 +27,7 @@ import {
   createThread,
   deleteThread,
   editQueuedRun,
+  holdThreadQueue,
   interruptThreadTurn,
   forkSideChat,
   forkThreadFromRun,
@@ -334,6 +335,12 @@ export function createThreadEnvironmentAtoms<R, E>(
         key: ({ environmentId, input }) =>
           JSON.stringify([environmentId, input.sourceThreadId, input.targetThreadId]),
       },
+    }),
+    holdThreadQueue: createEnvironmentCommand(runtime, {
+      label: "environment-data:commands:thread:hold-queue",
+      execute: holdThreadQueue,
+      scheduler,
+      concurrency,
     }),
     resumeThreadQueue: createEnvironmentCommand(runtime, {
       label: "environment-data:commands:thread:resume-queue",

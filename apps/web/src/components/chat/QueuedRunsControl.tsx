@@ -198,7 +198,13 @@ export function QueuedRunsControl({
   useImperativeHandle(ref, () => ({
     steerNext(repeat) {
       const next = queued[0];
-      if (!next || !canSendRun(next.run.freshContext === true)) return false;
+      // The message being edited is not sent until the edit ends.
+      if (
+        !next ||
+        next.run.id === props.editingRunId ||
+        !canSendRun(next.run.freshContext === true)
+      )
+        return false;
       if (!repeat && busyRunId === null) void sendQueuedMessage(next.run.id);
       return true;
     },
