@@ -36,7 +36,6 @@ const NO_AX_ELEMENTS: ReadonlyArray<DeviceAxElement> = [];
 const NO_AX_ATOM = Atom.make(AsyncResult.initial<ReadonlyArray<DeviceAxElement>, never>()).pipe(
   Atom.withLabel("device-ax-elements:none"),
 );
-const CONTROLS_RAIL_WIDTH = 56;
 
 function screenAspect(platform: DevicePlatform, screen: DeviceScreenSize | null): number {
   if (!screen) return platform === "linux" ? 16 / 10 : platform === "ios" ? 9 / 19.5 : 9 / 20;
@@ -168,7 +167,6 @@ export function DeviceStreamView(props: {
     !mjpegUrl &&
     !props.axOverlay &&
     (!isDuo || screen?.supportsHingeAngle === true);
-  const controlsInset = props.renderControls && !showPhone ? CONTROLS_RAIL_WIDTH : 0;
 
   // Fit the frame in both dimensions; pinned CSS height plus a width clamp distorts aspect-ratio.
   const [host, setHost] = useState({ width: 0, height: 0 });
@@ -185,7 +183,7 @@ export function DeviceStreamView(props: {
     update();
     return observeResize(element, update);
   };
-  const frame = fitDeviceFrame(aspect, host.width, host.height, controlsInset);
+  const frame = fitDeviceFrame(aspect, host.width, host.height);
 
   const rotation = screenRotation(props.platform, screen);
 
@@ -277,7 +275,7 @@ export function DeviceStreamView(props: {
   return (
     <div
       className={cn(
-        "relative flex size-full min-h-0 min-w-0",
+        "relative flex size-full min-h-0 min-w-0 flex-col",
         props.allowPhoneView ? "bg-background" : "bg-black/90",
       )}
     >
@@ -343,7 +341,6 @@ export function DeviceStreamView(props: {
           "relative flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden outline-none",
           // Overlay so the ring paints above the stream canvas.
           "after:pointer-events-none after:absolute after:inset-0 after:z-10 focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring",
-          controlsInset && "pr-14",
         )}
         tabIndex={0}
         role="application"

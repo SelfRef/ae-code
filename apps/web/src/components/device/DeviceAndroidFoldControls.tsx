@@ -74,13 +74,13 @@ export function DeviceAndroidFoldControls(props: {
   };
 
   return (
-    <div aria-label="Android fold controls" className="flex flex-col items-center gap-2">
-      <div className="pointer-events-auto flex shrink-0 flex-col items-center gap-1 rounded-full border border-border/50 bg-background/80 p-1 shadow-sm">
+    <div aria-label="Android fold controls" className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1">
         <Tooltip>
           <TooltipTrigger
             render={
               <Button
-                size="icon"
+                size="icon-sm"
                 variant={fold.posture === "closed" ? "secondary" : "ghost"}
                 aria-label="Fold device"
                 aria-pressed={fold.posture === "closed"}
@@ -91,13 +91,13 @@ export function DeviceAndroidFoldControls(props: {
           >
             <DeviceDuoGlyph pose="closed" />
           </TooltipTrigger>
-          <TooltipPopup side="left">Fold device</TooltipPopup>
+          <TooltipPopup side="bottom">Fold device</TooltipPopup>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger
             render={
               <Button
-                size="icon"
+                size="icon-sm"
                 variant={fold.posture === "opened" ? "secondary" : "ghost"}
                 aria-label="Unfold device"
                 aria-pressed={fold.posture === "opened"}
@@ -108,7 +108,7 @@ export function DeviceAndroidFoldControls(props: {
           >
             <DeviceDuoGlyph pose="open" />
           </TooltipTrigger>
-          <TooltipPopup side="left">Unfold device</TooltipPopup>
+          <TooltipPopup side="bottom">Unfold device</TooltipPopup>
         </Tooltip>
       </div>
       {error ? (
@@ -119,13 +119,13 @@ export function DeviceAndroidFoldControls(props: {
                 tabIndex={0}
                 role="alert"
                 aria-label={error}
-                className="pointer-events-auto text-xs text-destructive"
+                className="text-xs text-destructive"
               >
                 !
               </span>
             }
           />
-          <TooltipPopup side="left">{error}</TooltipPopup>
+          <TooltipPopup side="bottom">{error}</TooltipPopup>
         </Tooltip>
       ) : null}
     </div>

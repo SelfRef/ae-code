@@ -20,6 +20,11 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
   click and type in an agent's tab while the agent keeps working: both actions run in one order and nothing the agent
   queued is cancelled. Take control still locks the agent out until you release it.
 
+### Changed
+
+- Device panel (web): the controls are a row above the screen, like the browser's, instead of a column at the right
+  edge. Fold and Duo controls sit in the same row.
+
 ### Fixed
 
 - The desktop app, the web app (favicon, installed app) and the iOS icon show the blueprint tile with its grid, like the

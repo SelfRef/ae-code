@@ -52,7 +52,7 @@ export function DeviceDuoControls(props: {
       <TooltipTrigger
         render={
           <Button
-            size="icon"
+            size="icon-sm"
             variant={pressed ? "secondary" : "ghost"}
             disabled={!props.enabled || waits}
             aria-label={label}
@@ -64,13 +64,12 @@ export function DeviceDuoControls(props: {
       >
         {glyph}
       </TooltipTrigger>
-      <TooltipPopup side="left">{label}</TooltipPopup>
+      <TooltipPopup side="bottom">{label}</TooltipPopup>
     </Tooltip>
   );
-  const group =
-    "pointer-events-auto flex shrink-0 flex-col items-center gap-1 rounded-full border border-border/50 bg-background/80 p-1 shadow-sm";
+  const group = "flex shrink-0 items-center gap-1";
   return (
-    <div aria-label="iPhone Duo stands" className="flex flex-col items-center gap-2">
+    <div aria-label="iPhone Duo stands" className="flex items-center gap-1">
       <div role="group" aria-label="Fold shape" className={group}>
         {FOLDS.map(({ id, angle: value }) =>
           button(
@@ -112,13 +111,13 @@ export function DeviceDuoControls(props: {
                 tabIndex={0}
                 role="alert"
                 aria-label={props.state.error}
-                className="pointer-events-auto text-xs text-destructive"
+                className="text-xs text-destructive"
               >
                 !
               </span>
             }
           />
-          <TooltipPopup side="left">{props.state.error}</TooltipPopup>
+          <TooltipPopup side="bottom">{props.state.error}</TooltipPopup>
         </Tooltip>
       ) : null}
     </div>
