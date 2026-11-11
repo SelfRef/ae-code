@@ -36,7 +36,7 @@ import {
 import * as GitManager from "./GitManager.ts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
 import * as VcsDriverRegistry from "../vcs/VcsDriverRegistry.ts";
-import { withWorkspaceLease } from "../workspace/workspaceLease.ts";
+import { withWorkspaceLease, withoutWorkspaceLease } from "../workspace/workspaceLease.ts";
 
 export class GitWorkflowService extends Context.Service<
   GitWorkflowService,
@@ -202,11 +202,10 @@ export const make = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
 
   // Nested projects and path aliases must share the checkout's branch-mutation lease.
+  const checkoutLeaseKey = (rootPath: string) =>
+    fileSystem.realPath(rootPath).pipe(Effect.orElseSucceed(() => rootPath));
   const withCheckoutLease = <A, E, R>(rootPath: string, effect: Effect.Effect<A, E, R>) =>
-    fileSystem.realPath(rootPath).pipe(
-      Effect.orElseSucceed(() => rootPath),
-      Effect.flatMap((cwd) => withWorkspaceLease(cwd, effect)),
-    );
+    checkoutLeaseKey(rootPath).pipe(Effect.flatMap((cwd) => withWorkspaceLease(cwd, effect)));
 
   const ensureGit = Effect.fn("GitWorkflowService.ensureGit")(function* (
     operation: string,
@@ -438,9 +437,23 @@ export const make = Effect.gen(function* () {
     runStackedAction: Effect.fn("GitWorkflowService.runStackedAction")(function (input, options) {
       return ensureGit("GitWorkflowService.runStackedAction", input.cwd).pipe(
         Effect.flatMap((handle) =>
-          withCheckoutLease(
-            handle.repository.rootPath,
-            gitManager.runStackedAction(input, options),
+          checkoutLeaseKey(handle.repository.rootPath).pipe(
+            Effect.flatMap((cwd) =>
+              withWorkspaceLease(
+                cwd,
+                gitManager.runStackedAction(
+                  input,
+                  options?.handOffMerge === undefined
+                    ? options
+                    : {
+                        ...options,
+                        // The agent's turn starts under this lease, so waiting for it holding the lease never ends.
+                        handOffMerge: (error, modelSelection) =>
+                          withoutWorkspaceLease(cwd, options.handOffMerge!(error, modelSelection)),
+                      },
+                ),
+              ),
+            ),
           ),
         ),
       );
