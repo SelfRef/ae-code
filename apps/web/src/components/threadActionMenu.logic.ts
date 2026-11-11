@@ -98,6 +98,8 @@ export interface ThreadActionMenuState {
   readonly canTurnIntoProject?: boolean;
   /** An idle thread in the project checkout, on a server that can move it into a worktree. */
   readonly canMoveToWorktree?: boolean;
+  /** Where Settle goes: its usual place, the top of the list, or left out when a button beside the menu shows it. */
+  readonly settlePlacement?: "default" | "first" | "hidden";
 }
 
 /** Local navigation, read markers, and copying remain available to read-only clients. */
@@ -119,7 +121,16 @@ export function threadActionRequiresOperate(action: ThreadActionMenuId): boolean
 export function buildThreadActionMenuItems(
   state: ThreadActionMenuState,
 ): ReadonlyArray<ContextMenuItem<ThreadActionMenuId>> {
+  const settleItems: ReadonlyArray<ContextMenuItem<ThreadActionMenuId>> = state.supports.settlement
+    ? [
+        state.isSettled
+          ? { id: "unsettle" as const, label: "Un-settle thread", icon: "circle-check" }
+          : { id: "settle" as const, label: "Settle thread", icon: "circle-check" },
+      ]
+    : [];
+  const settlePlacement = state.settlePlacement ?? "default";
   const items: ReadonlyArray<ContextMenuItem<ThreadActionMenuId>> = [
+    ...(settlePlacement === "first" ? settleItems : []),
     ...(state.canFind
       ? [{ id: "find" as const, label: "Find in thread", icon: "text-search" }]
       : []),
@@ -139,13 +150,7 @@ export function buildThreadActionMenuItems(
             : { id: "pin" as const, label: "Pin thread", icon: "pin" },
         ]
       : []),
-    ...(state.supports.settlement
-      ? [
-          state.isSettled
-            ? { id: "unsettle" as const, label: "Un-settle thread", icon: "circle-check" }
-            : { id: "settle" as const, label: "Settle thread", icon: "circle-check" },
-        ]
-      : []),
+    ...(settlePlacement === "default" ? settleItems : []),
     ...(state.supports.snooze
       ? [
           state.isSnoozed

@@ -168,6 +168,8 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
             props.activeProjectName !== undefined &&
             visible.defaultBranch,
         };
+        const showContext = visible.context && props.usage.contextWindow !== null;
+        const showActions = density === "full" && props.isServerThread && visible.threadActions;
         return (
           <>
             <div className="group/details-items">
@@ -265,6 +267,30 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
                 </ThreadDetailsSection>
               ) : null}
 
+              {showContext || showActions ? (
+                <ThreadDetailsSection
+                  headingId="thread-details-actions-heading"
+                  title="Thread actions"
+                  showHeading={false}
+                >
+                  {props.usage.contextWindow && showContext ? (
+                    <div className={cn(showActions && "mb-1")}>
+                      <ThreadDetailsContext usage={props.usage.contextWindow} />
+                    </div>
+                  ) : null}
+                  {showActions ? (
+                    <div className="flex flex-col">
+                      <ThreadDetailsActions
+                        threadRef={activeThreadRef}
+                        gitCwd={props.gitCwd}
+                        projectCwd={props.projectCwd}
+                        onFindInThread={props.onFindInThread}
+                      />
+                    </div>
+                  ) : null}
+                </ThreadDetailsSection>
+              ) : null}
+
               {density === "full" && !props.draftId && visible.servers ? (
                 <ThreadServersPanel environmentId={props.environmentId} threadId={props.threadId} />
               ) : null}
@@ -287,26 +313,6 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
 
               {visible.usage ? (
                 <ThreadDetailsUsage {...props.usage} showHeading={density === "full"} />
-              ) : null}
-
-              {visible.context && props.usage.contextWindow ? (
-                <ThreadDetailsContext usage={props.usage.contextWindow} />
-              ) : null}
-
-              {density === "full" && props.isServerThread && visible.threadActions ? (
-                <ThreadDetailsSection
-                  headingId="thread-details-actions-heading"
-                  title="Thread actions"
-                  showHeading={false}
-                >
-                  <div className="flex flex-col">
-                    <ThreadDetailsActions
-                      threadRef={activeThreadRef}
-                      projectCwd={props.projectCwd}
-                      onFindInThread={props.onFindInThread}
-                    />
-                  </div>
-                </ThreadDetailsSection>
               ) : null}
 
               {/* Shown only when no section above has content, so an emptied card can be refilled. */}

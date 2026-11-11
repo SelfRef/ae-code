@@ -87,7 +87,7 @@ export function ThreadDetailsUsage({
   );
 }
 
-/** The thread's context window. The bar fills as context is used; the tick marks auto-compaction. */
+/** The thread's context window row, for a section that also holds other rows. The bar fills as context is used; the tick marks auto-compaction. */
 export function ThreadDetailsContext({ usage }: { readonly usage: ContextWindowSnapshot }) {
   const maxTokens = usage.maxTokens != null && usage.maxTokens > 0 ? usage.maxTokens : null;
   const used =
@@ -101,44 +101,38 @@ export function ThreadDetailsContext({ usage }: { readonly usage: ContextWindowS
       : null;
   const usedTokens = formatContextWindowTokens(usage.usedTokens);
   return (
-    <ThreadDetailsSection
-      headingId="thread-details-context-heading"
-      title="Context window"
-      showHeading={false}
-    >
-      <div className="grid grid-cols-[auto_minmax(3rem,1fr)_auto] gap-x-3 text-xs">
-        <UsageRow
-          label="Context"
-          fill={used}
-          tone={used === null ? null : used >= 90 ? "error" : used >= 80 ? "warning" : null}
-          tick={tick}
-          muted
-          value={
-            maxTokens !== null
-              ? `${usedTokens} / ${formatContextWindowTokens(maxTokens)}`
-              : usedTokens
-          }
-          ariaValue={used !== null ? `${used}% used` : `${usedTokens} tokens used`}
-          tooltip={
-            <>
-              <span className="text-foreground">
-                {used !== null ? `Context: ${used}% used` : `Context: ${usedTokens} tokens used`}
+    <div className="grid grid-cols-[auto_minmax(3rem,1fr)_auto] gap-x-3 text-xs">
+      <UsageRow
+        label="Context"
+        fill={used}
+        tone={used === null ? null : used >= 90 ? "error" : used >= 80 ? "warning" : null}
+        tick={tick}
+        muted
+        value={
+          maxTokens !== null
+            ? `${usedTokens} / ${formatContextWindowTokens(maxTokens)}`
+            : usedTokens
+        }
+        ariaValue={used !== null ? `${used}% used` : `${usedTokens} tokens used`}
+        tooltip={
+          <>
+            <span className="text-foreground">
+              {used !== null ? `Context: ${used}% used` : `Context: ${usedTokens} tokens used`}
+            </span>
+            {maxTokens !== null ? (
+              <span className="text-muted-foreground">
+                {usage.usedTokens.toLocaleString()} of {maxTokens.toLocaleString()} tokens
               </span>
-              {maxTokens !== null ? (
-                <span className="text-muted-foreground">
-                  {usage.usedTokens.toLocaleString()} of {maxTokens.toLocaleString()} tokens
-                </span>
-              ) : null}
-              {threshold !== null && threshold > 0 ? (
-                <span className="text-muted-foreground">
-                  {formatContextWindowCompactionMessage(threshold)}
-                </span>
-              ) : null}
-            </>
-          }
-        />
-      </div>
-    </ThreadDetailsSection>
+            ) : null}
+            {threshold !== null && threshold > 0 ? (
+              <span className="text-muted-foreground">
+                {formatContextWindowCompactionMessage(threshold)}
+              </span>
+            ) : null}
+          </>
+        }
+      />
+    </div>
   );
 }
 
