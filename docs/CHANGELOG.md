@@ -25,6 +25,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Fixed
 
+- Expanding a system row such as "Merging by the agent" at the bottom of a chat now scrolls its details into view instead of opening them behind the composer.
 - A thread that is open in the web app when its snooze ends no longer shows as Woke on your other devices (mobile already did this).
 - Closing the last tab in the side panel keeps the panel open on the tab picker instead of hiding it.
 - The Android app's version name is now the release tag (2026.11.12) instead of the semver form (2026.1112.0), so Obtainium

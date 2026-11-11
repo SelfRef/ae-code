@@ -470,10 +470,10 @@ const ConversationTimeline = memo(function ConversationTimeline({
   const normalizedFindQuery = findQuery.trim();
   const findActive = findExpanded;
 
-  const preserveDisclosurePosition = (anchorKey: string) => {
+  const preserveDisclosurePosition = (anchorKey: string, followEnd = isWorking) => {
     const list = listRef.current;
     // An anchor ends end-follow until the reader scrolls, so a streaming turn keeps the live end.
-    if (!list || (isWorking && list.getState().isFollowingEnd)) return;
+    if (!list || (followEnd && list.getState().isFollowingEnd)) return;
     list.cancelScroll();
     list.anchorVisibleContent({ key: anchorKey });
   };
@@ -1039,7 +1039,9 @@ const ConversationTimeline = memo(function ConversationTimeline({
     onToggleTurnFold,
     onToggleAttemptFold,
     onToggleWorkGroup,
-    onToggleWorkEntry: preserveDisclosurePosition,
+    // A row's body is capped at a few lines, so at the end it scrolls into view instead of
+    // opening behind the composer; folds are unbounded and keep their heading in place.
+    onToggleWorkEntry: (anchorKey) => preserveDisclosurePosition(anchorKey, true),
     onCancelWorktreeSetup: onCancelWorktreeSetup ?? null,
     retryableWorkspacePreparationRunIds,
     onRetryWorkspacePreparation: onRetryWorkspacePreparation ?? null,

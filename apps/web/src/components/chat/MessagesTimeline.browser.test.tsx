@@ -359,6 +359,40 @@ describe("MessagesTimeline work rows", () => {
     await vi.waitFor(() => expect(distanceFromEnd()).toBeLessThan(2));
   });
 
+  it("scrolls an expanded row into view when it is opened at the bottom", async () => {
+    const props = baseProps();
+    const container = document.createElement("div");
+    container.style.cssText =
+      "height: min(600px, 100vh); width: 900px; display: flex; flex-direction: column;";
+    await using screen = await render(
+      <MessagesTimeline
+        {...props}
+        timelineEntries={[
+          ...Array.from({ length: 12 }, (_, index) =>
+            message(`Earlier context ${index}`, {}, `context-${index}`),
+          ),
+          work("merge", {
+            label: "Merging by the agent",
+            tone: "info",
+            itemType: "system_notice",
+            detail:
+              "Merging this branch into the default branch failed:\n1. Commit changes\n2. Rebase",
+          }),
+        ]}
+      />,
+      { container },
+    );
+    const row = screen.getByRole("button", { name: /Merging by the agent/ });
+    await expect.element(row).toHaveStyle({ pointerEvents: "auto" });
+    const viewport = props.listRef.current!.getScrollableNode()!;
+    const distanceFromEnd = () =>
+      viewport.scrollHeight - viewport.clientHeight - viewport.scrollTop;
+    await vi.waitFor(() => expect(distanceFromEnd()).toBeLessThan(2));
+    await row.click();
+    await expect.element(screen.getByText(/Rebase/)).toBeVisible();
+    await vi.waitFor(() => expect(distanceFromEnd()).toBeLessThan(2));
+  });
+
   it.each(["delegated", "legacy", "missing"] as const)(
     "uses the reported task for %s completion notifications",
     async (source) => {
