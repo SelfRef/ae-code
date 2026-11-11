@@ -72,6 +72,7 @@ export interface BeginVcsActionInput {
   readonly operation: VcsActionOperation;
   readonly label: string;
   readonly actionId?: string;
+  readonly action?: GitStackedAction;
 }
 
 export interface RunVcsStackedActionInput {
@@ -217,6 +218,7 @@ export function beginVcsActionState(
     isRunning: true,
     operation: input.operation,
     actionId,
+    action: input.action ?? null,
     currentLabel: input.label,
     currentPhaseLabel: input.label,
     phaseStartedAtMs: startedAt,
@@ -463,6 +465,7 @@ export function createVcsActionManager<R, E>(
             operation: "run_change_request",
             label: "Running source control action",
             actionId: input.actionId,
+            action: input.action,
           }),
         );
 
