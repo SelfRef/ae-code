@@ -4,7 +4,11 @@ import { expect, it, vi } from "vite-plus/test";
 
 import type { VisitThreadInput } from "../operations/commands.ts";
 import { claimThreadOpen } from "./threadSearch.ts";
-import { createThreadVisitTracker, VISIT_DISPATCH_THROTTLE_MS } from "./threadVisits.ts";
+import {
+  createThreadVisitTracker,
+  VISIT_DISPATCH_THROTTLE_MS,
+  wakeAwareVisitShell,
+} from "./threadVisits.ts";
 
 const environmentId = EnvironmentId.make("env-visits");
 
@@ -190,4 +194,30 @@ it("advances the watermark to a wake without waiting for the throttle", () => {
   vi.advanceTimersByTime(1_000);
   t.update({ updatedAt: at(16) });
   expect(t.visits).toHaveLength(2);
+});
+
+it("reports a scheduled wake once its time passes, without a shell update", () => {
+  vi.useFakeTimers({ now: Date.UTC(2026, 0, 1) });
+  const threadId = ThreadId.make("wake-aware");
+  const ref = { environmentId, threadId };
+  const shellAtom = Atom.make({
+    environmentId,
+    id: threadId,
+    updatedAt: at(0),
+    lastVisitedAt: at(0),
+    latestRun: null,
+    snoozedUntil: at(30),
+    snoozedAt: at(0),
+    hasPendingApprovals: false,
+    hasPendingUserInput: false,
+  });
+  const registry = AtomRegistry.make();
+  const atom = wakeAwareVisitShell(() => shellAtom)(ref);
+  const unmount = registry.mount(atom);
+  expect(registry.get(atom)?.wokeAt).toBeNull();
+  vi.advanceTimersByTime(30_100);
+  expect(registry.get(atom)?.wokeAt).toBe(at(30));
+  unmount();
+  registry.dispose();
+  vi.useRealTimers();
 });
