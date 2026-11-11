@@ -32,11 +32,11 @@ The fork is kept as a linear stack of patch commits on top of upstream's `main`,
 - **Its own identity.** App id `dev.aperte.AECode`, state in `~/.ae`, Electron profile `ae-code`: it runs next to upstream's T3 Code without sharing data. Data written by T3 Code is not read; see "Data migration" in [ROADMAP.md](./docs/ROADMAP.md).
 - **Android app.** Package `dev.aperte.aecode`, built and signed by the release workflow and attached to each release as an APK.
 - **Docker image.** The release server on GHCR, `ghcr.io/selfref/ae-code`.
-- **Date-versioned releases.** `vYYYY.MM.DD` releases with the Linux x64 server archive, published when `main` has new changes.
+- **Date-versioned releases.** `vYYYY.MM.DD` releases with the Linux and Windows x64 server archives, published when `main` has new changes.
 
 ## Install
 
-The releases carry the Linux x64 server (archive and Docker image), the Linux x64 desktop app (through the AUR) and the Android app. There is no desktop installer (AppImage, `.deb`), no iOS app and no `npx` launcher. Install and sign in to at least one agent CLI on the machine that runs the server (Claude Code, Codex, Cursor, OpenCode and so on), or install Claude Code and OpenCode from Settings → Providers after the first start.
+The releases carry the Linux x64 server (archive and Docker image), the Windows x64 server (zip), the Linux x64 desktop app (through the AUR), an unsigned Windows x64 desktop installer and the Android app. There is no AppImage, `.deb` or macOS desktop build, no iOS app and no `npx` launcher. Install and sign in to at least one agent CLI on the machine that runs the server (Claude Code, Codex, Cursor, OpenCode and so on), or install Claude Code and OpenCode from Settings → Providers after the first start.
 
 ### Dependencies on Arch Linux
 
