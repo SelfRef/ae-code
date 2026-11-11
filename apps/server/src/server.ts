@@ -91,6 +91,7 @@ import * as TerminalManager from "./terminal/Manager.ts";
 import * as McpHttpServer from "./mcp/McpHttpServer.ts";
 import * as WorktreeMcpService from "./mcp/WorktreeMcpService.ts";
 import * as MemoryService from "./memory/MemoryService.ts";
+import * as ComposerDraftService from "./composerDrafts/ComposerDraftService.ts";
 import * as SkillLibraryService from "./skills/SkillLibraryService.ts";
 import * as PeerForwarding from "./peer/PeerForwarding.ts";
 import * as RemoteDelegation from "./peer/RemoteDelegation.ts";
@@ -729,7 +730,14 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   Layer.provideMerge(layerOrchestrationApplication),
   Layer.provideMerge(RuntimeLayer.layerEventInfrastructure),
   // Saved memory, shared by Settings (WebSocket) and agents (/mcp).
-  Layer.provideMerge(Layer.mergeAll(ProjectStore.layer, ThreadSearch.layer, MemoryService.layer)),
+  Layer.provideMerge(
+    Layer.mergeAll(
+      ProjectStore.layer,
+      ThreadSearch.layer,
+      MemoryService.layer,
+      ComposerDraftService.layer,
+    ),
+  ),
   Layer.provideMerge(SecretCheck.layer),
   Layer.provideMerge(SkillLibraryService.layer),
   Layer.provideMerge(SecretResolver.layer),

@@ -40,6 +40,7 @@ export * from "./release.ts";
 export * from "./pullRequest.ts";
 export * from "./pullRequestReviewGuide.ts";
 export * from "./memory.ts";
+export * from "./composerDraftSync.ts";
 export * from "./skillLibrary.ts";
 export * from "./orchestrationDispatch.ts";
 export * from "./orchestrationProject.ts";

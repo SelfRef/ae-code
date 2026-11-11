@@ -187,6 +187,18 @@ This removes the selected message and later conversation from the active thread
 and provider history. It does not undo external actions or separate provider
 memory. The action is available only when the provider supports rewind.
 
+## Drafts follow you
+
+Text you have not sent yet is kept on the server you are connected to, so you can start a message on one device and
+finish it on another: web, the desktop app and the Android app all show the same draft in a thread, and a new-thread
+draft (its project, branch and worktree choice, model and mode) opens on every device.
+
+- When you type on two devices, the one you are typing on keeps its text. The other device takes the newer text once you
+  stop typing.
+- Sending a message or clearing the text clears the draft everywhere.
+- Attachments and context chips stay on the device that added them, so attach again where you send.
+- The server has to be up to date; an older server keeps drafts on each device as before.
+
 ## Prompt stash
 
 On web and desktop, press `Cmd+S` on macOS or `Ctrl+S` on Windows and Linux to save

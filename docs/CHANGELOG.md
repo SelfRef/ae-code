@@ -13,6 +13,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 - Android: on a phone-sized screen, swipe right anywhere in a chat to return to the list, and right anywhere in the list to reopen the last chat (no longer only from the screen edge).
 - Android: long-press the New thread button for a menu of your most recent projects (with icons) to start a thread in one, or to choose another project.
 - Android: on a wide screen (tablet, unfolded), a device or browser button in the thread's top bar, beside Files and Git, opens the preview next to the chat instead of over the whole screen. Its Maximize button takes it full screen, and the sidebar's expand button gives the chat the room instead.
+- Synced drafts: unsent text, model and mode picks, and new-thread drafts (project, branch, worktree) follow you between web, desktop and the Android app on the same server. The device you are typing on wins; attachments and context chips stay on the device that added them. Needs the server updated too.
 - Settings → General → Confirmations: choose when closing a terminal asks first (never, only while a command is running, or always). The default asks only while a command is running, not at an idle shell.
 
 ### Changed

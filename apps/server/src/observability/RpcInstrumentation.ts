@@ -103,6 +103,8 @@ const RPC_AGGREGATES = {
   [WS_METHODS.memoryDelete]: "memory",
   [WS_METHODS.memorySetSettings]: "memory",
   [WS_METHODS.memoryImportScan]: "memory",
+  [WS_METHODS.composerDraftsSubscribe]: "composerDrafts",
+  [WS_METHODS.composerDraftsPut]: "composerDrafts",
   [WS_METHODS.skillsList]: "skills",
   [WS_METHODS.skillsRead]: "skills",
   [WS_METHODS.skillsWrite]: "skills",

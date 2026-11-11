@@ -399,6 +399,12 @@ import {
   MemorySetSettingsResult,
 } from "./memory.ts";
 import {
+  ComposerDraftsPutInput,
+  ComposerDraftsPutResult,
+  ComposerDraftsStreamEvent,
+  ComposerDraftRpcError,
+} from "./composerDraftSync.ts";
+import {
   SkillLibraryError,
   SkillLibraryImportInput,
   SkillLibraryImportResult,
@@ -620,6 +626,8 @@ export const WS_METHODS = {
   memoryDelete: "memory.delete",
   memorySetSettings: "memory.setSettings",
   memoryImportScan: "memory.importScan",
+  composerDraftsSubscribe: "composerDrafts.subscribe",
+  composerDraftsPut: "composerDrafts.put",
   skillsList: "skills.list",
   skillsRead: "skills.read",
   skillsWrite: "skills.write",
@@ -2268,6 +2276,19 @@ const WsMemoryImportScanRpc = Rpc.make(WS_METHODS.memoryImportScan, {
   error: Schema.Union([MemoryError, EnvironmentAuthorizationError]),
 });
 
+const WsComposerDraftsSubscribeRpc = Rpc.make(WS_METHODS.composerDraftsSubscribe, {
+  payload: Schema.Struct({}),
+  success: ComposerDraftsStreamEvent,
+  error: ComposerDraftRpcError,
+  stream: true,
+});
+
+const WsComposerDraftsPutRpc = Rpc.make(WS_METHODS.composerDraftsPut, {
+  payload: ComposerDraftsPutInput,
+  success: ComposerDraftsPutResult,
+  error: ComposerDraftRpcError,
+});
+
 const WsSkillsListRpc = Rpc.make(WS_METHODS.skillsList, {
   payload: SkillLibraryListInput,
   success: SkillLibraryListResult,
@@ -2426,6 +2447,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsMemoryDeleteRpc,
   WsMemorySetSettingsRpc,
   WsMemoryImportScanRpc,
+  WsComposerDraftsSubscribeRpc,
+  WsComposerDraftsPutRpc,
   WsSkillsListRpc,
   WsSkillsReadRpc,
   WsSkillsWriteRpc,
