@@ -2,6 +2,8 @@
 
 The fork has one icon (the blueprint style, in `dev/`) for every platform and build; it has no per-channel branding. The Icon Composer project `dev/app-icon.icon` is the source of truth for the full application icon. It uses `text.svg` for the mark, `background.svg` for the vector background and `annotations.svg` for the blueprint drawing.
 
+Without Icon Composer (the fork's case), run `vp run icons:export:blueprint` instead: it renders the same outputs from the layer SVGs.
+
 Run `vp run icons:export` from the repository root to regenerate the tracked iOS, Linux, Windows, and web assets. The web exports are also copied to `apps/web/public` for the browser favicon, web app manifest icons, and splash screen. Run `vp run icons:check` to verify that the generated assets and public copies match their sources without changing files.
 
 Exporting requires Icon Composer 2 or newer on macOS. The script selects the newest compatible exporter from Xcode or a standalone Icon Composer installation and pins design generation 26. Set `ICON_COMPOSER_TOOL` to the full path of `Icon Composer.app/Contents/Executables/ictool` to override automatic discovery.
