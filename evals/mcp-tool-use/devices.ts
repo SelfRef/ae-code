@@ -546,7 +546,11 @@ const failing = <A, R>(effect: Effect.Effect<A, DeviceError, R>) =>
 // The hosts' own output, which T3 passes on. Launcher scripts embed these paths, never shown.
 const NODE = "/usr/bin/node";
 const HUB = "http://127.0.0.1:47613";
-const PLATFORM_NAMES = { ios: "iOS Simulators", android: "Android Emulators" } as const;
+const PLATFORM_NAMES = {
+  ios: "iOS Simulators",
+  android: "Android Emulators",
+  linux: "GNOME desktops",
+} as const;
 /** T3 reads only a capture's PNG header; replay has no screens to send. */
 const capture = (platform: DevicePlatform) => {
   const png = new Uint8Array(24);

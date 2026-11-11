@@ -5,7 +5,8 @@ import type {
   DeviceSummary,
   ScopedThreadRef,
 } from "@t3tools/contracts";
-import { ArrowUpRight, CircleAlert, Play, Smartphone, X } from "lucide-react";
+import { devicePlatformDevices, devicePlatformName } from "@t3tools/client-runtime/device/model";
+import { ArrowUpRight, CircleAlert, Monitor, Play, Smartphone, X } from "lucide-react";
 import { useAtomMount } from "@effect/atom-react";
 import { type ReactNode, useState } from "react";
 
@@ -40,9 +41,6 @@ import {
 } from "./DeviceSetup";
 import { DeviceWorkspace } from "./DeviceWorkspace";
 import { PreviewPanelShell, type PreviewPanelMode } from "../preview/PreviewPanelShell";
-
-const platformLabel = (platform: DevicePlatform) =>
-  platform === "ios" ? "iOS Simulators" : "Android Emulators";
 
 const deviceKey = (device: Pick<DeviceSummary, "hostId" | "id">) =>
   `${device.hostId}\u0000${device.id}`;
@@ -306,7 +304,7 @@ export function DevicePanel(props: {
                     >
                       {state.hostStatus === "failed"
                         ? (state.hostStatusDetail ?? "The device hub failed to start.")
-                        : "No simulators or emulators were found on this environment."}
+                        : "No simulators, emulators or desktops were found on this environment."}
                     </p>
                   </>
                 ) : null}
@@ -315,8 +313,12 @@ export function DevicePanel(props: {
                     {grouped.map((group) => (
                       <section key={group.platform} className="space-y-3">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Smartphone className="size-4 shrink-0" />
-                          <h3 className="font-medium">{platformLabel(group.platform)}</h3>
+                          {group.platform === "linux" ? (
+                            <Monitor className="size-4 shrink-0" />
+                          ) : (
+                            <Smartphone className="size-4 shrink-0" />
+                          )}
+                          <h3 className="font-medium">{devicePlatformDevices(group.platform)}</h3>
                         </div>
                         <DiscoveryList>
                           {group.devices.map((device) => (
@@ -325,7 +327,11 @@ export function DevicePanel(props: {
                               className="flex items-center gap-3 px-3 py-3"
                             >
                               <span className="grid size-8 shrink-0 place-items-center rounded-md border border-border/60">
-                                <Smartphone className="size-4" />
+                                {device.platform === "linux" ? (
+                                  <Monitor className="size-4" />
+                                ) : (
+                                  <Smartphone className="size-4" />
+                                )}
                               </span>
                               <div className="flex min-w-0 flex-1 flex-col">
                                 <span className="truncate text-sm font-medium text-foreground">
@@ -424,9 +430,7 @@ function DeviceDiscoveryWarning(props: {
   // A dismissal hides one occurrence; a cause that returns later shows again.
   if (dismissedCause !== null && dismissedCause !== cause) setDismissedCause(null);
   if (dismissedCause === cause) return null;
-  const platforms = props.incompletePlatforms.map((platform) =>
-    platform === "ios" ? "iOS" : "Android",
-  );
+  const platforms = props.incompletePlatforms.map(devicePlatformName);
   return (
     <div
       role="status"
@@ -486,7 +490,7 @@ function DeviceDiscoveryWarning(props: {
 
 function groupDevices(state: DeviceServiceState) {
   const groups: Array<{ platform: DevicePlatform; devices: DeviceSummary[] }> = [];
-  for (const platform of ["ios", "android"] as const) {
+  for (const platform of ["ios", "android", "linux"] as const) {
     const devices = state.devices
       .filter((device) => device.platform === platform)
       .toSorted((a, b) => Number(b.booted) - Number(a.booted) || a.name.localeCompare(b.name));

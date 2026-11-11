@@ -290,7 +290,7 @@ class MjpegImage extends EventTarget {
 }
 
 function recoveryFixture(
-  platform: "ios" | "android" = "ios",
+  platform: "ios" | "android" | "linux" = "ios",
   preferMjpeg = true,
   serveSimOnly = false,
 ) {
@@ -468,6 +468,47 @@ describe("shared device stream readiness and recovery", () => {
       [0x03, { type: "begin", x: 0.25, y: 0.5 }],
       [0x04, { button: "back" }],
     ]);
+    client.stop();
+  });
+
+  it("streams a Linux desktop under its own prefix and sends desktop pointer input", async () => {
+    const { client, events, fetch, sockets } = recoveryFixture("linux", false);
+    client.start();
+    await vi.advanceTimersByTimeAsync(0);
+    // No MJPEG priming: the desktop session captures on demand for each stream.
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual([
+      "https://test/api/device-hub/vendor/linux-desktop/helper/test-device/stream.avcc",
+    ]);
+    expect(sockets.map((socket) => socket.url)).toEqual([
+      "wss://test/api/device-hub/vendor/linux-desktop/helper/ws?device=test-device",
+    ]);
+    const input = sockets[0]!;
+    input.onmessage?.({ data: Uint8Array.of(0x83).buffer });
+    expect(events.onInputConnected).toHaveBeenLastCalledWith(true);
+    client.sendPointer({ type: "scroll", dx: 0, dy: 2 });
+    client.sendPointer({ type: "button", button: "right", down: true, x: 0.5, y: 0.5 });
+    client.sendText("hé");
+    client.pressButton("home");
+    const sent = input.send.mock.calls.map(([payload]) => {
+      const bytes = payload as Uint8Array;
+      return [bytes[0], JSON.parse(new TextDecoder().decode(bytes.subarray(1)))];
+    });
+    expect(sent).toEqual([
+      [0x20, { type: "scroll", dx: 0, dy: 2 }],
+      [0x20, { type: "button", button: "right", down: true, x: 0.5, y: 0.5 }],
+      [0x20, { type: "text", text: "hé" }],
+    ]);
+    client.stop();
+  });
+
+  it("shows a Linux desktop as MJPEG when its session has no H.264 encoder", async () => {
+    const { client, events, fetch } = recoveryFixture("linux", false);
+    fetch.mockImplementationOnce(() => Promise.resolve(new Response("no", { status: 501 })));
+    client.start();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(events.onMjpegFallback).toHaveBeenCalledWith(
+      "https://test/api/device-hub/vendor/linux-desktop/helper/test-device/stream.mjpeg",
+    );
     client.stop();
   });
 

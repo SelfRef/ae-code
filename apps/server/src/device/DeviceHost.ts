@@ -173,11 +173,14 @@ export interface DeviceHostReady {
     readonly serveSimAxSettings: string | null;
     readonly serveSimCli: string | null;
   };
-  /** Routes proxied hub requests itself; otherwise they go to `hub.origin`. */
+  /**
+   * Routes proxied hub requests itself: `null` refuses one, and `undefined` (or no router)
+   * sends it to `hub.origin`.
+   */
   readonly upstream?: (
     hubPath: string,
     search: URLSearchParams,
-  ) => Effect.Effect<HubUpstream | null>;
+  ) => Effect.Effect<HubUpstream | null | undefined>;
 }
 
 export interface DeviceHostAgentReady extends DeviceHostReady {

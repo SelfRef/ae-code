@@ -8,6 +8,14 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+### Added
+
+- Device panel: a **GNOME desktop** on Linux servers with GNOME Shell, next to Android emulators. It is a headless GNOME
+  Shell session with its own settings and extensions, for testing GTK apps and Shell extensions; you and agents see
+  and drive the same screen (click, right-click, scroll, type, paste) from web, desktop and Android. The stream is
+  H.264, encoded on the GPU where VA-API is available. It runs in a container without a display or a logged-in user;
+  the packages it needs are listed in the [devices guide](./user/devices.md#gnome-desktops).
+
 ## [v2026.11.11] - 2026-11-11
 
 ### Added

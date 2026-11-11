@@ -63,6 +63,8 @@ const IOS_TOGGLES = new Set([
 const ANDROID_TOGGLES = new Set(["reduceMotion", "networkEnabled"]);
 
 const supportsAction = (platform: DevicePlatform, input: DeviceActionInput): boolean => {
+  // A Linux desktop's settings are the session's own GNOME settings; the panel has no controls.
+  if (platform === "linux") return false;
   const actions = platform === "ios" ? IOS_ACTIONS : ANDROID_ACTIONS;
   if (!actions.has(input.type)) return false;
   if (input.type === "setToggle") {
@@ -472,6 +474,7 @@ export const readDeviceDetail = Effect.fn("DeviceActions.readDetail")(function* 
   platform: DevicePlatform,
   deviceId: string,
 ): Effect.fn.Return<{ settings: DeviceSettings; foregroundApp: DeviceForegroundApp | null }> {
+  if (platform === "linux") return { settings: {}, foregroundApp: null };
   return platform === "ios"
     ? yield* readIos(ready, deviceId)
     : yield* readAndroid(ready.run, deviceId);

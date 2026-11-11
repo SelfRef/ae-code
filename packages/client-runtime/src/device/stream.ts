@@ -155,6 +155,8 @@ const IOS_MSG_TOUCH = 0x03;
 const IOS_MSG_BUTTON = 0x04;
 const IOS_MSG_KEY = 0x06;
 const IOS_MSG_ORIENTATION = 0x07;
+// Linux desktops only: hover, other mouse buttons, the wheel and pasted text.
+const DESKTOP_MSG_POINTER = 0x20;
 const IOS_TAG_SCREEN_CONFIG = 0x82;
 const IOS_TAG_INPUT_ADMITTED = 0x83;
 
@@ -311,8 +313,10 @@ export interface DeviceStreamClient {
   /** Normalized 0..1 coordinates in the displayed frame. */
   readonly sendTouch: (phase: "begin" | "move" | "end", x: number, y: number) => void;
   readonly sendKey: (event: KeyboardEvent, phase: "down" | "up") => void;
-  /** Android only: iOS input is HID key codes, which cannot carry arbitrary text. */
+  /** Android and Linux desktops: iOS input is HID key codes, which cannot carry arbitrary text. */
   readonly sendText: (text: string) => void;
+  /** Linux desktops only; other devices take touches. Coordinates as in `sendTouch`. */
+  readonly sendPointer: (event: DesktopPointerEvent) => void;
   readonly pressButton: (button: DeviceHardwareButton) => void;
   readonly rotate: () => void;
   readonly setOrientation: (orientation: DeviceScreenSize["orientation"]) => void;
@@ -320,6 +324,17 @@ export interface DeviceStreamClient {
   readonly setDuoPanels: (panels: DuoPanelSinks | null) => void;
   readonly sendRawTouch: (phase: "begin" | "move" | "end", x: number, y: number) => void;
 }
+
+export type DesktopPointerEvent =
+  | { readonly type: "motion"; readonly x: number; readonly y: number }
+  | {
+      readonly type: "button";
+      readonly button: "right" | "middle";
+      readonly down: boolean;
+      readonly x: number;
+      readonly y: number;
+    }
+  | { readonly type: "scroll"; readonly dx: number; readonly dy: number };
 
 const HID_USAGE_BY_CODE: Readonly<Record<string, number>> = {
   Enter: 0x28,
@@ -338,7 +353,13 @@ const HID_USAGE_BY_CODE: Readonly<Record<string, number>> = {
   Comma: 0x36,
   Period: 0x37,
   Slash: 0x38,
+  CapsLock: 0x39,
+  Insert: 0x49,
+  Home: 0x4a,
+  PageUp: 0x4b,
   Delete: 0x4c,
+  End: 0x4d,
+  PageDown: 0x4e,
   ArrowRight: 0x4f,
   ArrowLeft: 0x50,
   ArrowDown: 0x51,
@@ -374,6 +395,8 @@ function hidUsageForCode(code: string): number | null {
   if (/^Key[A-Z]$/.test(code)) return 0x04 + (code.charCodeAt(3) - 65);
   if (/^Digit[1-9]$/.test(code)) return 0x1e + (code.charCodeAt(5) - 49);
   if (code === "Digit0") return 0x27;
+  const fn = /^F([1-9]|1[0-2])$/.exec(code);
+  if (fn) return 0x3a + Number(fn[1]) - 1;
   return HID_USAGE_BY_CODE[code] ?? null;
 }
 
@@ -408,8 +431,14 @@ export function createDeviceStreamClient(
   const sink = "present" in output ? output : createCanvasFrameSink(output);
   // Android normally streams over serve-emu's socket; a serve-sim-only host serves it like iOS.
   const serveSimOnly = target.serveSimOnly === true;
-  const avcc = platform === "ios" || serveSimOnly;
-  const vendor = avcc ? "/vendor/serve-sim" : "/vendor/serve-emu";
+  // A Linux desktop session serves serve-sim's formats under its own prefix.
+  const desktop = platform === "linux";
+  const avcc = platform === "ios" || desktop || serveSimOnly;
+  const vendor = desktop
+    ? "/vendor/linux-desktop"
+    : avcc
+      ? "/vendor/serve-sim"
+      : "/vendor/serve-emu";
   const device = encodeURIComponent(deviceId);
   const httpUrl = (path: string) =>
     withDeviceHubQuery(`${access.httpBase}${vendor}${path}`, access);
@@ -598,7 +627,7 @@ export function createDeviceStreamClient(
       // A new AVCC request starts a fresh capture with a keyframe; there is no MJPEG.
       closeDecoder();
       controller?.abort();
-    } else if (platform === "ios") fallBackToMjpeg();
+    } else if (platform === "ios" || desktop) fallBackToMjpeg();
     else {
       closeDecoder();
       connecting("Video decoder restarted.");
@@ -726,6 +755,12 @@ export function createDeviceStreamClient(
         return;
       }
       if (response.status === 401 || response.status === 403) return handleUnauthorized();
+      // A desktop session without an H.264 encoder serves MJPEG only.
+      if (desktop && response.status === 501) {
+        await response.body?.cancel();
+        if (isCurrent()) fallBackToMjpeg();
+        return;
+      }
       if (response.status === 409 && !target.panelId) {
         const locked = decodeTransportLocked(await response.json().catch(() => null));
         if (Option.isSome(locked)) {
@@ -1097,7 +1132,7 @@ export function createDeviceStreamClient(
   const connectIosInput = async () => {
     if (stopped) return;
     const session = generation;
-    if (!serveSimOnly) await primeIosHelper(session);
+    if (!serveSimOnly && !desktop) await primeIosHelper(session);
     if (stopped || generation !== session) return;
     const ws = new WebSocket(wsUrl(`/helper/ws?device=${device}`));
     ws.binaryType = "arraybuffer";
@@ -1281,7 +1316,7 @@ export function createDeviceStreamClient(
       if (!target.videoOnly) void connectIosInput();
       if (useWebCodecs) void readIosVideo();
       else fail("This browser cannot decode this device's stream (WebCodecs unavailable).");
-    } else if (platform === "ios") {
+    } else if (platform === "ios" || desktop) {
       if (!target.videoOnly) void connectIosInput();
       if (useWebCodecs) void readIosVideo();
       else fallBackToMjpeg();
@@ -1394,6 +1429,10 @@ export function createDeviceStreamClient(
       }
     },
     sendText: (text) => {
+      if (desktop) {
+        if (text) send(taggedJson(DESKTOP_MSG_POINTER, { type: "text", text }));
+        return;
+      }
       if (avcc) return;
       let chunk = "";
       let chunkBytes = 0;
@@ -1411,7 +1450,11 @@ export function createDeviceStreamClient(
       }
       if (chunk.length > 0) send(JSON.stringify({ type: "text", text: chunk }));
     },
+    sendPointer: (event) => {
+      if (desktop) send(taggedJson(DESKTOP_MSG_POINTER, event));
+    },
     pressButton: (button) => {
+      if (desktop) return;
       if (avcc) {
         const name =
           button === "home"

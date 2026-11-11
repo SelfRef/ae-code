@@ -1,5 +1,6 @@
 import { DeviceHostUpdates } from "./DeviceHostUpdates";
 import type { DevicePlatform, DeviceServiceState, EnvironmentId } from "@t3tools/contracts";
+import { devicePlatformName } from "@t3tools/client-runtime/device/model";
 import { Check, CircleAlert } from "lucide-react";
 import { AuthSettingsWriteScope } from "@t3tools/contracts";
 import { useAtomMount } from "@effect/atom-react";
@@ -15,7 +16,7 @@ import { useAtomCommand } from "~/state/use-atom-command";
 import { readEnvironmentScope, useEnvironmentScope } from "~/state/session";
 import { cn } from "~/lib/utils";
 
-const platformName = (platform: DevicePlatform) => (platform === "ios" ? "iOS" : "Android");
+const platformName = devicePlatformName;
 
 const deviceHubDescription =
   "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.";
@@ -26,7 +27,7 @@ const agentDeviceDescription =
 export const incompleteListings = (
   status: DeviceServiceState["hostStatuses"][string] | undefined,
 ) =>
-  (["ios", "android"] as const).filter(
+  (["ios", "android", "linux"] as const).filter(
     (platform) =>
       status?.status === "ready" &&
       (status.incompletePlatforms?.includes(platform) ||
@@ -127,7 +128,9 @@ export function platformSetupStatus(state: DeviceServiceState, platform: DeviceP
       message:
         platform === "ios"
           ? "Xcode is installed, but no iOS Simulator is available. Install a runtime in Xcode Settings → Components."
-          : "The Android SDK is installed, but no virtual device exists. Create one in Android Studio → Device Manager.",
+          : platform === "linux"
+            ? "GNOME Shell is installed, but its desktop is not listed. Retry device discovery."
+            : "The Android SDK is installed, but no virtual device exists. Create one in Android Studio → Device Manager.",
     };
   }
   const remoteHost = supportingHosts.every((host) => host.kind !== "local")
@@ -141,7 +144,9 @@ export function platformSetupStatus(state: DeviceServiceState, platform: DeviceP
         ? `${remoteHost.label} starts ${platform === "ios" ? "iOS Simulators" : "Android emulators"} in the cloud with EAS Simulator.`
         : platform === "ios"
           ? `Xcode and iOS Simulator are available${location}.`
-          : `The Android SDK and Emulator are available${location}.`,
+          : platform === "linux"
+            ? `GNOME Shell can run a desktop session${location}.`
+            : `The Android SDK and Emulator are available${location}.`,
   };
 }
 
@@ -327,9 +332,16 @@ function DevicePlatformSetup(props: {
     <div className="space-y-3">
       <PlatformStatus platform="iOS" status={platformSetupStatus(props.state, "ios")} />
       <PlatformStatus platform="Android" status={platformSetupStatus(props.state, "android")} />
+      {/* Only Linux hosts list the platform; elsewhere it is not missing, it does not apply. */}
+      {props.state.hosts.some((host) => host.platforms.some((p) => p.platform === "linux")) ? (
+        <PlatformStatus
+          platform="GNOME desktop"
+          status={platformSetupStatus(props.state, "linux")}
+        />
+      ) : null}
       <DeviceHostDiagnostics hosts={props.state.hosts} hostStatuses={props.state.hostStatuses} />
       <p className="text-xs text-muted-foreground">
-        You can use either platform. Fixing a missing platform does not block the other one.
+        You can use any platform. Fixing a missing platform does not block the others.
       </p>
       <Button size="compact" variant="outline" disabled={props.disabled} onClick={props.onCheck}>
         {props.checking ? <Spinner size="xs" /> : null}

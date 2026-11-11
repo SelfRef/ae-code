@@ -2,7 +2,12 @@ import type { DeviceHostSummary } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import { describe, expect, it } from "@effect/vitest";
 
-import { agentDeviceQuickStart, pngDimensions, resolveHostId } from "./handlers.ts";
+import {
+  agentDeviceQuickStart,
+  linuxDesktopQuickStart,
+  pngDimensions,
+  resolveHostId,
+} from "./handlers.ts";
 
 const device = {
   hostId: "local",
@@ -62,6 +67,15 @@ describe("device tool helpers", () => {
     );
     expect(text).not.toContain("  agent-device ");
     expect(text).not.toContain("is on PATH");
+    const desktop = linuxDesktopQuickStart(
+      { ...device, platform: "linux", name: "GNOME desktop", version: "GNOME 50" },
+      "/tmp/t3 tools/agent-device",
+      "/tmp/t3 home/t3-desktop-run",
+    );
+    const examples = desktop.split("\n").filter((line) => line.startsWith("  "));
+    expect(examples.length).toBeGreaterThan(0);
+    for (const line of examples)
+      expect(line).toMatch(/^ {2}'\/tmp\/t3 (tools\/agent-device|home\/t3-desktop-run)' /);
   });
 
   it("shows a bound launcher's commands without flags and keeps device actions off simctl and ssh", () => {

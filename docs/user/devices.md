@@ -1,8 +1,8 @@
 # Devices
 
-The Device panel shows a live iOS Simulator or Android Emulator next to a
-thread, so you can watch an agent verify mobile work and tap the device
-yourself. Agents get the same device through `device_*` tools and the
+The Device panel shows a live iOS Simulator, Android Emulator or GNOME desktop
+next to a thread, so you can watch an agent verify mobile or desktop work and
+use the device yourself. Agents get the same device through `device_*` tools and the
 `agent-device` command line, which T3 Code sets up for them.
 
 ## Open a device
@@ -54,6 +54,39 @@ to the other screen switches the live display and touch input to that screen.
 **Restore 3D view** returns the device to a screen-facing position.
 On supported Android foldables, use **Fold device** and **Unfold device** beside
 the screen to change its posture in either view.
+
+## GNOME desktops
+
+On a Linux environment server with GNOME Shell installed, the Device panel also
+lists a **GNOME desktop**: a headless GNOME Shell session of its own, for testing
+GTK apps and Shell extensions. **Start** opens it like any device; you and agents
+see the same screen. Click, right-click, scroll and type on it as on a monitor,
+and paste text with your usual shortcut. **End desktop session** in the toolbar's
+**More** menu stops GNOME Shell and the apps running on it.
+
+The session has its own settings, extensions and app data, kept in the
+environment's state directory (`device/linux-desktop/home`), so it never changes
+the desktop you are logged in to and keeps what you set between sessions. It
+needs no logged-in user, display or GPU, and it runs inside a container. A GPU
+render node that VA-API can use (`/dev/dri/renderD*`) makes it render and encode
+the stream on the GPU; without one it falls back to software. Set
+`T3CODE_LINUX_DESKTOP_SIZE` (for example `1920x1080`) in the server's environment
+to change its screen size, then end and start the session.
+
+What it needs on the server, by package name on Debian and Ubuntu (Arch names in
+the [README](../../README.md#dependencies-on-arch-linux)): `gnome-shell`,
+`pipewire`, `wireplumber`, `dbus-daemon`, `libglib2.0-bin`, `python3-gi`,
+`python3-gst-1.0`, `gir1.2-gstreamer-1.0`, `gir1.2-atspi-2.0`, `at-spi2-core`,
+`gstreamer1.0-pipewire`, `gstreamer1.0-plugins-base`, `gstreamer1.0-plugins-good`,
+and for the live H.264 stream `gstreamer1.0-plugins-bad` with a VA-API driver
+(`mesa-va-drivers` for AMD) or `gstreamer1.0-plugins-ugly` for software encoding.
+With no H.264 encoder the panel shows a still-image stream instead. The setup
+step lists what is missing.
+
+Agents start installed apps with `agent-device open <command>`, and run an app
+they built with the `t3-desktop-run` command that `device_open` names. To test a
+Shell extension, install it with `t3-desktop-run gnome-extensions install`, end
+and start the session so GNOME Shell finds it, then enable it.
 
 ## Tools
 
