@@ -19,6 +19,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 - Rebased on the latest upstream T3 Code. The Diff panel now keeps its selection when you leave a thread and come
   back, like upstream, instead of resetting each time it opens; a thread you have not picked a scope for still starts
   on Uncommitted.
+- A thread whose worktree storage cleanup removed shows "New worktree on next message" in its details instead of
+  **Initialize Git**; the next message recreates the worktree.
 
 ## [v2026.11.11.1] - 2026-11-11
 

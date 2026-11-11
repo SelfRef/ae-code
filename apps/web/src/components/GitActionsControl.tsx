@@ -1088,6 +1088,8 @@ export default function GitActionsControl({
   const changeRequestTerminology = sourceControlPresentation.terminology;
   const SourceControlIcon = sourceControlPresentation.Icon;
   const isRepo = gitStatus?.isRepo ?? true;
+  // Storage cleanup removes idle worktrees but keeps the thread's path; the next turn recreates it.
+  const worktreeRemoved = !isRepo && Boolean(activeServerThread?.worktreePath);
   const hasPrimaryRemote = gitStatus?.hasPrimaryRemote ?? false;
   const gitStatusForActions = gitStatus;
   const changesTotals = gitStatusForActions?.workingTree ?? { insertions: 0, deletions: 0 };
@@ -1647,7 +1649,22 @@ export default function GitActionsControl({
 
   return (
     <>
-      {!showActions ? null : !isRepo ? (
+      {!showActions ? null : worktreeRemoved ? (
+        <ThreadDetailsControl
+          size="xs"
+          variant="ghost"
+          part="row"
+          panel
+          tone="muted"
+          disabled
+          title="This thread's worktree was removed. It is created again when you send the next message."
+        >
+          <InfoIcon className="size-3.5" aria-hidden />
+          <span className={cn("ml-0.5", THREAD_DETAILS_PANEL_LABEL_CLASS)}>
+            New worktree on next message
+          </span>
+        </ThreadDetailsControl>
+      ) : !isRepo ? (
         <ThreadDetailsControl
           size="xs"
           variant="ghost"

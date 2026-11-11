@@ -1016,7 +1016,8 @@ Defaults for working on several features at once, one worktree per thread. Only 
 - Branch naming: semantic prefix (`feat/`, `fix/`), not `t3/`.
 - Start from remote: off, so a worktree branches from the local base branch, which can be ahead of `origin`.
 - Cleanup: delete worktrees of merged pull requests, of deleted threads and with no commits beyond the default branch, and
-  3 days after a thread settles. Worktrees with uncommitted changes are kept; branches and thread history always are.
+  3 days after a thread settles. Worktrees with uncommitted changes are kept; branches and thread history always are. A thread whose worktree was
+  removed says so in its details, and its next message recreates the worktree.
 - No data migration: no key was renamed.
 
 ## Appearance defaults (change 29)
