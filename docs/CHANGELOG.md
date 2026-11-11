@@ -16,6 +16,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 - Android: a draft chat has a terminal button in its header, opening a shell in the draft's workspace.
 - Work log (web and Android): the memory tools (recall, save, forget) get their own bookmark icon instead of the AE glyph, which stays the fallback for other T3 tools.
 - Android threads show a floating button at the bottom right that does the next step of working in a worktree: **Commit** with uncommitted changes, **Merge** once they are committed but not in the default branch, **Settle** once merged. It hides while the agent works and when the thread had no changes. Turn it off under Settings → Source control → This device.
+- The usage limits move out of the thread details card into a card of their own under it. The first card keeps its scroll and drops to a smaller density to leave room for it.
 - The thread details card labels its Current branch, Default branch and usage (for example Claude usage) sections, and each usage limit shows the time left until it resets (`2d 4h`, `3h 20m`). The branch picker shows a worktree icon for a thread in a worktree. The Thread actions section moves below Default branch and now holds the Context row too, with no divider between them. The Settle thread button is dimmed and says "Not all changes merged into main" until the thread's changes are merged into the default branch; Settle thread then leads the arrow menu, and only appears there while the button cannot settle.
 
 ### Fixed
