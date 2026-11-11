@@ -232,6 +232,55 @@ describe("SessionControl", () => {
     );
   });
 
+  it("lets the agent and a sharing viewer act in one order without cancelling queued agent work", async () => {
+    const control = new SessionControl("agent");
+    const started = Promise.withResolvers<void>();
+    const finish = Promise.withResolvers<void>();
+    const events: string[] = [];
+    const running = control.agent("agent", async () => {
+      events.push("agent started");
+      started.resolve();
+      await finish.promise;
+    });
+    await started.promise;
+    const queued = control.agent("agent", async () => events.push("queued agent action"));
+    const sharing = control.share("viewer");
+    const typing = control.human("viewer", async () => events.push("human typed"));
+    const later = control.agent("agent", async () => events.push("later agent action"));
+    expect(control.controller).toBe("viewer");
+    expect(control.exclusive).toBe(false);
+    finish.resolve();
+    await Promise.all([running, queued, sharing, typing, later]);
+    expect(events).toEqual([
+      "agent started",
+      "queued agent action",
+      "human typed",
+      "later agent action",
+    ]);
+    await expect(control.share("other")).rejects.toThrow(BrowserControlInterrupted);
+    await expect(control.take("other")).rejects.toThrow(BrowserControlInterrupted);
+  });
+
+  it("moves between sharing and exclusive control, locking the agent out only while exclusive", async () => {
+    const generations: number[] = [];
+    const control = new SessionControl("agent", () => generations.push(control.generation));
+    await control.share("viewer");
+    await control.agent("agent", async () => "while sharing");
+    expect(generations).toEqual([]);
+    await control.take("viewer");
+    expect(control.shared).toBe(false);
+    await expect(control.agent("agent", async () => "locked out")).rejects.toThrow(
+      BrowserControlInterrupted,
+    );
+    await control.share("viewer");
+    await expect(control.agent("agent", async () => "back")).resolves.toBe("back");
+    await control.release("viewer");
+    expect(control.controller).toBeNull();
+    expect(control.shared).toBe(false);
+    await expect(control.agent("agent", async () => "released")).resolves.toBe("released");
+    expect(generations).toEqual([1, 2]);
+  });
+
   it("drains running work before takeover and cancels previously queued agent actions", async () => {
     const control = new SessionControl("agent");
     const started = Promise.withResolvers<void>();

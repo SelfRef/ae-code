@@ -18,6 +18,8 @@ export type PreviewStreamMouseButton = "none" | "left" | "middle" | "right";
 export interface PreviewStreamControl {
   readonly canOperate: boolean;
   readonly controller: "agent" | "you" | "another-viewer" | "unclaimed";
+  /** With `controller: "you"`: the agent keeps acting beside you. */
+  readonly shared: boolean;
   readonly generation: number;
   readonly dialog: null | {
     readonly type: string;
@@ -32,12 +34,28 @@ export const previewStreamControlLabel = (control: PreviewStreamControl | null):
     : !control.canOperate
       ? "Read-only"
       : control.controller === "you"
-        ? "You have control"
+        ? control.shared
+          ? "You and the agent have control"
+          : "You have control"
         : control.controller === "agent"
           ? "Agent has control"
           : control.controller === "another-viewer"
             ? "Another viewer has control"
             : "Watching";
+
+export type PreviewStreamControlMode = "view" | "control" | "share";
+
+export const previewStreamControlMode = (
+  control: PreviewStreamControl,
+): PreviewStreamControlMode =>
+  control.controller !== "you" ? "view" : control.shared ? "share" : "control";
+
+/** The message that moves a viewer into each mode. */
+export const previewStreamControlInput = {
+  view: { type: "releaseControl" },
+  control: { type: "takeControl" },
+  share: { type: "shareControl" },
+} as const satisfies Record<PreviewStreamControlMode, PreviewStreamInput>;
 
 const isPreviewStreamDialog = (value: unknown): value is PreviewStreamControl["dialog"] =>
   value === null ||
@@ -52,6 +70,7 @@ const isPreviewStreamDialog = (value: unknown): value is PreviewStreamControl["d
 /** Coordinates are page CSS px. */
 export type PreviewStreamInput =
   | { readonly type: "takeControl" }
+  | { readonly type: "shareControl" }
   | { readonly type: "releaseControl" }
   | { readonly type: "dialog"; readonly accept: boolean; readonly promptText?: string }
   | { readonly type: "viewport"; readonly setting: PreviewViewportSetting }
@@ -267,6 +286,7 @@ export function createPreviewStreamClient(
         editable,
         canOperate,
         controller,
+        shared,
         generation,
         dialog,
         text,
@@ -342,6 +362,7 @@ export function createPreviewStreamClient(
         const nextControl: PreviewStreamControl = {
           canOperate,
           controller,
+          shared: shared === true,
           generation,
           dialog,
         };
@@ -383,7 +404,12 @@ export function createPreviewStreamClient(
     send: (input) => {
       if (socket?.readyState !== WebSocket.OPEN) return false;
       if (!control?.canOperate) return false;
-      if (input.type !== "takeControl" && control.controller !== "you") return false;
+      if (
+        input.type !== "takeControl" &&
+        input.type !== "shareControl" &&
+        control.controller !== "you"
+      )
+        return false;
       socket.send(JSON.stringify(input));
       return true;
     },
