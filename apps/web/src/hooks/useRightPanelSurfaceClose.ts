@@ -114,7 +114,7 @@ export function useRightPanelSurfaceClose(input: {
     );
     for (const surface of ordered) {
       // Releasing a browser drops its session, which prunes the tab automatically; close it
-      // first so the close stays a user action that hides the panel after the last tab.
+      // first so the close stays a user action that keeps the panel open.
       store.closeSurface(threadRef, surface.id);
       releaseSurfaceResources(threadRef, surface);
     }

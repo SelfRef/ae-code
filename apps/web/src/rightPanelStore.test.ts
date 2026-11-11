@@ -1177,12 +1177,24 @@ describe("rightPanelStore", () => {
     });
   });
 
-  it("closing the final terminal pane removes its surface and closes the panel", () => {
+  it("closing the final terminal pane removes its surface and keeps the panel open", () => {
     useRightPanelStore.getState().openTerminal(refA, "term-1");
     useRightPanelStore.getState().closeTerminal(refA, "terminal:term-1", "term-1");
 
     expect(selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA)).toEqual({
-      isOpen: false,
+      isOpen: true,
+      activeSurfaceId: null,
+      surfaces: [],
+    });
+  });
+
+  it("closing the last surface keeps the panel open on the empty picker", () => {
+    const store = useRightPanelStore.getState();
+    store.open(refA, "files");
+    store.closeSurface(refA, "files");
+
+    expect(selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA)).toEqual({
+      isOpen: true,
       activeSurfaceId: null,
       surfaces: [],
     });
