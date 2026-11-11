@@ -31,6 +31,7 @@ import { DatabaseStorageNotice } from "./components/DatabaseStorageNotice";
 import { ListChoiceRow as SettingsChoiceRow } from "../../components/ui/ListChoiceRow";
 import { SettingsSection } from "./components/SettingsSection";
 import { ConfirmDefaultBranchPushRow } from "./components/ConfirmDefaultBranchPushRow";
+import { ShipButtonRow } from "./components/ShipButtonRow";
 import { SettingsSwitchRow } from "./components/SettingsSwitchRow";
 import { SourceControlSignInSection } from "./components/SourceControlSignInSection";
 import { SettingsProjectOverridesSection } from "./components/SettingsProjectOverridesSection";
@@ -580,6 +581,7 @@ function ServerSettingsDetail(props: { readonly page: SettingsPage }) {
                 </SettingsSection>
                 <SettingsSection title="This device">
                   <ConfirmDefaultBranchPushRow />
+                  <ShipButtonRow />
                 </SettingsSection>
                 <SettingsSection title="Clones">
                   <SettingsSwitchRow

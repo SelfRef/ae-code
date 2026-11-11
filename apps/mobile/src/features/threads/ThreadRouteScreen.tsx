@@ -86,6 +86,7 @@ import { NewTaskDraftRouteScreen, type NewTaskDraftRouteParams } from "./NewTask
 import { GitOverviewSheet } from "./git/GitOverviewSheet";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { useSelectedThreadGitActions } from "../../state/use-selected-thread-git-actions";
+import { useShipAction } from "./git/useShipAction";
 import { useSelectedThreadGitState } from "../../state/use-selected-thread-git-state";
 import { useSelectedThreadRequests } from "../../state/use-selected-thread-requests";
 import { useSelectedThreadWorktree } from "../../state/use-selected-thread-worktree";
@@ -823,6 +824,19 @@ function ThreadRouteContent(
     onPull: gitActions.onPullSelectedThreadBranch,
     onRunAction: gitActions.onRunSelectedThreadGitAction,
   };
+  const shipAction = useShipAction({
+    thread: selectedThread,
+    gitStatus: gitStatus.data ?? null,
+    hadChanges:
+      selectedThreadDetail?.checkpoints.some(
+        (checkpoint) =>
+          checkpoint.status === "ready" &&
+          (checkpoint.filesTotal?.count ?? checkpoint.files.length) > 0,
+      ) ?? false,
+    working: composer.activeWorkStartedAt !== null,
+    busy: gitState.gitOperationLabel !== null,
+    onRunAction: gitActions.onRunSelectedThreadGitAction,
+  });
   const handleEditFailedCreation = async () => {
     const creation = selectedThreadCreation?.message;
     if (!creation?.creation || routeThreadIdentity === null) {
@@ -989,6 +1003,7 @@ function ThreadRouteContent(
             )
           }
           canOperateThread={canOperateThread}
+          shipAction={shipAction}
           selectedThread={selectedThreadWithDraftSettings ?? selectedThread}
           selectedThreadDetailRef={selectedThreadDetailRef}
           contentPresentation={contentPresentation}

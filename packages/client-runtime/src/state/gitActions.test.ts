@@ -12,6 +12,7 @@ import {
   resolveDefaultBranchActionDialogCopy,
   resolveDefaultBranchActions,
   resolveQuickAction,
+  resolveShipAction,
 } from "./gitActions.ts";
 
 function status(overrides: Partial<VcsStatusResult> = {}): VcsStatusResult {
@@ -117,6 +118,33 @@ describe("default branch actions", () => {
     // An older server does not count the default branch's commits, so there is no push to offer.
     expect(resolve(status()).items.map((item) => item.id)).toEqual(["merge", "merge_push"]);
     expect(resolveDefaultBranchActions(ahead, true, true, "merge")!.primary.disabled).toBe(true);
+  });
+});
+
+describe("ship action", () => {
+  it.each([
+    ["no status", null, true, null],
+    ["not a repo", status({ isRepo: false }), true, null],
+    ["detached HEAD", status({ refName: null }), true, null],
+    ["uncommitted changes", status({ hasWorkingTreeChanges: true }), false, "commit"],
+    ["committed, not merged", status({ aheadOfDefaultCount: 2 }), false, "merge"],
+    ["unmerged on older server", status({ aheadCount: 1 }), false, "merge"],
+    [
+      "dirty and unmerged",
+      status({ hasWorkingTreeChanges: true, aheadOfDefaultCount: 2 }),
+      true,
+      "commit",
+    ],
+    ["merged", status({ aheadOfDefaultCount: 0 }), true, "settle"],
+    ["never changed", status({ aheadOfDefaultCount: 0 }), false, null],
+    [
+      "committed on the default branch",
+      status({ isDefaultRef: true, aheadCount: 2 }),
+      true,
+      "settle",
+    ],
+  ])("%s", (_name, s, hadChanges, expected) => {
+    expect(resolveShipAction(s, hadChanges)).toBe(expected);
   });
 });
 
