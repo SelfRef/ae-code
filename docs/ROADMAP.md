@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| 44   | Device panel controls in a row above the screen, like the browser's, instead of a column at the right edge (web)                                                       | done    |
 | 43   | Browser control modes: View only, Take control, and Share control, where you and the agent both act and the agent is not interrupted (web and Android)                 | done    |
 | 42   | Current branch action: a project setting (Push by default) that picks whether the Git button also creates a pull request                                               | done    |
 | 41   | Floating preview: window-style buttons in its top-right corner, shown while the pointer is over it, instead of a dot that opens a pill                                 | done    |
