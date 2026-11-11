@@ -25,6 +25,7 @@ import { formatUpcomingTimestamp } from "../../timestampFormat";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { formatContextWindowCompactionMessage } from "./compaction.logic";
 import { ThreadDetailsSection } from "./ThreadDetailsSection";
+import { THREAD_DETAILS_CARD_SURFACE_CLASS } from "./threadDetailsPanelStyles";
 
 const PACE_LABEL: Record<LimitPace, string> = {
   ahead: "Ahead of pace",
@@ -41,7 +42,7 @@ export interface ThreadDetailsUsageInput {
 
 type UsageTone = "error" | "warning" | null;
 
-/** The selected provider's limit windows. Each row reads as room left. */
+/** The selected provider's limit windows in a card of their own. Each row reads as room left. */
 export function ThreadDetailsUsage({
   providerInstanceId,
   providers,
@@ -65,25 +66,28 @@ export function ThreadDetailsUsage({
   const title = provider ? `${resolveProviderInstanceDisplayName(provider)} usage` : "Usage limits";
 
   return (
-    <ThreadDetailsSection
-      headingId="thread-details-usage-heading"
-      title={title}
-      showHeading={showHeading}
-    >
-      <div className="grid grid-cols-[auto_minmax(3rem,1fr)_auto] gap-x-3 text-xs">
-        {notice ? (
-          <UsageRow
-            label="Limits"
-            fill={null}
-            tone={null}
-            value="Unavailable"
-            tooltip={<span className="text-foreground">{notice}</span>}
-          />
-        ) : (
-          limits.windows.map((window) => <LimitRow key={window.id} window={window} now={now} />)
-        )}
-      </div>
-    </ThreadDetailsSection>
+    <div className={THREAD_DETAILS_CARD_SURFACE_CLASS}>
+      <ThreadDetailsSection
+        headingId="thread-details-usage-heading"
+        title={title}
+        showHeading={showHeading}
+        separated={false}
+      >
+        <div className="grid grid-cols-[auto_minmax(3rem,1fr)_auto] gap-x-3 text-xs">
+          {notice ? (
+            <UsageRow
+              label="Limits"
+              fill={null}
+              tone={null}
+              value="Unavailable"
+              tooltip={<span className="text-foreground">{notice}</span>}
+            />
+          ) : (
+            limits.windows.map((window) => <LimitRow key={window.id} window={window} now={now} />)
+          )}
+        </div>
+      </ThreadDetailsSection>
+    </div>
   );
 }
 

@@ -132,6 +132,11 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
       contentKey={THREAD_DETAILS_ITEMS.filter((item) => visible[item.id])
         .map((item) => item.id)
         .join(",")}
+      renderSecondary={(density) =>
+        visible.usage ? (
+          <ThreadDetailsUsage {...props.usage} showHeading={density === "full"} />
+        ) : null
+      }
       onContextMenu={(event) => {
         // Popups the card opens bubble here through React; they, fields, links, and selected text
         // keep their own menus.
@@ -309,10 +314,6 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
                   showLineage={visible.lineage}
                   showSideChats={visible.sideChats}
                 />
-              ) : null}
-
-              {visible.usage ? (
-                <ThreadDetailsUsage {...props.usage} showHeading={density === "full"} />
               ) : null}
 
               {/* Shown only when no section above has content, so an emptied card can be refilled. */}
