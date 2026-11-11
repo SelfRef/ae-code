@@ -448,6 +448,8 @@ export function resolveDefaultBranchActions(
   const hasChanges = gitStatus.hasWorkingTreeChanges;
   const files = gitStatus.workingTree.files.length;
   const mergeCommits = gitStatus.aheadOfDefaultCount ?? gitStatus.aheadCount;
+  // Older servers neither count these commits nor know the push action.
+  const canPushDefault = hasOriginRemote && gitStatus.defaultAheadCount !== undefined;
   const pushCommits = gitStatus.defaultAheadCount ?? 0;
   const mergeDisabled = isBusy || (!hasChanges && mergeCommits <= 0);
   const pushDisabled = isBusy || pushCommits <= 0;
@@ -482,6 +484,10 @@ export function resolveDefaultBranchActions(
         : quickMergeAction === "merge_push" && hasOriginRemote
           ? mergePush
           : merge,
-    items: hasOriginRemote ? [merge, mergePush, push] : [merge],
+    items: hasOriginRemote
+      ? canPushDefault
+        ? [merge, mergePush, push]
+        : [merge, mergePush]
+      : [merge],
   };
 }

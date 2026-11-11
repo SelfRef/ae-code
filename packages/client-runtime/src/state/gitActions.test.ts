@@ -88,10 +88,12 @@ describe("default branch actions", () => {
   });
 
   it("locks everything when there is nothing to merge or push, and offers only a merge without a remote", () => {
-    const idle = resolve(status());
+    const idle = resolve(status({ defaultAheadCount: 0 }));
     expect(idle.primary).toMatchObject({ id: "merge", disabled: true });
     expect(idle.items.find((item) => item.id === "push_default")?.disabled).toBe(true);
     expect(resolve(ahead, false).items.map((item) => item.id)).toEqual(["merge"]);
+    // An older server does not count the default branch's commits, so there is no push to offer.
+    expect(resolve(status()).items.map((item) => item.id)).toEqual(["merge", "merge_push"]);
     expect(resolveDefaultBranchActions(ahead, true, true, "merge")!.primary.disabled).toBe(true);
   });
 });
