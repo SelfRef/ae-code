@@ -24,7 +24,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 | [33] | Saved environments follow you: a browser signed in to a server shows the environments saved on any other browser signed in to it (kept on that server)                 | done    |
 | [32] | Merge a thread's branch into the default branch (with or without pushing) and push the default branch, from a "Default branch" section of the thread details card      | done    |
 | [31] | Move a started thread into a new worktree from the workspace control or the thread menu (the control used to lock after the first message)                             | done    |
-| [30] | Synced drafts: unsent text, attachments, contexts and new-thread settings follow you across web, desktop and Android (on the server)                                   | planned |
+| [30] | Synced drafts: unsent text, model, modes and new-thread settings follow you across web, desktop and Android (on the server); attachments and contexts stay put         | done    |
 | [29] | Appearance defaults: Dev artwork, 100 ms panel animations, composer context on, a version in the sidebar header; Nightly artwork removed                               | done    |
 | [28] | Worktree defaults for parallel feature work: semantic branch names, no start from the remote, cleanup of merged, deleted, unchanged and settled (3 days) worktrees     | done    |
 | [27] | Skills manager: every provider's skills in one list, then a shared library with per-provider switches                                                                  | done    |
@@ -1036,125 +1036,61 @@ Decoding defaults in `packages/contracts/src/settings.ts`; a saved value wins.
 
 ## Synced drafts (change 30)
 
-Goal: a draft written on one client shows on every other client of the same environment: unsent text in an existing thread
-and whole new-thread drafts (project, branch, worktree mode, model, attachments, contexts). Web, desktop and Android.
-Status: planned, not started. Decisions taken with the owner: Android is in this change, and when two devices edit the
-same draft **the device you are typing on wins**.
+A draft written on one client shows on every other client of the same environment: the unsent text of an existing thread
+and whole new-thread drafts (project, branch, worktree mode, model, modes). Web, desktop and Android. When two devices edit
+the same draft **the device you are typing on wins**. User guide: `docs/user/composer.md`.
 
-### Findings in the source
-
-- **Drafts never leave the client.** Web and desktop keep them in `localStorage` (`t3code:composer-drafts:v1`, store
-  version 9, `apps/web/src/composerDraftStore.ts`); Android keeps its own file with its own shape
-  (`apps/mobile/src/state/use-composer-drafts.ts`). The server has no draft concept.
-- **Web store:** `draftsByThreadKey` (composer content, keyed by scoped thread key for an existing thread or by `DraftId`
-  for a new one), `draftThreadsByThreadKey` (the new-thread session: project, environment, branch, worktree path, env mode,
-  `startFromOrigin`, runtime and interaction mode, `promotedTo`) and `logicalProjectDraftThreadKeyByLogicalProjectKey` (the
-  one draft a project's "new thread" reopens). **Android:** a flat map keyed by scoped thread key or `new-task:<id>`, with
-  `project` and `workspaceSelection`.
-- **Attachments are the hard part.** Web images persist as base64 data URLs; files persist as markers because a `File`
-  cannot serialize. Both already upload to the server as _pending_ attachments when attached (`attachmentUploadQueue.ts`),
-  but the server deletes a pending attachment after 24 h (`PENDING_ATTACHMENT_MAX_AGE_MS`), which is why an old draft shows
-  "Uploaded file expired" today. Android keeps files in its document directory.
-- **A cross-client context model already exists.** `ComposerContextRecord` in `packages/contracts/src/composerContext.ts`:
-  image and file records reference attachment ids (never bytes), plus terminal, element, preview-annotation,
-  review-comment, mention, skill, thread and environment records, all in a `ForwardCompatibleArray` (an unknown kind stays
-  an opaque record). Web's prompt stash and Android's drafts already store it, and the stash has the draft-to-records and
-  records-to-draft conversion to reuse.
-- **Prior art, upstream PR #26273 (closed 2026-10-30, only for missing test evidence, not for the design):** a
-  `composer_drafts` table, a `composerDrafts` subscribe stream (`snapshot` then `upsert`), a batched `put`, a pure
-  `decideComposerDraftSync` (last write wins, a never-stamped local draft keeps its text, a tombstone beats older text),
-  keys `thread:<id>` and `new-task:<id>`. It synced text, model, runtime and interaction mode only; attachments stayed on
-  the device. Its author asked whether it should be on by default; this change says yes (below). No fork has it (searched
-  2026-11-10: the feature index, upstream issues and PRs). The shape is ported, the attachments, contexts and web
-  new-thread sessions are new.
-
-### Design
-
-- **Where drafts live: on the server of the draft's environment.** An existing-thread draft goes to the thread's
-  environment, a new-thread draft to its session's `environmentId` (changing a draft's environment deletes it on the old
-  server and puts it on the new one). A client connected to several environments syncs each separately; nothing is
-  copied between servers. Desktop and web need to reach the same server to share a draft, which is the case for this
-  deployment; a desktop that hosts its own local server shares with nobody else.
-- **Storage:** a `composer_drafts` table created with `CREATE TABLE IF NOT EXISTS` by a new service at start, not a numbered
-  migration (as change 13: upstream's PR took migration 073, which would collide with the next one it adds). Columns:
-  `draft_key` (primary key), `revision` (integer from a per-environment counter), `updated_at`, `deleted`, `payload_json`.
-  A tombstone is kept 30 days so a device that was offline cannot bring a deleted draft back, then purged. Caps: 500 live
-  drafts, payload 256 KiB (attachments are references).
-- **Contract** (`packages/contracts/src/composerDraftSync.ts`): `SyncedComposerDraft` = `key`, `prompt`, `records`
-  (`ForwardCompatibleArray(ComposerContextRecord)`, images and files by attachment id), `modelSelection`, `runtimeMode`,
-  `interactionMode`, `session` (new-thread drafts only: `projectId`, `threadId`, `branch`, `worktreePath`, `envMode`,
-  `startFromOrigin`, `createdAt`, plus Android's `pullRequestReference` and `followsCurrentCheckout`), `revision`,
-  `updatedAt`, `deleted`, `promotedTo`. Keys are `thread:<threadId>` and `draft:<draftId>`; web's `DraftId` and Android's
-  `new-task:<id>` both map to the second, so a new-thread draft written on one client opens on the other. The pure
-  `decideComposerDraftSync` lives next to it, so web and Android share one rule and one test table.
-- **RPCs:** `composerDrafts.subscribe` (stream: `snapshot`, then `upsert` per change, a fresh snapshot after every
-  reconnect) and `composerDrafts.put` (at most 32 drafts per call, each with the `baseRevision` the client last saw; the
-  reply says `accepted` with the new revision or `conflict` with the current draft). Both need the operate scope (a guest
-  or read-only client must not read someone's unsent text); listed in `CLIENT_GUARDED_RPC_SCOPES`.
-- **Conflicts: the typing device wins.** A put with a stale `baseRevision` gets `conflict`. A client applies a remote
-  change to any draft it has no unsent edit of and whose composer is not focused. For a draft being edited it keeps its
-  text, adopts the remote revision as its base, and its next save overwrites (last write wins per draft, no text
-  merge). When the composer blurs, a draft that still equals its last saved version takes the held remote one.
-- **Sending and discarding:** sending an existing-thread message, discarding, or promoting a new-thread draft writes a
-  tombstone (promotion sets `promotedTo`). Another client showing `/draft/<id>` follows `promotedTo` to the thread through
-  the store's existing `promotedDraftRedirects`, and drops the draft otherwise. A discard's Undo puts again against the
-  tombstone's revision. Clearing never resurrects older text because a tombstone outranks it by revision.
-- **Attachments:** bytes stay on the server, drafts carry ids. The server's pending-attachment sweep gets a keep set:
-  every attachment id a live draft references is skipped, so a draft's attachments outlive 24 h and go when the draft is
-  sent (the existing claim moves them to the thread), discarded or purged. Web stamps an image's attachment id on the draft
-  once its upload finishes (files already do, `setFileUpload`) and keeps its data URL locally for offline use; a device
-  that receives a record it has no bytes for downloads it once into a `File` and marks the upload `ready`, so sending does
-  not upload it again. Android does the same through its upload queue and `attachmentDownload.ts`. A missing attachment
-  goes through the existing "expired" path. A draft's attachments count against server disk until the draft is sent or
-  discarded.
-- **Client sync layer, web:** one new file (`apps/web/src/composerDraftSync.ts`, installed from `appInit.tsx`) watches the
-  store by reference, pushes changes debounced at 600 ms per environment, and applies remote drafts through two new store
-  actions (`applySyncedDraft`, `applySyncedTombstone`). None of the store's ~60 mutations change, and the store version
-  stays 9. Per-draft sync state (`revision`, last saved signature) lives under its own key
-  (`t3code:composer-draft-sync:v1`). The project's "new thread" pointer is not synced; a received new-thread draft sets it
-  only when the project has none, or when the received draft is newer. **Android:** the same layer in
-  `apps/mobile/src/state/composer-draft-sync.ts` over its atoms.
-- **First run after the update:** each environment's local drafts that have no sync state are put (a union; ids are unique,
-  so two devices' separate drafts both show). A draft nobody changed since is not re-put. No data is renamed or moved, so
-  the "Data migration" table needs no row.
-- **Surfaces.** Web and desktop: sidebar drafts, the "unsent draft" marker, side chats (they are real threads, so they
-  take the thread path). Android: the new-task draft screen and thread composers. Providers: not involved. Agents: no
-  tool (a draft is the owner's text, not an action). Connection modes: one websocket stream per environment, so local,
-  relay and tunnel are the same path. Reverse state: discard and Undo above.
-
-### Phases
-
-- **A. Server and contract.** Contract and `decideComposerDraftSync` with its table test; `ComposerDraftSyncService`
-  (table, revisions, tombstones, purge, snapshot and upsert stream) with service tests; RPC wiring and scopes; the
-  sweep keep set. One commit per concern.
-- **B. Web and desktop, text and sessions.** Sync layer, the two store actions, promotion redirect, the editing hold. Tests:
-  the decision table, the sync layer against a fake stream (conflict, hold and release, tombstone, first-run union), and
-  one browser test for the redirect.
-- **C. Web attachments and contexts.** Image stamping, receive and download, records both ways through the stash's
-  conversion. Check the size of preview-annotation and terminal records in a draft against the 256 KiB cap.
-- **D. Android.** The sync layer, `ComposerDraft` to and from the document, uploads and downloads.
-- **E. Docs.** A short section in `docs/user/composer.md`, this section turned from plan to "Built", an index row in
-  `FORK_REFERENCES.md`.
-- **Checks.** One pass in a real client per `AGENTS.md`: two browser tabs against a dev server with the Replay provider
-  (type in one, see it in the other; promote; discard; attach an image), then `test-t3-mobile` for Android.
-
-### Not built
-
-- Merging concurrent text edits; draft history; replicating a draft to another environment's server.
-- A switch to turn sync off. Drafts are stored in the server's database next to thread history; add a per-client setting
-  if terminal context in a draft ever needs to stay on the device.
-- The prompt stash (a separate list of saved prompts), sticky model picks and other per-client preferences.
-- Per-user drafts: every session with the operate scope of an environment shares its drafts, which is right for one
-  owner and wrong for a team server.
+- **Storage: on the server of the draft's environment.** `ComposerDraftService` keeps a `composer_drafts` table (created
+  with `CREATE TABLE IF NOT EXISTS` at start, like change 13's, not through a numbered migration) and a one-row revision
+  counter. A draft is a key (`thread:<threadId>` or `draft:<draftId>`; web's `DraftId` and Android's `new-task:<id>` are the
+  same key, so a new-thread draft opens on the other client), a revision, who wrote it and a JSON payload (256 KiB at
+  most, 500 live drafts). A deleted draft stays as a tombstone for 30 days so a device that was offline cannot bring it
+  back, then is purged. No data is renamed or moved, so the "Data migration" table needs no row.
+- **Contract** (`packages/contracts/src/composerDraftSync.ts`): `composerDrafts.subscribe` (a snapshot, then an upsert per
+  change; a reconnect starts over) and `composerDrafts.put` (at most 32 writes). Both need the operate scope, so a read-only
+  or guest client never sees someone's unsent text. A server advertises `composerDraftSync` in its environment
+  capabilities and clients only sync with one that does.
+- **No revision conflicts.** The server accepts every write (last write wins). Instead of the planned `baseRevision` and
+  `conflict` reply, a client skips the echo of its own writes (`clientId`) and holds a received draft while its own copy
+  differs from what it last synced or was edited in the last 5 s; a held draft is dropped once the client's own write
+  has a newer revision, else applied when the typing stops.
+- **One engine, two adapters.** `packages/client-runtime/src/composerDraftSync.ts` does the pushing (600 ms debounce, batches,
+  retry), the holding and the per-draft sync state (revision and a hash of the content last synced, kept in
+  `t3code:composer-draft-sync:v1` on web and `composer-drafts/sync-state.json` on Android) against an adapter. The web
+  adapter (`apps/web/src/composerDraftSync.ts`, a store action `applySyncedDraft`) and the Android one
+  (`apps/mobile/src/state/composer-draft-sync.ts`, with the conversions in `composer-draft-sync-content.ts`) say what a
+  local draft looks like and how a received one is written into the store. None of the stores' mutations change, and web's
+  store version stays 9.
+- **What syncs.** Text, the explicit model pick, runtime and interaction mode, and a new-thread draft's project, branch,
+  worktree and start-from-origin. A draft with no text is not a draft: it syncs nothing, and clearing the text or sending
+  writes a tombstone (a sent new-thread draft names the thread it became so another client on `/draft/<id>` follows it).
+  A received tombstone clears only the text, so a draft that still holds attachments stays. A new-thread draft received
+  from another client sets the project's "new thread" pointer only when it pointed nowhere.
+- **Surfaces.** Web and desktop: sidebar drafts, the "unsent draft" marker, side chats (real threads). Android: the thread
+  composers and the new-task draft. Providers: not involved. Agents: no tool (a draft is the owner's text, not an action).
+  Connection modes: one websocket stream per environment, so local, relay and tunnel are the same path. Reverse state: a
+  cleared draft clears elsewhere.
+- **Not built.** Attachments and context chips (images, files, terminal, annotations, review comments) stay on the device
+  that added them; the draft's text, with its inline references, still syncs. The plan was to carry them as
+  `ComposerContextRecord`s (`records` is in the contract and empty) with the server keeping a draft's pending attachments
+  past the 24 h sweep and a receiving client downloading them once. Also not built: merging concurrent text edits, draft
+  history, replicating a draft to another environment's server, a switch to turn sync off, and per-user drafts (every
+  session with the operate scope of an environment shares its drafts, which is right for one owner and wrong for a team
+  server).
+- **Tests.** The service (stream, caps, tombstone purge), the engine against a fake adapter (push, hold, tombstone, retry),
+  the web store action and the Android conversions. Checked in a real client: two browser profiles against a dev server
+  (typing, editing and clearing in both directions) and the Android emulator paired to the same server (text both ways,
+  clear). A new-thread draft was checked in unit tests only.
 
 ### Rebase cost
 
 New files: `packages/contracts/src/composerDraftSync.ts`, `apps/server/src/composerDrafts/*`,
-`apps/web/src/composerDraftSync.ts`, `apps/mobile/src/state/composer-draft-sync.ts`. Touch points of a few lines:
-`rpc.ts`, `clientRpcPermissions.ts`, `RpcAuthorization.ts`, `RpcInstrumentation.ts`, `ws.ts`, `server.ts`, the contracts
-index, client-runtime `rpc/client.ts` and `state/server.ts`, `appInit.tsx`, the mobile `App.tsx`, `composerDraftStore.ts`
-(two actions), `attachmentStore.ts` (the keep set) and `attachmentUploadQueue.ts` (stamp images). Upstream may land its own
-version: its PR #26273 was closed for evidence, not rejected.
+`packages/client-runtime/src/composerDraftSync.ts` and `state/composerDrafts.ts`, `apps/web/src/composerDraftSync.ts` and
+`state/composerDrafts.ts`, `apps/mobile/src/state/composer-draft-sync*.ts`. Touch points of a few lines: `rpc.ts`,
+`clientRpcPermissions.ts`, `RpcAuthorization.ts`, `RpcInstrumentation.ts`, `ws.ts`, `server.ts`, `ServerEnvironment.ts`,
+`environment.ts`, the contracts index, client-runtime `rpc/client.ts` and `package.json`, `appInit.tsx`, the mobile
+`App.tsx`, and one action in `composerDraftStore.ts`. Upstream may land its own version: its PR #26273 was closed for
+evidence, not rejected.
 
 ## Move a thread into a worktree (change 31)
 

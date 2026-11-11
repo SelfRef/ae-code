@@ -125,6 +125,7 @@ import * as ThreadMessageIntake from "./orchestration-v2/ThreadMessageIntake.ts"
 import * as DocumentText from "./provider/DocumentText.ts";
 import { scanClaudeMemories } from "./memory/ClaudeMemoryScan.ts";
 import * as MemoryService from "./memory/MemoryService.ts";
+import * as ComposerDraftService from "./composerDrafts/ComposerDraftService.ts";
 import * as SkillLibraryService from "./skills/SkillLibraryService.ts";
 import * as ScheduledTasks from "./scheduledTasks/ScheduledTaskService.ts";
 import * as SecretRequests from "./secrets/SecretRequests.ts";
@@ -1471,6 +1472,7 @@ export const layerWsRpc = (
       const commandOutputHub = yield* CommandOutputHub.CommandOutputHub;
       const providerSessionManager = yield* ProviderSessionManager.ProviderSessionManagerV2;
       const memory = yield* MemoryService.MemoryService;
+      const composerDrafts = yield* ComposerDraftService.ComposerDraftService;
       const skillLibrary = yield* SkillLibraryService.SkillLibraryService;
       const scheduledTasks = yield* ScheduledTasks.ScheduledTaskService;
       const secretRequests = yield* SecretRequests.SecretRequests;
@@ -2269,6 +2271,8 @@ export const layerWsRpc = (
           ),
         [ORCHESTRATION_V2_WS_METHODS.subscribePromptSuggestion]: (input) =>
           providerSessionManager.subscribePromptSuggestion(input.threadId),
+        [WS_METHODS.composerDraftsSubscribe]: () => composerDrafts.subscribe(),
+        [WS_METHODS.composerDraftsPut]: (input) => composerDrafts.put(input),
         [WS_METHODS.memoryList]: (input) => memory.list(input),
         [WS_METHODS.memorySave]: (input) =>
           memory

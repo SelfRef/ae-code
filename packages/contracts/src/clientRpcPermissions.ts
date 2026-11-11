@@ -73,6 +73,8 @@ export const CLIENT_GUARDED_RPC_SCOPES = {
   [WS_METHODS.memorySave]: AuthSettingsWriteScope,
   [WS_METHODS.memoryDelete]: AuthSettingsWriteScope,
   [WS_METHODS.memorySetSettings]: AuthSettingsWriteScope,
+  // A draft is its owner's unsent text, so writing one needs the grant that sends it.
+  [WS_METHODS.composerDraftsPut]: AuthOrchestrationOperateScope,
   // Reads files from the server's disk, so it needs the same grant as browsing it.
   [WS_METHODS.memoryImportScan]: AuthFilesystemReadScope,
   // The library holds instructions that agents run, and links reach into other providers' folders.
