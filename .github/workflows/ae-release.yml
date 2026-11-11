@@ -235,6 +235,119 @@ jobs:
           compression-level: 0
           retention-days: 1
 
+  # The Windows x64 server (a zip) and desktop installer (NSIS), cross-built on Linux
+  # as upstream's release-desktop.yml does: the resource monitor through cargo-xwin,
+  # the installer without wine (patches/app-builder-lib). Unsigned, and the desktop has no
+  # WSL runtime. The binaries cannot run here, so `windows-check` runs the server on Windows.
+  windows:
+    name: Windows x64 server and desktop
+    needs: [prepare]
+    if: needs.prepare.outputs.release == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      T3CODE_TELEMETRY_CHANNEL: dev
+      RUST_TARGET: x86_64-pc-windows-msvc
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.ref }}
+
+      - name: Setup dependencies
+        uses: ./.github/actions/setup-ci-deps
+        with:
+          install-args: --filter=@t3tools/desktop... --filter=t3... --filter=@t3tools/scripts...
+
+      - name: Cache resource monitor
+        id: resource_monitor_cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: native/resource-monitor/target/${{ env.RUST_TARGET }}/release/t3-resource-monitor.exe
+          key: resource-monitor-${{ env.RUST_TARGET }}-${{ hashFiles('native/resource-monitor/Cargo.lock', 'native/resource-monitor/Cargo.toml', 'native/resource-monitor/src/**') }}
+
+      - name: Setup Rust
+        if: steps.resource_monitor_cache.outputs.cache-hit != 'true'
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: stable
+          targets: ${{ env.RUST_TARGET }}
+
+      - name: Install cargo-xwin
+        if: steps.resource_monitor_cache.outputs.cache-hit != 'true'
+        uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2
+        with:
+          tool: cargo-xwin@0.23.1
+
+      - name: Build resource monitor
+        if: steps.resource_monitor_cache.outputs.cache-hit != 'true'
+        run: cargo xwin build --locked --release --manifest-path native/resource-monitor/Cargo.toml --target "$RUST_TARGET"
+
+      - name: Align package versions to the release version
+        run: node scripts/update-release-package-versions.ts "$VERSION"
+
+      # The server bundle and web client (apps/server/dist) and the Electron main.
+      - name: Build the bundles
+        run: vp run build:desktop
+
+      - name: Apply web client branding
+        run: node scripts/apply-web-brand-assets.ts apps/server/dist/client
+
+      - name: Build the single executable
+        run: node apps/server/scripts/cli.ts build-exe --verbose --target win-x64
+
+      # As on Linux, ae-code-windows-x64.zip holds an `ae-code.exe`, not upstream's `t3.exe`.
+      - name: Build the server archive
+        run: |
+          set -euo pipefail
+          monitor="$RUNNER_TEMP/resource-monitor/win32-x64"
+          mkdir -p "$monitor" stage release-assets
+          cp "native/resource-monitor/target/$RUST_TARGET/release/t3-resource-monitor.exe" "$monitor/"
+          node scripts/build-cli-archive.ts --platform win --arch x64 --version "$VERSION" \
+            --resource-monitor-dir "$RUNNER_TEMP/resource-monitor" --output-dir release-cli
+          unzip -q release-cli/t3-*.zip -d stage
+          mv stage/t3-* stage/ae-code-windows-x64
+          mv stage/ae-code-windows-x64/t3.exe stage/ae-code-windows-x64/ae-code.exe
+          (cd stage && zip -q -r -X "$GITHUB_WORKSPACE/release-assets/ae-code-windows-x64.zip" ae-code-windows-x64)
+
+      - name: Build the desktop installer
+        env:
+          T3CODE_DESKTOP_REUSE_RESOURCE_MONITOR: true
+        run: |
+          set -euo pipefail
+          vp run dist:desktop:artifact --platform win --target nsis --arch x64 \
+            --build-version "$VERSION" --skip-build --verbose
+          mv release/*.exe release-assets/ae-code-desktop-windows-x64.exe
+
+      - name: Upload the assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-x64
+          path: release-assets/*
+          if-no-files-found: error
+          # Already compressed.
+          compression-level: 0
+          retention-days: 1
+
+  windows-check:
+    name: Windows x64 server check
+    needs: [windows]
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - name: Download the assets
+        uses: actions/download-artifact@v8
+        with:
+          name: windows-x64
+          path: release-assets
+
+      - name: Run the server
+        shell: pwsh
+        run: |
+          Expand-Archive release-assets/ae-code-windows-x64.zip -DestinationPath .
+          ./ae-code-windows-x64/ae-code.exe --version
+
   # The Linux x64 server archive in a lean image on GHCR. A new package starts
   # private: make it public once in the package settings.
   image:
@@ -276,7 +389,7 @@ jobs:
 
   release:
     name: Publish GitHub Release
-    needs: [prepare, cli, desktop]
+    needs: [prepare, cli, desktop, windows, windows-check]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -292,7 +405,7 @@ jobs:
       - name: Download the archives
         uses: actions/download-artifact@v8
         with:
-          pattern: "{cli,desktop}-linux-x64"
+          pattern: "{cli-linux-x64,desktop-linux-x64,windows-x64}"
           path: release-assets
           merge-multiple: true
 
@@ -373,7 +486,9 @@ jobs:
             --notes-file release-notes.md \
             --latest \
             release-assets/ae-code-linux-x64.tar.gz \
-            release-assets/ae-code-desktop-linux-x64.tar.gz
+            release-assets/ae-code-desktop-linux-x64.tar.gz \
+            release-assets/ae-code-windows-x64.zip \
+            release-assets/ae-code-desktop-windows-x64.exe
 
   # Built after the release exists and attached to it, so an Android failure
   # never withholds the server archive. Signed with the fork's own key

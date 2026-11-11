@@ -10,6 +10,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Added
 
+- Releases now include a Windows x64 server (`ae-code-windows-x64.zip`) and desktop installer (`ae-code-desktop-windows-x64.exe`). Both are unsigned and not yet tested on a real Windows machine.
 - Android: on a phone-sized screen, swipe right anywhere in a chat to return to the list, and right anywhere in the list to reopen the last chat (no longer only from the screen edge).
 - Android: long-press the New thread button for a menu of your most recent projects (with icons) to start a thread in one, or to choose another project.
 - Android: on a wide screen (tablet, unfolded), a device or browser button in the thread's top bar, beside Files and Git, opens the preview next to the chat instead of over the whole screen. Its Maximize button takes it full screen, and the sidebar's expand button gives the chat the room instead.
