@@ -22,6 +22,7 @@ import {
   type ReactNode,
 } from "react";
 import * as Option from "effect/Option";
+import { Platform } from "react-native";
 import {
   AuthOrchestrationOperateScope,
   AuthTerminalOperateScope,
@@ -110,6 +111,7 @@ import {
   threadRouteOpensDraft,
 } from "./thread-route-hydration";
 import { ThreadHeader } from "./ThreadHeader";
+import { useThreadPreviewAction } from "./useThreadPreviewAction";
 import { resumeThread } from "./resume-thread";
 import {
   useAndroidWorkspaceBack,
@@ -573,6 +575,24 @@ function ThreadRouteContent(
     setChosenInspectorMode("git");
     showInspector();
   };
+  const { fileInspector, panes } = useWorkspacePaneState();
+  const previewAction = useThreadPreviewAction({
+    // Only Android's widescreen bar has them; iOS reaches the same inspector from the thread's floating control.
+    environmentId: fileInspector.supported && Platform.OS === "android" ? environmentId : null,
+    threadId: threadId === null ? null : ThreadId.make(threadId),
+    browserSupported:
+      routeEnvironmentRuntime?.serverConfig?.environment.capabilities.serverBrowser === true,
+    shown:
+      panes.auxiliaryPaneVisible &&
+      (previewTarget?.type === "device" || previewTarget?.type === "browser")
+        ? previewTarget.type
+        : null,
+    onOpen: (inspector) => {
+      navigation.setParams({ inspector });
+      showInspector();
+    },
+    onClose: toggleAuxiliaryPane,
+  });
   const handleOpenFilesInspector = () => {
     if (selectedThread === null || selectedThreadCwd === null) {
       return;
@@ -982,6 +1002,7 @@ function ThreadRouteContent(
                 hasThreadCwd={selectedThreadCwd !== null}
                 inspectorMode={inspectorMode}
                 onOpenFilesInspector={handleOpenFilesInspector}
+                previewAction={previewAction}
                 onReturnToThread={props.onReturnToThread}
               />
             )

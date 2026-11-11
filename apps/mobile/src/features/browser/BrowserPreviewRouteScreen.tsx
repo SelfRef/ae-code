@@ -1,4 +1,5 @@
 import { SheetHeader } from "../../components/ui/SheetHeader";
+import { AppBar } from "../../components/ui/AppBar";
 import { AppActivityIndicator } from "../../components/ui/AppActivityIndicator";
 import * as Dialog from "../../components/ui/Dialog";
 import { useIsFocused, useNavigation, type StaticScreenProps } from "@react-navigation/native";
@@ -62,16 +63,19 @@ function BrowserUnavailableScreen({ onClose }: { readonly onClose: () => void })
   );
 }
 
-function BrowserPreviewScreen({
+/** `onMaximize` makes it the inspector pane's browser: an app bar with Maximize instead of a sheet's. */
+export function BrowserPreviewScreen({
   environmentId,
   threadId,
   initialTabId,
   onClose,
+  onMaximize,
 }: {
   readonly environmentId: EnvironmentId;
   readonly threadId: ThreadId;
   readonly initialTabId: string | null;
   readonly onClose: () => void;
+  readonly onMaximize?: (tabId: string | null) => void;
 }) {
   const insets = useSafeAreaInsets();
   const contentTopInset = useContentTopInset();
@@ -107,54 +111,68 @@ function BrowserPreviewScreen({
     setSelectedTabId(next);
   };
   const live = (focused && foreground) || pictureInPicture.active;
+  const tabMenus =
+    tabs.length > 1
+      ? [
+          {
+            title: "Tabs",
+            icon: "square.on.square" as const,
+            items: tabs.map((entry) => ({
+              id: entry.tabId,
+              title: browserTabTitle(entry),
+              subtitle: browserTabUrl(entry),
+              selected: entry.tabId === tabId,
+              onPress: () => selectTab(entry.tabId),
+            })),
+          },
+        ]
+      : [];
 
   return (
     <View
       className="flex-1 bg-sheet"
       style={{ paddingTop: contentTopInset, paddingBottom: insets.bottom }}
     >
-      <SheetHeader
-        title={tab ? browserTabTitle(tab) : "Browser"}
-        onClose={onClose}
-        accessibilityLabel="Close browser"
-        actions={
-          // Android WebView cannot play video in picture in picture.
-          Platform.OS === "ios" &&
-          pictureInPicture.supported &&
-          (pictureInPicture.active || pdfUri === null)
-            ? [
-                {
-                  accessibilityLabel: pictureInPicture.active
-                    ? "Exit picture in picture"
-                    : "Picture in picture",
-                  icon: {
-                    ios: pictureInPicture.active ? "pip.exit" : "pip.enter",
-                    android: "visibility",
+      {onMaximize ? (
+        <AppBar
+          title={tab ? browserTabTitle(tab) : "Browser"}
+          actions={[
+            {
+              accessibilityLabel: "Maximize browser",
+              icon: "arrow.up.left.and.arrow.down.right",
+              onPress: () => onMaximize(tabId),
+            },
+          ]}
+          menus={tabMenus}
+        />
+      ) : (
+        <SheetHeader
+          title={tab ? browserTabTitle(tab) : "Browser"}
+          onClose={onClose}
+          accessibilityLabel="Close browser"
+          actions={
+            // Android WebView cannot play video in picture in picture.
+            Platform.OS === "ios" &&
+            pictureInPicture.supported &&
+            (pictureInPicture.active || pdfUri === null)
+              ? [
+                  {
+                    accessibilityLabel: pictureInPicture.active
+                      ? "Exit picture in picture"
+                      : "Picture in picture",
+                    icon: {
+                      ios: pictureInPicture.active ? "pip.exit" : "pip.enter",
+                      android: "visibility",
+                    },
+                    selected: pictureInPicture.active,
+                    onPress: () => streamRef.current?.togglePictureInPicture(),
                   },
-                  selected: pictureInPicture.active,
-                  onPress: () => streamRef.current?.togglePictureInPicture(),
-                },
-              ]
-            : []
-        }
-        menus={
-          tabs.length > 1
-            ? [
-                {
-                  title: "Tabs",
-                  icon: "square.on.square",
-                  items: tabs.map((entry) => ({
-                    id: entry.tabId,
-                    title: browserTabTitle(entry),
-                    subtitle: browserTabUrl(entry),
-                    selected: entry.tabId === tabId,
-                    onPress: () => selectTab(entry.tabId),
-                  })),
-                },
-              ]
-            : []
-        }
-      />
+                ]
+              : []
+          }
+          menus={tabMenus}
+        />
+      )}
       {tab ? (
         <>
           <BrowserAddressBar

@@ -146,6 +146,16 @@ it("switches between subagents and devices in the same parent route", () => {
   });
 });
 
+it("opens a browser tab in the parent inspector", () => {
+  using screen = setup(false);
+  const inspector = { type: "browser", ...screen.source, tabId: "tab" } as const;
+  expect(screen.open(inspector)).toBe(true);
+  expect(screen.state.routes.at(-1)).toMatchObject({
+    key: screen.parentKey,
+    params: { ...screen.source, inspector },
+  });
+});
+
 it.each(["thread", "device"] as const)(
   "keeps the parent when a maximized child opens a %s preview",
   (type) => {

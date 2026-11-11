@@ -451,6 +451,18 @@ function ThreadDetailBody(
   });
   const openBrowserPreview = (tabId?: string) => {
     Keyboard.dismiss();
+    if (
+      openInspector(
+        { environmentId: props.environmentId, threadId: props.selectedThread.id },
+        {
+          type: "browser",
+          environmentId: props.environmentId,
+          threadId: props.selectedThread.id,
+          ...(tabId === undefined ? {} : { tabId }),
+        },
+      )
+    )
+      return;
     navigation.navigate("ThreadBrowserPreview", {
       environmentId: props.environmentId,
       threadId: props.selectedThread.id,

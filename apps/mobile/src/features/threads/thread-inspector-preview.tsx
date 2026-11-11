@@ -5,6 +5,7 @@ import { View } from "react-native";
 
 import { AppBar } from "../../components/ui/AppBar";
 import { SheetHeader } from "../../components/ui/SheetHeader";
+import { BrowserPreviewScreen } from "../browser/BrowserPreviewRouteScreen";
 import { DevicePreviewScreen } from "../devices/DevicePreviewRouteScreen";
 import {
   WorkspaceContentWidthContext,
@@ -75,6 +76,14 @@ export function ThreadInspectorPreview(props: {
       deviceKey: deviceKey ?? undefined,
     });
   };
+  const maximizeBrowser = (tabId: string | null) => {
+    props.onOpen({ ...target, tabId: tabId ?? undefined });
+    navigation.navigate("ThreadBrowserPreview", {
+      environmentId: target.environmentId,
+      threadId: target.threadId,
+      tabId: tabId ?? undefined,
+    });
+  };
   if (!focused) return null;
   return (
     <ThreadInspectorNavigationContext value={props.onOpen}>
@@ -87,6 +96,15 @@ export function ThreadInspectorPreview(props: {
             initialDeviceKey={target.deviceKey}
             onClose={props.onClose}
             onMaximize={maximizeDevice}
+          />
+        ) : target.type === "browser" ? (
+          <BrowserPreviewScreen
+            key={`${target.environmentId}:${target.threadId}`}
+            environmentId={EnvironmentId.make(target.environmentId)}
+            threadId={ThreadId.make(target.threadId)}
+            initialTabId={target.tabId ?? null}
+            onClose={props.onClose}
+            onMaximize={maximizeBrowser}
           />
         ) : (
           <View className="flex-1 bg-screen">
