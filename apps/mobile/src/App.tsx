@@ -48,6 +48,7 @@ import {
 } from "./features/settings/appearance/AppearancePreferencesProvider";
 import { RootStack, rootPathnameFromState, workspaceLocationFromState } from "./Stack";
 import { appAtomRegistry } from "./state/atom-registry";
+import { installComposerDraftSync } from "./state/composer-draft-sync";
 import { subscribeComposerDraftModelReconciliation } from "./state/use-composer-drafts";
 import { environmentThreadShells, threadEnvironment } from "./state/threads";
 import { environmentShell, shellCachesReadAtom } from "./state/shell";
@@ -208,6 +209,7 @@ const appServiceDisposers = [
   installPermissionUpdateNotice(),
   installThreadOutboxDelivery(),
   installComposerAttachmentUploads(),
+  installComposerDraftSync(),
   startIncomingShareInbox(),
   installAgentNotificationNavigation(linkToAppPath),
   installAppShortcuts(linkToAppPath),
