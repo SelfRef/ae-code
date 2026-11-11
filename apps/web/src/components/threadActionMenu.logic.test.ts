@@ -74,4 +74,16 @@ describe("buildThreadActionMenuItems", () => {
     expect(items.find((item) => item.id === "archive")?.disabled).toBe(true);
     expect(items.find((item) => item.id === "turn-into-project")?.disabled).toBe(true);
   });
+
+  it.each([
+    ["default", ["find", "pin", "settle"]],
+    ["first", ["settle", "find", "pin"]],
+    ["hidden", ["find", "pin"]],
+  ] as const)("places Settle %s", (settlePlacement, expected) => {
+    const items = buildThreadActionMenuItems({ ...baseState, canFind: true, settlePlacement });
+    expect(items.map((item) => item.id).slice(0, expected.length)).toEqual(expected);
+    expect(items.filter((item) => item.id === "settle")).toHaveLength(
+      settlePlacement === "hidden" ? 0 : 1,
+    );
+  });
 });
