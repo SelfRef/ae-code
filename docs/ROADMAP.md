@@ -1193,8 +1193,8 @@ and `merge_push` (both commit pending changes first), plus a project-scoped sett
   open until that run ends, so the Merge button keeps its progress ("Merging by agent...") on web and mobile alike. The
   result's toast only points at the thread; without operate access, when the hand-off cannot start, or with the
   project setting `mergeByAgentEnabled` off (Settings → Source control, on by default), the failure is reported as
-  before. `mergeByAgentModelSelection` (off by default: the thread's own model) picks a coding agent for the turn. Nothing
-  is retried automatically.
+  before. `mergeByAgentModelSelection` (off by default: the thread's own model) picks a coding agent for the turn only: the thread's own model is put back when the turn ends (unless another was
+  picked meanwhile). Nothing is retried automatically.
 - Not cleaned up here: the existing worktree cleanup removes merged branches' worktrees.
 - Its own button: the actions live in a **Default branch** section of the thread details card (off by default, shown with
   the card's show/hide list, only on a branch other than the default one), not in the Git actions menu. The button

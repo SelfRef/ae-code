@@ -86,6 +86,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 - Default branch menu: against a server that predates the push of the default branch, **Push** is no longer listed as a disabled "nothing to push" (the server does not count those commits); update the server to get it.
 - A Git action's progress shows only in the thread details section (Git or Default branch) that started it, not in both.
 - Merging into the default branch by the agent no longer hangs: the agent's turn waited for the checkout that the merge held while waiting for that turn. The merge, Merge & push and the agent's turn now share the checkout in turn.
+- Merging by the agent with a model chosen for it no longer leaves the thread on that model: the thread's own model is put back when the turn ends.
 - Forgejo / Gitea: a `GITEA_TOKEN` in the server's environment without an instance no longer hides the signed-in `gt` account (the provider read as not authenticated).
 - Updating a Docker or bare-host server from another app (sidebar, banner) installs the newest GitHub release even when
   the app's own version is a local build that is no release.
