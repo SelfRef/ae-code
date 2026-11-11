@@ -23,6 +23,7 @@ import {
 import { useAppearancePreferences } from "../../settings/appearance/AppearancePreferencesProvider";
 import { useSoftKeyboardShowing } from "../../keyboard/useSoftKeyboardShowing";
 import { useAdaptiveWorkspaceLayout } from "../adaptive-workspace-context";
+import { useSidebarToggleState } from "../useSidebarToggle";
 import { useAndroidWorkspaceRoot } from "./AndroidWorkspaceTabsProvider";
 import { useNavigationTabOrder, useHiddenNavigationTabs } from "./navigation-tabs";
 import { useWorkspaceTabs } from "./WorkspaceTabsContext";
@@ -39,6 +40,9 @@ interface NativeNavigationProps extends ViewProps {
   readonly dark: boolean;
   readonly textScale: number;
   readonly newEnabled: boolean;
+  /** The rail's bottom button: "sidebar", "maximize", or "" for none. */
+  readonly sidebarToggle: string;
+  readonly sidebarToggleLabel: string;
   readonly safeAreaTop: number;
   readonly safeAreaBottom: number;
   readonly headerHeight: number;
@@ -52,6 +56,7 @@ interface NativeNavigationProps extends ViewProps {
     event: NativeSyntheticEvent<{ readonly tab: AndroidWorkspaceNavigationTab }>,
   ) => void;
   readonly onNewThread: () => void;
+  readonly onSidebarToggle: () => void;
   readonly onOverlayChange: (event: NativeSyntheticEvent<{ readonly overlay: boolean }>) => void;
 }
 
@@ -82,6 +87,7 @@ export function AndroidWorkspaceNavigation(props: {
   const connectionState = useWorkspaceConnectionState();
   const keyboardVisible = useSoftKeyboardShowing();
   const { layout } = useAdaptiveWorkspaceLayout();
+  const sidebarToggle = useSidebarToggleState();
   const { themeAppearance, themeVariables: colors } = useAppearancePreferences();
   const { scale, fabSize } = useAndroidControlSizing();
   const window = useWindowDimensions();
@@ -124,6 +130,14 @@ export function AndroidWorkspaceNavigation(props: {
         dark={themeAppearance === "dark"}
         textScale={scale}
         newEnabled={connectionState.hasConnections}
+        sidebarToggle={
+          rail && sidebarToggle
+            ? sidebarToggle.icon === "sidebar.left"
+              ? "sidebar"
+              : "maximize"
+            : ""
+        }
+        sidebarToggleLabel={sidebarToggle?.accessibilityLabel ?? ""}
         safeAreaTop={toolbar.paddingTop}
         safeAreaBottom={insets.bottom}
         headerHeight={toolbar.height}
@@ -155,6 +169,7 @@ export function AndroidWorkspaceNavigation(props: {
           Keyboard.dismiss();
           props.onNewThread();
         }}
+        onSidebarToggle={() => sidebarToggle?.onPress()}
         onOverlayChange={(event) => props.onOverlayChange?.(event.nativeEvent.overlay)}
         style={
           rail

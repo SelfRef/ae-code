@@ -56,6 +56,8 @@ interface WorkspacePaneStateValue {
    * its sidebar, and on a workspace page (Android Settings, Usage) that covers it.
    */
   readonly sidebarToggleable: boolean;
+  /** Android's navigation rail carries the sidebar button, so the toolbars don't. */
+  readonly sidebarToggleInRail: boolean;
   /**
    * Whether the sidebar shows in each orientation, where it floats over the content in portrait
    * (the unfolded Duo). The native split switches between them as a rotation starts.
@@ -94,6 +96,7 @@ export const WorkspacePaneStateContext = createContext<WorkspacePaneStateValue>(
   fileInspector: compactFileInspector,
   primarySidebarSearchQuery: "",
   sidebarToggleable: false,
+  sidebarToggleInRail: false,
   sidebarByOrientation: null,
 });
 
