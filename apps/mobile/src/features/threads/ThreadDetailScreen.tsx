@@ -188,6 +188,8 @@ import { ComposerUsageLimits } from "./ComposerUsageLimits";
 import { PendingUserInputCard } from "./PendingUserInputCard";
 import { ProviderSubagentBar } from "./ProviderSubagentBar";
 import { ThreadCreationFailedCard } from "./ThreadCreationFailedCard";
+import { ShipFab } from "./ship-fab";
+import type { ShipButton } from "./git/useShipAction";
 import {
   FLOATING_WORKING_CONTROL_COVERAGE,
   FloatingWorkingControl,
@@ -236,6 +238,8 @@ export interface ThreadDetailScreenProps {
   readonly worktreeSetup?: WorktreeSetupCardProps | null;
   readonly setupWorkingStartedAt?: string | null;
   readonly canOperateThread: boolean;
+  /** Shortcut to the next commit, merge or settle step; Android shows it as a floating button. */
+  readonly shipAction?: ShipButton | null;
   readonly selectedThread: EnvironmentThreadShell;
   /** Use this for detail reads; it stays null until queued creation reaches the server. */
   readonly selectedThreadDetailRef: ScopedThreadRef | null;
@@ -1644,6 +1648,13 @@ function ThreadDetailBody(
                       });
                     }}
                   />
+                  {Platform.OS === "android" && props.shipAction ? (
+                    <ShipFab
+                      action={props.shipAction}
+                      raised={showFloatingStatus || showScrollToEndButton}
+                      lift={floatingControlLift}
+                    />
+                  ) : null}
                   <ComposerPanels
                     className="w-full"
                     style={Platform.OS === "android" ? composerPanelsHeightStyle : undefined}

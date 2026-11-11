@@ -522,3 +522,21 @@ export function resolveDefaultBranchActions(
     ],
   };
 }
+
+export type ShipAction = "commit" | "merge" | "settle";
+
+/**
+ * The next step of working in a branch: commit, merge into the default branch, then settle the
+ * thread. Null with nothing to do; `hadChanges` tells a merged branch from one nothing touched.
+ */
+export function resolveShipAction(
+  gitStatus: VcsStatusResult | null,
+  hadChanges: boolean,
+): ShipAction | null {
+  if (!gitStatus?.isRepo || gitStatus.refName === null) return null;
+  if (gitStatus.hasWorkingTreeChanges) return "commit";
+  if (!gitStatus.isDefaultRef && (gitStatus.aheadOfDefaultCount ?? gitStatus.aheadCount) > 0) {
+    return "merge";
+  }
+  return hadChanges ? "settle" : null;
+}

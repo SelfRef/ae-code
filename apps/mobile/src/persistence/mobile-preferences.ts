@@ -123,6 +123,8 @@ export interface Preferences {
   readonly workingShelfEnabled?: boolean;
   /** Unset means on: pushing from the default branch asks first. */
   readonly confirmPushToDefaultBranch?: boolean;
+  /** Unset means on: a floating button commits, merges and settles. */
+  readonly shipButtonEnabled?: boolean;
   readonly useLastProjectForNewThreads?: boolean;
   readonly lastThreadProject?: typeof ThreadProject.Type;
   readonly modelFavorites?: ReadonlyArray<{
@@ -211,6 +213,7 @@ function sanitizePreferences(parsed: Preferences): Preferences {
     toolCallVisibility?: ToolCallVisibility;
     workingShelfEnabled?: boolean;
     confirmPushToDefaultBranch?: boolean;
+    shipButtonEnabled?: boolean;
     useLastProjectForNewThreads?: boolean;
     lastThreadProject?: typeof ThreadProject.Type;
     modelFavorites?: Preferences["modelFavorites"];
@@ -344,6 +347,9 @@ function sanitizePreferences(parsed: Preferences): Preferences {
   }
   if (typeof parsed.confirmPushToDefaultBranch === "boolean") {
     preferences.confirmPushToDefaultBranch = parsed.confirmPushToDefaultBranch;
+  }
+  if (typeof parsed.shipButtonEnabled === "boolean") {
+    preferences.shipButtonEnabled = parsed.shipButtonEnabled;
   }
   if (typeof parsed.useLastProjectForNewThreads === "boolean") {
     preferences.useLastProjectForNewThreads = parsed.useLastProjectForNewThreads;
