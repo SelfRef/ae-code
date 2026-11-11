@@ -991,6 +991,8 @@ in a container, so none of that applied.
 - **Check:** `server.npmRelease` (the RPC keeps upstream's name) answers `latest` from
   `api.github.com/repos/SelfRef/ae-code/releases/latest`, tag `v2026.11.09` read as version `2026.1109.0`. Anonymous
   GitHub requests are limited to 60 an hour per address; the answer is cached for a minute.
+  Settings → Environments asks each environment's own server (never this app's version, which can be a local build with
+  no release) and offers an update, per row and in Update all, when that server runs an older version than its answer.
 - **Install:** About → Install calls the existing `server.updateServer`. The server ignores the client's `targetVersion` (a local build's
   version is no release) and installs the newest release: it
   downloads `ae-code-linux-x64.tar.gz`, checks it against the digest GitHub lists for the asset, unpacks it into

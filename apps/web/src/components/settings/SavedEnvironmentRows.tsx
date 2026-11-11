@@ -42,11 +42,7 @@ import { stackedThreadToast, toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { Button, InlineButton } from "../ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../ui/empty";
-import {
-  resolveServerConfigVersionMismatch,
-  resolveServerSelfUpdateCapability,
-  supportsDesktopAppUpdate,
-} from "~/versionSkew";
+import { resolveServerSelfUpdateCapability, supportsDesktopAppUpdate } from "~/versionSkew";
 import { hasCloudPublicConfig } from "~/cloud/publicConfig";
 import { isElectron } from "~/env";
 import { useT3ConnectTurnOn } from "~/cloud/useT3ConnectTurnOn";
@@ -58,6 +54,7 @@ import { environmentCatalog } from "~/connection/catalog";
 import { readEnvironmentScope } from "~/state/session";
 import { type EnvironmentPresentation, useRelayEnvironmentDiscovery } from "~/state/environments";
 import { APP_VERSION } from "~/branding";
+import { environmentLatestReleaseAtom, releaseUpdateTarget } from "~/state/environmentRelease";
 import { useManagedPolicy } from "~/state/managedPolicy";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { serverEnvironment } from "~/state/server";
@@ -166,12 +163,15 @@ export function SavedBackendListRow({
       );
     },
   });
-  const versionMismatch = resolveServerConfigVersionMismatch(environment.serverConfig);
+  const serverVersion = environment.serverConfig?.environment.serverVersion ?? null;
+  const updateTarget = releaseUpdateTarget(
+    serverVersion,
+    useAtomValue(environmentLatestReleaseAtom(environmentId)),
+  );
   const serverUpdateState = useAtomValue(serverEnvironment.updateStateAtom(environmentId));
   const resumingServerUpdate =
     serverUpdateState.status === "running" && serverUpdateState.stage === "resuming";
   const status = savedBackendStatus(environment);
-  const serverVersion = environment.serverConfig?.environment.serverVersion ?? null;
   // Discovery empties its map on every refresh, so hold the last descriptor
   // seen or the glyph would blink back to the generic one each time.
   const relayDiscovery = useRelayEnvironmentDiscovery();
@@ -214,7 +214,7 @@ export function SavedBackendListRow({
     environmentTransportLabel(environment, connectedTarget),
     // The headline below names the failure in full.
     diagnosis ? null : resumingServerUpdate ? "Restarting" : status.text,
-    enabled && versionMismatch ? serverVersion : null,
+    enabled && updateTarget ? serverVersion : null,
   ]
     .filter((value): value is string => value !== null)
     .join(" · ");
@@ -222,7 +222,7 @@ export function SavedBackendListRow({
   const showUpdateAction =
     enabled &&
     isConnected &&
-    versionMismatch !== null &&
+    updateTarget !== null &&
     (serverUpdateState.status === "idle" || serverUpdateState.status === "failed");
 
   const statusTooltip = `${
@@ -231,11 +231,7 @@ export function SavedBackendListRow({
       : enabled
         ? connectionStatusText(environment.connection)
         : "Switched off"
-  }${
-    versionMismatch
-      ? `\nUpdate available: ${versionMismatch.serverVersion} → ${versionMismatch.clientVersion}`
-      : ""
-  }`;
+  }${updateTarget ? `\nUpdate available: ${serverVersion} → ${updateTarget}` : ""}`;
 
   return (
     <EnvironmentRow
@@ -374,7 +370,7 @@ export function SavedBackendListRow({
           selfUpdate={resolveServerSelfUpdateCapability(environment.serverConfig)}
           installation={environment.serverConfig?.environment.capabilities.serverInstallation}
           desktopAppUpdate={supportsDesktopAppUpdate(environment.serverConfig)}
-          targetVersion={versionMismatch.clientVersion}
+          targetVersion={updateTarget}
           label={serverUpdateState.status === "failed" ? "Retry update" : "Update"}
           appearance="icon"
         />

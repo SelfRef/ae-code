@@ -8,6 +8,10 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+### Changed
+
+- Settings → Environments: each environment checks its own server for a newer GitHub release instead of comparing with this app's version, so a local build here no longer offers or hides updates. The update icon is larger.
+
 ## [v2026.11.11.2] - 2026-11-11
 
 ### Changed
