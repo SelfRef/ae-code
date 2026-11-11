@@ -1169,7 +1169,11 @@ export const WorktreeCleanup = Schema.NullOr(
 );
 export type WorktreeCleanup = typeof WorktreeCleanup.Type;
 
-/** The main Git action of a thread's branch: a pull request, or a merge into the default branch. */
+/** The main action of a thread's branch button: push, or push and open a pull request. */
+export const CurrentBranchAction = Schema.Literals(["push", "pull_request"]);
+export type CurrentBranchAction = typeof CurrentBranchAction.Type;
+
+/** The main action of the default branch button; `pull_request` is a retired value that reads as `merge`. */
 export const QuickMergeAction = Schema.Literals(["pull_request", "merge", "merge_push"]);
 export type QuickMergeAction = typeof QuickMergeAction.Type;
 
@@ -1179,6 +1183,7 @@ export const PROJECT_SCOPED_SERVER_SETTING_KEYS = [
   "defaultRuntimeMode",
   "defaultThreadEnvMode",
   "newWorktreesStartFromOrigin",
+  "currentBranchAction",
   "quickMergeAction",
   "worktreeSubmodules",
   "defaultAutoPull",
@@ -1220,6 +1225,7 @@ export const ProjectSettingsOverrides = Schema.Struct({
   defaultRuntimeMode: Schema.optionalKey(RuntimeMode),
   defaultThreadEnvMode: Schema.optionalKey(ThreadEnvMode),
   newWorktreesStartFromOrigin: Schema.optionalKey(Schema.Boolean),
+  currentBranchAction: ForwardCompatibleOptional(CurrentBranchAction),
   quickMergeAction: ForwardCompatibleOptional(QuickMergeAction),
   worktreeSubmodules: ForwardCompatibleOptional(WorktreeSubmodules),
   defaultAutoPull: Schema.optionalKey(Schema.Boolean),
@@ -1528,6 +1534,9 @@ export const ServerSettings = Schema.Struct({
   defaultThreadEnvMode: OmittedWhenNull(ThreadEnvMode),
   newWorktreesStartFromOrigin: Schema.Boolean.pipe(
     Schema.withDecodingDefault(Effect.succeed(false)),
+  ),
+  currentBranchAction: CurrentBranchAction.pipe(
+    Schema.withDecodingDefault(Effect.succeed("push" as const)),
   ),
   quickMergeAction: QuickMergeAction.pipe(
     Schema.withDecodingDefault(Effect.succeed("merge" as const)),
@@ -1949,6 +1958,7 @@ export const ServerSettingsPatch = Schema.Struct({
   environmentIcon: Schema.optionalKey(Schema.NullOr(EnvironmentMachineKind)),
   defaultThreadEnvMode: Schema.optionalKey(Schema.NullOr(ThreadEnvMode)),
   newWorktreesStartFromOrigin: Schema.optionalKey(Schema.Boolean),
+  currentBranchAction: Schema.optionalKey(CurrentBranchAction),
   quickMergeAction: Schema.optionalKey(QuickMergeAction),
   worktreeSubmodules: Schema.optionalKey(Schema.NullOr(WorktreeSubmodules)),
   addProjectBaseDirectory: Schema.optionalKey(TrimmedString),

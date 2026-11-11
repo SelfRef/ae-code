@@ -12,6 +12,7 @@ import {
   type WorktreeSubmodules,
   PROJECT_SCOPED_SERVER_SETTING_KEYS,
   type ProjectScopedServerSettingKey,
+  type CurrentBranchAction,
   type QuickMergeAction,
 } from "@t3tools/contracts";
 import { useRef, useState } from "react";
@@ -66,7 +67,12 @@ const PAGE_PROJECT_KEYS: Record<SettingsPage, readonly ProjectScopedServerSettin
     "sidebarAutoSettleOnMerge",
     "sidebarAutoSettleAfterDays",
   ],
-  "source-control": ["defaultAutoPull", "removeAgentCreditsOnMerge", "quickMergeAction"],
+  "source-control": [
+    "defaultAutoPull",
+    "removeAgentCreditsOnMerge",
+    "currentBranchAction",
+    "quickMergeAction",
+  ],
   worktrees: [
     "newWorktreesStartFromOrigin",
     "worktreeSubmodules",
@@ -76,6 +82,23 @@ const PAGE_PROJECT_KEYS: Record<SettingsPage, readonly ProjectScopedServerSettin
   ],
   maintenance: ["continueThreadsAfterServerUpdate"],
 };
+
+const CURRENT_BRANCH_CHOICES: ReadonlyArray<{
+  readonly mode: CurrentBranchAction;
+  readonly label: string;
+  readonly description: string;
+}> = [
+  {
+    mode: "push",
+    label: "Push",
+    description: "Push the branch. Creating a pull request stays in the Git menu.",
+  },
+  {
+    mode: "pull_request",
+    label: "Push & create pull request",
+    description: "Push the branch and open a pull request.",
+  },
+];
 
 const QUICK_MERGE_CHOICES: ReadonlyArray<{
   readonly mode: QuickMergeAction;
@@ -464,6 +487,30 @@ function ServerSettingsDetail(props: { readonly page: SettingsPage }) {
                     disabled={disabledFor("removeAgentCreditsOnMerge")}
                     onValueChange={(value) => write({ removeAgentCreditsOnMerge: value })}
                   />
+                </SettingsSection>
+                <SettingsSection
+                  title="Current branch action"
+                  footer={managed("currentBranchAction")}
+                  trailing={
+                    pendingWrites === 0 && isMixed("currentBranchAction") ? (
+                      <MixedValuesLabel projectSelected={projectSelected} />
+                    ) : null
+                  }
+                >
+                  {CURRENT_BRANCH_CHOICES.map((choice, index) => (
+                    <SettingsChoiceRow
+                      key={choice.mode}
+                      label={choice.label}
+                      description={choice.description}
+                      selected={
+                        !isMixed("currentBranchAction") &&
+                        uniform("currentBranchAction") === choice.mode
+                      }
+                      separated={index > 0}
+                      disabled={disabledFor("currentBranchAction")}
+                      onPress={() => write({ currentBranchAction: choice.mode })}
+                    />
+                  ))}
                 </SettingsSection>
                 <SettingsSection
                   title="Default branch action"

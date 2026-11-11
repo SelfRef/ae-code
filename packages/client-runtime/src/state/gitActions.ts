@@ -144,6 +144,7 @@ export function resolveQuickAction(
   isBusy: boolean,
   isDefaultBranch = false,
   hasOriginRemote = true,
+  createPr = true,
 ): GitQuickAction {
   if (isBusy) {
     return { label: "Commit", disabled: true, kind: "show_hint", hint: "Git action in progress." };
@@ -180,7 +181,7 @@ export function resolveQuickAction(
     if (isBehind || (!gitStatus.hasUpstream && !hasOriginRemote)) {
       return { label: "Commit", disabled: false, kind: "run_action", action: "commit" };
     }
-    if (hasOpenPr || isDefaultBranch) {
+    if (hasOpenPr || isDefaultBranch || !createPr) {
       return { label: "Commit & push", disabled: false, kind: "run_action", action: "commit_push" };
     }
     return {
@@ -214,7 +215,7 @@ export function resolveQuickAction(
         hint: "No local commits to push.",
       };
     }
-    if (hasOpenPr || isDefaultBranch) {
+    if (hasOpenPr || isDefaultBranch || !createPr) {
       return {
         label: "Push",
         disabled: false,
@@ -248,7 +249,7 @@ export function resolveQuickAction(
   }
 
   if (isAhead) {
-    if (hasOpenPr || isDefaultBranch) {
+    if (hasOpenPr || isDefaultBranch || !createPr) {
       return {
         label: "Push",
         disabled: false,
@@ -268,7 +269,7 @@ export function resolveQuickAction(
     return { label: `View ${terminology.shortLabel}`, disabled: false, kind: "open_pr" };
   }
 
-  if (hasDefaultBranchDelta && !isDefaultBranch) {
+  if (createPr && hasDefaultBranchDelta && !isDefaultBranch) {
     return {
       label: `Create ${terminology.shortLabel}`,
       disabled: false,

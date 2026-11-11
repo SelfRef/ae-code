@@ -11,6 +11,7 @@ import {
   type ProviderInstanceId,
   ServerSettings,
   type ServerSettingsPatch,
+  type CurrentBranchAction,
   type QuickMergeAction,
   sessionGrantsScope,
 } from "@t3tools/contracts";
@@ -546,6 +547,17 @@ export function useEnvironmentModelPreferences(environmentId: EnvironmentId | nu
   );
   const legacy = useClientSettings(selectLegacyModelPreferences);
   return resolveModelPreferences(settings ?? DEFAULT_SERVER_SETTINGS, legacy);
+}
+
+export function useCurrentBranchAction(
+  environmentId: EnvironmentId | null,
+  projectId: ProjectId | null,
+): CurrentBranchAction {
+  const settings = useAtomValue(
+    environmentId ? serverEnvironment.settingsValueAtom(environmentId) : noEnvironmentSettingsAtom,
+  );
+  return resolveProjectSettings(settings ?? DEFAULT_SERVER_SETTINGS, projectId).settings
+    .currentBranchAction;
 }
 
 export function useQuickMergeAction(

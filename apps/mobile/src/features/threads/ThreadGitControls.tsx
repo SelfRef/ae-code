@@ -23,7 +23,7 @@ import { sourceControlClients } from "@t3tools/client-runtime/source-control-cli
 import { useEnvironmentScope } from "../../state/session";
 import { aheadLabel } from "./git/aheadLabel";
 import { useConfirmPushToDefaultBranch } from "./git/useConfirmPushToDefaultBranch";
-import { useQuickMergeAction } from "./git/useQuickMergeAction";
+import { useCurrentBranchAction, useQuickMergeAction } from "./git/useQuickMergeAction";
 import { PullRequestGlyph } from "../pull-requests/pullRequestGlyphs";
 import {
   basename,
@@ -127,6 +127,7 @@ function useThreadGitControlModel(props: ThreadGitMenuProps) {
 
   const confirmPushToDefaultBranch = useConfirmPushToDefaultBranch();
   const quickMergeAction = useQuickMergeAction();
+  const currentBranchAction = useCurrentBranchAction();
   const defaultBranchPrimary =
     resolveDefaultBranchActions(gitStatus, busy, hasPrimaryRemote, quickMergeAction)?.primary ??
     null;
@@ -139,7 +140,13 @@ function useThreadGitControlModel(props: ThreadGitMenuProps) {
         hint: "This workspace is not a git repository.",
       };
     }
-    const action = resolveQuickAction(gitStatus, busy, isDefaultRef, hasPrimaryRemote);
+    const action = resolveQuickAction(
+      gitStatus,
+      busy,
+      isDefaultRef,
+      hasPrimaryRemote,
+      currentBranchAction === "pull_request",
+    );
     return !canWriteSourceControl && (action.kind === "run_pull" || action.kind === "run_action")
       ? {
           ...action,

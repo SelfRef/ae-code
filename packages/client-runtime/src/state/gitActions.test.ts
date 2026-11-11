@@ -100,6 +100,15 @@ describe("git action copy", () => {
   it("says PR for a GitHub ref", () => {
     expect(resolveQuickAction(status({ aheadCount: 1 }), false).label).toBe("Push & create PR");
     expect(resolveQuickAction(status({ pr: openPr }), false).label).toBe("View PR");
+    const pushOnly = (s: VcsStatusResult) => resolveQuickAction(s, false, false, true, false);
+    expect(pushOnly(status({ aheadCount: 1 }))).toMatchObject({ label: "Push", action: "push" });
+    expect(pushOnly(status({ hasWorkingTreeChanges: true }))).toMatchObject({
+      action: "commit_push",
+    });
+    expect(pushOnly(status({ hasUpstream: false, aheadCount: 1 }))).toMatchObject({
+      action: "push",
+    });
+    expect(pushOnly(status({ aheadOfDefaultCount: 1 })).disabled).toBe(true);
     const prItem = buildMenuItems(status(), false).find((item) => item.id === "pr");
     expect(prItem?.label).toBe("Create PR");
     expect(
