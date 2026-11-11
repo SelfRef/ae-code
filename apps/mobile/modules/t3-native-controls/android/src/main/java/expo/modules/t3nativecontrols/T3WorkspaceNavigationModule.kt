@@ -83,6 +83,12 @@ class T3WorkspaceNavigationModule : Module() {
       Prop("newEnabled") { view: T3WorkspaceNavigationView, value: Boolean ->
         view.newEnabled = value
       }
+      Prop("sidebarToggle") { view: T3WorkspaceNavigationView, value: String ->
+        view.sidebarToggle = value
+      }
+      Prop("sidebarToggleLabel") { view: T3WorkspaceNavigationView, value: String ->
+        view.sidebarToggleLabel = value
+      }
       Prop("safeAreaTop") { view: T3WorkspaceNavigationView, value: Float ->
         view.safeAreaTop = value
       }
@@ -110,7 +116,7 @@ class T3WorkspaceNavigationModule : Module() {
       Prop("actionContentColor") { view: T3WorkspaceNavigationView, value: Int ->
         view.actionContentColor = value
       }
-      Events("onTabSelected", "onNewThread", "onOverlayChange")
+      Events("onTabSelected", "onNewThread", "onSidebarToggle", "onOverlayChange")
     }
   }
 }
@@ -125,6 +131,7 @@ class T3WorkspaceNavigationView(
 
   private val onTabSelected by EventDispatcher()
   private val onNewThread by EventDispatcher()
+  private val onSidebarToggle by EventDispatcher()
   private val onOverlayChange by EventDispatcher()
   var tabs by mutableStateOf(listOf("threads", "pullRequests", "usage", "settings"))
   var selectedTab by mutableStateOf("threads")
@@ -133,6 +140,8 @@ class T3WorkspaceNavigationView(
   var dark by mutableStateOf(false)
   var textScale by mutableStateOf(1f)
   var newEnabled by mutableStateOf(false)
+  var sidebarToggle by mutableStateOf("")
+  var sidebarToggleLabel by mutableStateOf("")
   var safeAreaTop by mutableStateOf(0f)
   var safeAreaBottom by mutableStateOf(0f)
   var headerHeight by mutableStateOf(56f)
@@ -337,6 +346,25 @@ class T3WorkspaceNavigationView(
           }
         }
         Spacer(Modifier.weight(1f))
+        if (sidebarToggle.isNotEmpty()) {
+          Box(Modifier.padding(start = RAIL_INSET)) {
+            IconButton(
+              onClick = {
+                expanded = false
+                onSidebarToggle(emptyMap<String, Any>())
+              },
+              modifier = Modifier.semantics { contentDescription = sidebarToggleLabel },
+            ) {
+              Icon(
+                painterResource(
+                  if (sidebarToggle == "maximize") R.drawable.t3_maximize else R.drawable.t3_sidebar
+                ),
+                contentDescription = null,
+                tint = Color(unselectedColor),
+              )
+            }
+          }
+        }
       }
     }
   }

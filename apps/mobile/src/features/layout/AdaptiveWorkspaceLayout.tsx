@@ -997,9 +997,17 @@ function AdaptiveWorkspaceLayoutContent(
       fileInspector,
       primarySidebarSearchQuery,
       sidebarToggleable,
+      sidebarToggleInRail: shouldRenderNavigationRail,
       sidebarByOrientation,
     }),
-    [panes, fileInspector, primarySidebarSearchQuery, sidebarToggleable, sidebarByOrientation],
+    [
+      panes,
+      fileInspector,
+      primarySidebarSearchQuery,
+      sidebarToggleable,
+      shouldRenderNavigationRail,
+      sidebarByOrientation,
+    ],
   );
 
   const inspectorSheet = (
