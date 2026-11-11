@@ -522,7 +522,7 @@ const registerWithRealFileSystem = (run: ThemeIconRun) =>
                   }),
                   resolveResourcePath: (fileName: string) =>
                     Effect.succeed(
-                      fileName === "icons/256x256.png"
+                      fileName === "icons/256x256.png" || fileName === "icon.svg"
                         ? Option.some(
                             path.join(
                               run.root,
@@ -586,6 +586,7 @@ const themeIconFixture = (source: Uint8Array) =>
     const root = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-theme-icons-" });
     yield* fileSystem.makeDirectory(path.join(root, "resources", "icons"), { recursive: true });
     yield* fileSystem.writeFile(path.join(root, "resources", "icons", "256x256.png"), source);
+    yield* fileSystem.writeFileString(path.join(root, "resources", "icon.svg"), "<svg/>");
     const hicolorDir = path.join(root, "icons", "hicolor");
     const appsDir = path.join(hicolorDir, "256x256", "apps");
     const cachePath = path.join(hicolorDir, "icon-theme.cache");
@@ -598,7 +599,17 @@ const themeIconFixture = (source: Uint8Array) =>
     const rewriteCache = fileSystem
       .writeFile(cachePath, new Uint8Array([1]))
       .pipe(Effect.orDie, Effect.provideService(FileSystem.FileSystem, fileSystem));
-    return { root, hicolorDir, appsDir, cachePath, pastSeconds, seedCache, rewriteCache };
+    const scalableDir = path.join(hicolorDir, "scalable", "apps");
+    return {
+      root,
+      hicolorDir,
+      appsDir,
+      scalableDir,
+      cachePath,
+      pastSeconds,
+      seedCache,
+      rewriteCache,
+    };
   });
 
 const iconCacheRuns = (run: ThemeIconRun) =>
@@ -617,6 +628,10 @@ it.layer(NodeServices.layer)("DesktopLinuxUrlHandler theme icons", (it) => {
       assert.deepEqual([...(yield* fileSystem.readDirectory(fixture.appsDir))].sort(), [
         "com.t3tools.T3Code.png",
         "com.t3tools.t3code.png",
+      ]);
+      assert.deepEqual([...(yield* fileSystem.readDirectory(fixture.scalableDir))].sort(), [
+        "com.t3tools.T3Code.svg",
+        "com.t3tools.t3code.svg",
       ]);
       for (const name of ["com.t3tools.t3code", "com.t3tools.T3Code"]) {
         const target = path.join(fixture.appsDir, `${name}.png`);
