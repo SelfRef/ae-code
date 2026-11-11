@@ -354,7 +354,7 @@ disabled.
 
 - **Versions:** tag and title `vYYYY.MM.DD`, then `vYYYY.MM.DD.1`, `.2` for later releases the same day. The apps need a
   semver, so the packages (and the updater feed) carry `YYYY.MMDD.N`: `2026.1109.0` for `v2026.11.09`. It increases
-  with every release, which is all the updater needs.
+  with every release, which is all the updater needs. Only the Android app differs: its version name is the tag itself.
 - **Release notes:** `docs/CHANGELOG.md` (Keep a Changelog), the section named after the release's tag, else
   `[Unreleased]` (`scripts/release-notes-section.sh`); the `prepare` job fails before building when both are empty.
   Under it: the upstream commit the release sits on, and a collapsed "Full changelog": a compare link between the two
@@ -382,8 +382,8 @@ disabled.
   its one ABI, with Gradle's dependency cache kept between runs and Expo's cloud updates off. Native libraries are
   stored deflated (`useLegacyPackaging`): the download shrinks, the install is extracted. Then the APK is re-signed
   with the fork's key
-  (Expo's template signs release builds with the public debug key). The version name is `YYYY.MMDD.N`, the version code
-  `YYMMDDNN`. The production Android package is `dev.aperte.aecode` and the name AE Code (`apps/mobile/app.config.ts`),
+  (Expo's template signs release builds with the public debug key). The version name is the tag without its `v` (`2026.11.09.1`, so Obtainium
+  compares it with the release tag; the other packages carry the semver form), the version code `YYMMDDNN`. The production Android package is `dev.aperte.aecode` and the name AE Code (`apps/mobile/app.config.ts`),
   so it installs beside upstream's app; the `t3code` URL scheme is kept. There is one Android icon for every build: the blueprint tile with the Aperte glyph
   (adaptive, monochrome, splash and notification glyph; the production build uses the dev assets). The release build has
   no suffix and no badge; the dev and preview builds are named AE Code Dev and AE Code Preview and show the same
