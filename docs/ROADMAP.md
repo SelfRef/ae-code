@@ -1219,11 +1219,15 @@ from, and other browsers signed in to that server load it.
 
 ## Thread actions in the thread details card (change 34)
 
-The last section of the thread details card: a split button, **Settle thread** (**Un-settle thread** once settled) and an
+A section of the thread details card, below Default branch, that also holds the Context row (no divider between them): a split button, **Settle thread** (**Un-settle thread** once settled) and an
 arrow that opens the thread's context menu (`useThreadActionMenu`, the one the header and right-click open). Shown on by
 default for server threads at full card density; **Thread actions** in the card's show/hide list turns it off.
 
 - Code: `apps/web/src/components/chat/ThreadDetailsActions.tsx`. Settling goes through `settleAndAdvance` like the keybinding.
+- The button is disabled, reading "Not all changes merged into <default branch>", while `hasUnmergedChanges` (uncommitted
+  changes, or commits the local default branch lacks, from `vcs.status`) holds. The menu then lists Settle first
+  (`settlePlacement: "first"`); otherwise the menu leaves Settle out (`"hidden"`) because the button already is it.
+  The default branch's name comes from a two-ref `vcs.listRefs` (current branch first, default second).
 - The menu's Rename starts the header's inline rename through the `threadRename` registry (`apps/web/src/threadRename.ts`),
   so it does nothing when no header is mounted.
 - No data migration: a new key in the sparse `threadDetailsItems` setting, absent meaning the default.
