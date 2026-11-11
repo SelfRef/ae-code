@@ -146,8 +146,8 @@ anything. The command is offered only for providers that appear under **Usage �
 On web and desktop, the bottom of the thread details card shows how much is left in each limit
 window of the current provider account. Turn **Usage limits** off in **Settings → Appearance →
 Thread details**, or right-click the thread details card, to hide it.
-Some windows, such as a weekly Opus limit, count only one model. Hover a
-row to see when it resets and your pace. **Context window** shows the thread's
+Some windows, such as a weekly Opus limit, count only one model. Each row shows the time left
+until it resets, such as `2d 4h`; hover a row to see the reset time and your pace. **Context window** shows the thread's
 context use against the model's limit. A tick on the bar marks where the provider compacts
 automatically, when it reports that point.
 

@@ -14,6 +14,8 @@ import {
 } from "@t3tools/shared/usageLimits";
 import type { ReactNode } from "react";
 
+import { resolveProviderInstanceDisplayName } from "@t3tools/client-runtime/state/provider-instance-display";
+
 import { usePrimarySettings } from "../../hooks/useSettings";
 import { useNowMinute } from "../../hooks/useNowMinute";
 import type { ContextWindowSnapshot } from "@t3tools/client-runtime/state/context-window";
@@ -44,7 +46,8 @@ export function ThreadDetailsUsage({
   providerInstanceId,
   providers,
   sources,
-}: Omit<ThreadDetailsUsageInput, "contextWindow">) {
+  showHeading = true,
+}: Omit<ThreadDetailsUsageInput, "contextWindow"> & { readonly showHeading?: boolean }) {
   const nowMinute = useNowMinute();
   const now = Date.parse(`${nowMinute}:00Z`);
   const report =
@@ -58,12 +61,14 @@ export function ThreadDetailsUsage({
     providers.find((provider) => provider.instanceId === providerInstanceId)?.usageLimits;
   if (!limits) return null;
   const notice = limitsNotice(limits);
+  const provider = providers.find((entry) => entry.instanceId === providerInstanceId);
+  const title = provider ? `${resolveProviderInstanceDisplayName(provider)} usage` : "Usage limits";
 
   return (
     <ThreadDetailsSection
       headingId="thread-details-usage-heading"
-      title="Usage limits"
-      showHeading={false}
+      title={title}
+      showHeading={showHeading}
     >
       <div className="grid grid-cols-[auto_minmax(3rem,1fr)_auto] gap-x-3 text-xs">
         {notice ? (
@@ -155,6 +160,7 @@ function LimitRow({
       muted
       tone={left <= 10 ? "error" : left <= 20 ? "warning" : null}
       value={`${left}%`}
+      detail={window.resetsAt && resetsAt > now ? formatDuration(resetsAt - now) : undefined}
       ariaValue={`${left}% left`}
       tooltip={
         <>
@@ -181,6 +187,7 @@ function UsageRow({
   tone,
   tick = null,
   value,
+  detail,
   ariaValue = value,
   tooltip,
   muted = false,
@@ -192,6 +199,8 @@ function UsageRow({
   /** A marker on the bar, from 0 to 100. */
   readonly tick?: number | null;
   readonly value: string;
+  /** Muted text before the value, such as the time left until a limit resets. */
+  readonly detail?: string | undefined;
   readonly ariaValue?: string;
   readonly tooltip: ReactNode;
   readonly muted?: boolean;
@@ -248,6 +257,7 @@ function UsageRow({
                   : "text-foreground/80",
           )}
         >
+          {detail ? <span className="me-2 font-normal text-muted-foreground">{detail}</span> : null}
           {value}
         </span>
       </TooltipTrigger>
