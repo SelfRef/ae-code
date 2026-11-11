@@ -8,6 +8,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+## [v2026.11.11.1] - 2026-11-11
+
 ### Added
 
 - Device panel: a **GNOME desktop** on Linux servers with GNOME Shell, next to Android emulators. It is a headless GNOME
