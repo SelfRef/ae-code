@@ -12,6 +12,12 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 - Settings → Environments: each environment checks its own server for a newer GitHub release instead of comparing with this app's version, so a local build here no longer offers or hides updates. The update icon is larger.
 
+### Fixed
+
+- The Android app's version name is now the release tag (2026.11.12) instead of the semver form (2026.1112.0), so Obtainium
+  compares it correctly with the latest release instead of treating the installed build as newer. Install the next
+  release over the old one once (Obtainium offers it as a downgrade).
+
 ## [v2026.11.11.2] - 2026-11-11
 
 ### Changed

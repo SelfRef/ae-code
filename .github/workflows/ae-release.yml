@@ -441,16 +441,21 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('apps/mobile/android/gradle/wrapper/gradle-wrapper.properties', 'pnpm-lock.yaml') }}
           restore-keys: gradle-${{ runner.os }}-
 
-      # The date as an increasing integer: YYMMDD and the release's number that day.
-      - name: Set the version code
+      # The code is the date as an increasing integer: YYMMDD and the release's number
+      # that day. The name is the tag without its v, so Obtainium compares the
+      # installed version with the release tag; the semver-shaped one (2026.1111.1)
+      # would read as newer than any later tag (2026.11.12).
+      - name: Set the version code and name
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
+          TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           set -euo pipefail
           gradle=apps/mobile/android/app/build.gradle
           code="$(date -u +%y%m%d)$(printf '%02d' "${VERSION##*.}")"
           grep -Eq 'versionCode [0-9]+' "$gradle"
-          sed -i -E "s/versionCode [0-9]+/versionCode $code/" "$gradle"
+          grep -Eq 'versionName "[^"]*"' "$gradle"
+          sed -i -E "s/versionCode [0-9]+/versionCode $code/; s/versionName \"[^\"]*\"/versionName \"${TAG#v}\"/" "$gradle"
           grep -E 'versionCode|versionName' "$gradle"
 
       - name: Build the release APK
