@@ -954,7 +954,6 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
               const fallback = surfaces[Math.min(index, surfaces.length - 1)] ?? null;
               return {
                 ...current,
-                isOpen: surfaces.length > 0 && current.isOpen,
                 surfaces,
                 activeSurfaceId:
                   current.activeSurfaceId === surfaceId
@@ -995,7 +994,6 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
             const surfaces = current.surfaces.filter((surface) => surface.id !== surfaceId);
             const next = {
               ...current,
-              isOpen: surfaces.length > 0 && current.isOpen,
               surfaces,
             };
             if (current.activeSurfaceId !== surfaceId) {
@@ -1042,7 +1040,7 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
           closeAction(state, scopedThreadKey(ref), (current) =>
             current.surfaces.length === 0
               ? current
-              : { ...current, isOpen: false, surfaces: [], activeSurfaceId: null },
+              : { ...current, surfaces: [], activeSurfaceId: null },
           ),
         ),
       moveSurface: (ref, surfaceId, toIndex) =>
@@ -1073,8 +1071,7 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
               (surface) => surface.id === current.activeSurfaceId,
             );
             const fallbackBrowser = surfaces.find((surface) => surface.kind === "preview");
-            // A closed session tab was the last surface: hide the panel rather than leave it on
-            // the empty picker, as a user close would. A dropped `browser:new` placeholder does not count.
+            // A session tab closed from outside was the last surface: hide the panel. A dropped `browser:new` placeholder does not count.
             const closedLastSessionTab =
               surfaces.length === 0 &&
               current.surfaces.some((surface) => surface.kind === "preview" && surface.resourceId);

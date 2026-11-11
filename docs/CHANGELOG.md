@@ -14,6 +14,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Fixed
 
+- Closing the last tab in the side panel keeps the panel open on the tab picker instead of hiding it.
 - The Android app's version name is now the release tag (2026.11.12) instead of the semver form (2026.1112.0), so Obtainium
   compares it correctly with the latest release instead of treating the installed build as newer. Install the next
   release over the old one once (Obtainium offers it as a downgrade).
