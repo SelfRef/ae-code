@@ -7,10 +7,11 @@ import { useWorkspacePaneState } from "../layout/AdaptiveWorkspaceLayout";
 export type ThreadInspectorMode = "route" | "git" | "files" | "preview";
 
 export type ThreadInspectorTarget = {
-  readonly type: "thread" | "device";
+  readonly type: "thread" | "device" | "browser";
   readonly environmentId: string;
   readonly threadId: string;
   readonly deviceKey?: string;
+  readonly tabId?: string;
 };
 
 export const ThreadInspectorNavigationContext = createContext<
@@ -25,7 +26,9 @@ export function useOpenThreadInspector() {
     source: { readonly environmentId: string; readonly threadId: string },
     target: ThreadInspectorTarget,
   ) => {
-    if (Platform.OS !== "ios" || !fileInspector.supported) return false;
+    // Android's inspector shows the device and browser previews; threads still open full screen there.
+    if (!fileInspector.supported || (Platform.OS !== "ios" && target.type === "thread"))
+      return false;
     if (openInInspector) openInInspector(target);
     else {
       const parent = navigation.getState()?.routes.findLast((route) => route.name === "Thread");

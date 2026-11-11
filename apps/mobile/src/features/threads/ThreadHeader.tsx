@@ -21,6 +21,8 @@ export function ThreadHeader(props: {
   readonly hasThreadCwd: boolean;
   readonly inspectorMode: ThreadInspectorMode | null;
   readonly onOpenFilesInspector: () => void;
+  /** Shows the thread's device or browser in the inspector. */
+  readonly previewAction?: AppBarAction | null;
 }) {
   const goBack = useWorkspaceBackNavigation("threads");
   const { toggleAuxiliaryPane, startNewTask } = useAdaptiveWorkspaceLayout();
@@ -57,7 +59,7 @@ export function ThreadHeader(props: {
             }
           : undefined
       }
-      actions={actions}
+      actions={props.previewAction ? [...actions, props.previewAction] : actions}
       menus={menus}
       hideBottomBorder
     />

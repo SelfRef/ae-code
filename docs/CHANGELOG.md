@@ -11,6 +11,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 ### Added
 
 - Android: long-press the New thread button for a menu of your most recent projects (with icons) to start a thread in one, or to choose another project.
+- Android: on a wide screen (tablet, unfolded), a device or browser button in the thread's top bar, beside Files and Git, opens the preview next to the chat instead of over the whole screen. Its Maximize button takes it full screen, and the sidebar's expand button gives the chat the room instead.
 - Settings → General → Confirmations: choose when closing a terminal asks first (never, only while a command is running, or always). The default asks only while a command is running, not at an idle shell.
 
 ### Changed

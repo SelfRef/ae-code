@@ -124,15 +124,14 @@ const threadPreviewTabsAtom = Atom.family((threadKey: string) => {
 });
 
 export function useThreadServerBrowserTabs(input: {
-  readonly environmentId: EnvironmentId;
-  readonly threadId: ThreadId;
+  readonly environmentId: EnvironmentId | null;
+  readonly threadId: ThreadId | null;
   readonly enabled: boolean;
 }) {
+  const { environmentId, threadId } = input;
   const tabs = useAtomValue(
-    input.enabled
-      ? threadPreviewTabsAtom(
-          scopedThreadKey({ environmentId: input.environmentId, threadId: input.threadId }),
-        )
+    input.enabled && environmentId !== null && threadId !== null
+      ? threadPreviewTabsAtom(scopedThreadKey({ environmentId, threadId }))
       : emptyTabsAtom,
   );
   const sessions = tabs.sessions.filter((session) => session.runtime === "server");
