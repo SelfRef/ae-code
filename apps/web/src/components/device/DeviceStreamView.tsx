@@ -39,7 +39,7 @@ const NO_AX_ATOM = Atom.make(AsyncResult.initial<ReadonlyArray<DeviceAxElement>,
 const CONTROLS_RAIL_WIDTH = 56;
 
 function screenAspect(platform: DevicePlatform, screen: DeviceScreenSize | null): number {
-  if (!screen) return platform === "ios" ? 9 / 19.5 : 9 / 20;
+  if (!screen) return platform === "linux" ? 16 / 10 : platform === "ios" ? 9 / 19.5 : 9 / 20;
   const landscape =
     screen.orientation === "landscape_left" || screen.orientation === "landscape_right";
   const w = landscape
@@ -100,6 +100,7 @@ export function DeviceStreamView(props: {
   /** The host serves only serve-sim's stream and input socket (Simlock). */
   readonly serveSimOnly?: boolean;
 }) {
+  const desktop = props.platform === "linux";
   const model = deviceModel(props.platform, props.deviceName ?? "");
   const isDuo = model?.id === "iphone-duo";
   const [presentation, setPresentation] = useLocalStorage(
@@ -159,6 +160,7 @@ export function DeviceStreamView(props: {
     status === "connecting" && hasFrame && inputState.connected && screen !== null;
   const showPhone =
     props.allowPhoneView &&
+    !desktop &&
     (status === "streaming" || retainingFrame) &&
     props.visible &&
     presentation === "phone" &&
@@ -222,6 +224,21 @@ export function DeviceStreamView(props: {
     const x = (event.clientX - rect.left) / rect.width;
     const y = (event.clientY - rect.top) / rect.height;
     return { x: Math.min(1, Math.max(0, x)), y: Math.min(1, Math.max(0, y)) };
+  };
+
+  // Wheel steps, one per notch; touchpads send many small deltas that add up to one.
+  const wheelRemainder = useRef({ x: 0, y: 0 });
+  const onDesktopWheel = (event: React.WheelEvent<HTMLElement>) => {
+    if (!inputState.connected) return;
+    const unit = event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? 800 : 1;
+    const remainder = wheelRemainder.current;
+    remainder.x += event.deltaX * unit;
+    remainder.y += event.deltaY * unit;
+    const dx = Math.trunc(remainder.x / 100);
+    const dy = Math.trunc(remainder.y / 100);
+    remainder.x -= dx * 100;
+    remainder.y -= dy * 100;
+    if (dx !== 0 || dy !== 0) client?.sendPointer({ type: "scroll", dx, dy });
   };
 
   const endPointer = (event: React.PointerEvent<HTMLElement>) => {
@@ -330,7 +347,7 @@ export function DeviceStreamView(props: {
         )}
         tabIndex={0}
         role="application"
-        aria-label={`${props.platform === "ios" ? "iOS Simulator" : "Android Emulator"} screen`}
+        aria-label={`${desktop ? "GNOME desktop" : props.platform === "ios" ? "iOS Simulator" : "Android Emulator"} screen`}
         onKeyDown={(event) => {
           if (event.target !== event.currentTarget) return;
           if (event.metaKey && !["r", "R"].includes(event.key)) return;
@@ -358,6 +375,17 @@ export function DeviceStreamView(props: {
           className={cn("relative select-none", showPhone && "invisible pointer-events-none")}
           style={{ width: frame.width, height: frame.height }}
           onPointerDown={(event) => {
+            if (desktop && (event.button === 1 || event.button === 2) && inputState.connected) {
+              (event.currentTarget.parentElement as HTMLElement | null)?.focus();
+              const button = event.button === 1 ? "middle" : "right";
+              client?.sendPointer({
+                type: "button",
+                button,
+                down: true,
+                ...normalizedPoint(event),
+              });
+              return;
+            }
             if (event.button !== 0 || !inputState.connected || activePointer.current !== null)
               return;
             event.currentTarget.setPointerCapture(event.pointerId);
@@ -367,12 +395,31 @@ export function DeviceStreamView(props: {
             client?.sendTouch("begin", x, y);
           }}
           onPointerMove={(event) => {
+            if (desktop && activePointer.current === null && event.pointerType === "mouse") {
+              if (inputState.connected)
+                client?.sendPointer({ type: "motion", ...normalizedPoint(event) });
+              return;
+            }
             if (activePointer.current?.id !== event.pointerId) return;
             const { x, y } = normalizedPoint(event);
             activePointer.current = { id: event.pointerId, x, y };
             client?.sendTouch("move", x, y);
           }}
-          onPointerUp={endPointer}
+          onPointerUp={(event) => {
+            if (desktop && (event.button === 1 || event.button === 2)) {
+              const button = event.button === 1 ? "middle" : "right";
+              client?.sendPointer({
+                type: "button",
+                button,
+                down: false,
+                ...normalizedPoint(event),
+              });
+              return;
+            }
+            endPointer(event);
+          }}
+          onContextMenu={desktop ? (event) => event.preventDefault() : undefined}
+          onWheel={desktop ? onDesktopWheel : undefined}
           onPointerCancel={endPointer}
           onLostPointerCapture={endPointer}
         >

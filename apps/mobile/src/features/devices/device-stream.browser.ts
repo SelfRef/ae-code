@@ -50,7 +50,11 @@ export function start(configuration: DeviceStreamConfiguration) {
   frame.setAttribute("role", "application");
   frame.setAttribute(
     "aria-label",
-    platform === "ios" ? "iOS Simulator screen" : "Android Emulator screen",
+    platform === "ios"
+      ? "iOS Simulator screen"
+      : platform === "linux"
+        ? "GNOME desktop screen"
+        : "Android Emulator screen",
   );
   frame.tabIndex = 0;
   Object.assign(frame.style, {
@@ -100,7 +104,9 @@ export function start(configuration: DeviceStreamConfiguration) {
       ? landscape
         ? Math.max(screen.width, screen.height) / Math.min(screen.width, screen.height)
         : Math.min(screen.width, screen.height) / Math.max(screen.width, screen.height)
-      : 9 / 19.5;
+      : platform === "linux"
+        ? 16 / 10
+        : 9 / 19.5;
     const rotation =
       platform === "ios" && screen && screen.width <= screen.height
         ? screen.orientation === "landscape_left"

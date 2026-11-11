@@ -5,7 +5,7 @@ import * as SchemaTransformation from "effect/SchemaTransformation";
 import { ThreadId, TrimmedNonEmptyString, TrimmedString } from "./baseSchemas.ts";
 import { SettingsSecretValue } from "./settingsSecretValue.ts";
 
-export const DevicePlatform = Schema.Literals(["ios", "android"]);
+export const DevicePlatform = Schema.Literals(["ios", "android", "linux"]);
 export type DevicePlatform = typeof DevicePlatform.Type;
 
 export const DeviceHostId = TrimmedNonEmptyString.check(Schema.isMaxLength(128));

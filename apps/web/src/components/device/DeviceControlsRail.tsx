@@ -52,7 +52,9 @@ export function DeviceControlsRail(props: {
   const popupSide = "left";
   const settings = controls.detail?.settings;
   const inputDisabled = !handle?.inputConnected;
-  const runsHostCommands = props.hostKind === "local" || props.hostKind === "ssh";
+  // A desktop has no hardware buttons, rotation, phone settings or 3D phone.
+  const desktop = props.platform === "linux";
+  const runsHostCommands = !desktop && (props.hostKind === "local" || props.hostKind === "ssh");
   const nextAppearance = settings?.appearance === "dark" ? "light" : "dark";
   return (
     <aside
@@ -61,14 +63,16 @@ export function DeviceControlsRail(props: {
       className="pointer-events-none absolute inset-y-0 right-0 z-10 flex w-14 flex-col items-center gap-2 overflow-y-auto [justify-content:safe_center] py-3 pr-2 [scrollbar-width:none]"
     >
       <div className="pointer-events-auto flex shrink-0 flex-col items-center gap-1 overflow-y-auto rounded-full border border-border/50 bg-background/80 p-2 shadow-sm [scrollbar-width:none]">
-        <RailButton
-          tooltipSide={popupSide}
-          label="Home"
-          disabled={inputDisabled}
-          onClick={() => handle?.pressButton("home")}
-        >
-          <Home />
-        </RailButton>
+        {desktop ? null : (
+          <RailButton
+            tooltipSide={popupSide}
+            label="Home"
+            disabled={inputDisabled}
+            onClick={() => handle?.pressButton("home")}
+          >
+            <Home />
+          </RailButton>
+        )}
         {props.platform === "android" ? (
           <>
             <RailButton
@@ -118,7 +122,7 @@ export function DeviceControlsRail(props: {
               </Menu>
             ) : null}
           </>
-        ) : props.hostKind === "simlock" ? null : (
+        ) : props.hostKind === "simlock" || desktop ? null : (
           <RailButton
             tooltipSide={popupSide}
             label="Rotate device"
@@ -229,30 +233,38 @@ export function DeviceControlsRail(props: {
             <MenuSeparator />
             <MenuItem variant="destructive" onClick={props.onPowerOff}>
               <Power />
-              {props.hostKind === "simlock" ? "Return device to the pool" : "Power off device"}
+              {props.hostKind === "simlock"
+                ? "Return device to the pool"
+                : desktop
+                  ? "End desktop session"
+                  : "Power off device"}
             </MenuItem>
           </MenuPopup>
         </Menu>
-        <RailDivider />
-        <RailButton
-          tooltipSide={popupSide}
-          label="3D view"
-          pressed={view.phone}
-          disabled={!view.streaming || !!view.phoneUnavailableReason}
-          description={view.phoneUnavailableReason ?? undefined}
-          onClick={view.showPhone}
-        >
-          <Box />
-        </RailButton>
-        <RailButton
-          tooltipSide={popupSide}
-          label="Flat view"
-          pressed={!view.phone}
-          disabled={!view.streaming}
-          onClick={view.showFlat}
-        >
-          <Smartphone />
-        </RailButton>
+        {desktop ? null : <RailDivider />}
+        {desktop ? null : (
+          <RailButton
+            tooltipSide={popupSide}
+            label="3D view"
+            pressed={view.phone}
+            disabled={!view.streaming || !!view.phoneUnavailableReason}
+            description={view.phoneUnavailableReason ?? undefined}
+            onClick={view.showPhone}
+          >
+            <Box />
+          </RailButton>
+        )}
+        {desktop ? null : (
+          <RailButton
+            tooltipSide={popupSide}
+            label="Flat view"
+            pressed={!view.phone}
+            disabled={!view.streaming}
+            onClick={view.showFlat}
+          >
+            <Smartphone />
+          </RailButton>
+        )}
         {view.keyboard ? (
           <RailButton
             tooltipSide={popupSide}

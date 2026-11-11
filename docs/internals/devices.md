@@ -65,6 +65,51 @@ panel offers only input there.
 Leases are renewed while tracked and released at the host's age limit; one a
 crashed server left behind ends on its own one TTL later, so there is no ledger.
 
+## GNOME desktops are a process the local host spawns
+
+A [Linux desktop](../../apps/server/src/device/LinuxDesktop.ts) is not run by
+expo-device-hub. Booting it spawns a Python helper
+([linuxDesktopFiles.ts](../../apps/server/src/device/linuxDesktopFiles.ts), written
+under the T3 home because the server ships as one executable) that starts its
+own session and system D-Bus, PipeWire, WirePlumber and
+`gnome-shell --headless --virtual-monitor`, with XDG config and data dirs of its
+own. Mutter's ScreenCast and RemoteDesktop D-Bus APIs give frames and input
+without a seat, logind, `/dev/uinput` or any capability, which is what lets it run
+in an unprivileged container. GNOME Shell 50 aborts without a system bus, so the
+helper starts an empty one.
+
+The helper serves serve-sim's formats (AVCC envelopes, multipart MJPEG, the
+tagged-JSON input socket plus tag `0x20` for hover, extra buttons, wheel and
+text) on loopback behind a per-session token, under `/vendor/linux-desktop`. The
+local host's `upstream` routes that prefix to it and adds the token; every other
+path still goes to the hub. Each stream or screenshot opens its own ScreenCast
+session, so H.264 can take GPU DMA-BUFs while MJPEG and PNG read system memory.
+Mutter sends a frame only when the screen changes; `keepalive-time` on
+`pipewiresrc` keeps the viewer's 15-second stall timer from firing on a still
+desktop.
+
+Traps the helper works around, each covered where it happens:
+
+- Mutter drops the first event of a new virtual input device, so the helper
+  spends one on a no-op before any client sends input.
+- GNOME Shell opens the overview once it has started, leaving apps without
+  focus; the session's own extension closes it at `startup-complete`.
+- Wayland clients do not know their window positions, so GTK reports every
+  window at 0,0 to AT-SPI and agent-device's element rects are window-relative.
+  The extension publishes frame rects, and a `sitecustomize.py` on the agent
+  daemon's `PYTHONPATH` corrects `get_extents(SCREEN)` inside agent-device's
+  `atspi-dump.py` only.
+- agent-device drives Wayland through `ydotool` and `grim`, which need
+  `/dev/uinput` and wlroots. The daemon's `PATH` starts with shims of both that
+  call the helper.
+- asyncio's signal handlers miss SIGTERM next to PyGObject's GLib loop, so the
+  helper uses `signal.signal`; its children get `PR_SET_PDEATHSIG`, so a killed
+  helper takes GNOME Shell with it.
+
+The agent daemon's environment gets the session's bus, absolute
+`WAYLAND_DISPLAY` and XDG dirs, but not its `XDG_RUNTIME_DIR`, which the
+Android emulator tools read.
+
 ## The hub is never exposed
 
 serve-sim has a shell-exec route whose token is readable from its own

@@ -14,7 +14,7 @@ import {
   type SimlockDeviceHostConfig,
   type SshDeviceHostConfig,
 } from "@t3tools/contracts";
-import { ChevronDownIcon, MoreVertical, PlusIcon } from "lucide-react";
+import { ChevronDownIcon, Monitor, MoreVertical, PlusIcon } from "lucide-react";
 
 import { cn, randomUUID } from "../../lib/utils";
 import { deviceEnvironment } from "../../state/device";
@@ -23,6 +23,7 @@ import { serverEnvironment } from "../../state/server";
 import { readEnvironmentScope } from "../../state/session";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { AndroidIcon, AppleIcon } from "../Icons";
+import { devicePlatformName } from "@t3tools/client-runtime/device/model";
 import { Button, InlineButton } from "../ui/button";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "../ui/menu";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
@@ -119,7 +120,7 @@ function hostStatus(
     case "ready": {
       const incomplete = incompleteListings(status);
       if (incomplete.length === 0) return undefined;
-      const list = incomplete.length > 1 ? "Device" : incomplete[0] === "ios" ? "iOS" : "Android";
+      const list = incomplete.length > 1 ? "Device" : devicePlatformName(incomplete[0]!);
       return { tone: "warning", label: `${list} list may be incomplete`, detail: status.detail };
     }
     case "installing":
@@ -610,6 +611,7 @@ export function DeviceSourcesSettings(props: {
 const PLATFORMS = [
   { platform: "ios", label: "iOS", Icon: AppleIcon },
   { platform: "android", label: "Android", Icon: AndroidIcon },
+  { platform: "linux", label: "GNOME desktop", Icon: Monitor },
 ] as const satisfies ReadonlyArray<{ platform: DevicePlatform; label: string; Icon: unknown }>;
 
 /** The platforms a source offers: one icon each, solid where available, muted where not. */

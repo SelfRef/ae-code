@@ -116,17 +116,18 @@ describe("device hub proxy", () => {
     expect(finalized()).toBe(1);
   });
 
-  it.each(["/vendor/serve-sim/helper/ws", "/vendor/serve-emu/ws"])(
-    "rejects input socket %s for a read-only session",
-    async (path) => {
-      const { handler, requests } = fixture([AuthOrchestrationReadScope]);
-      const response = await handler(
-        new Request(`http://t3.test/api/device-hub${path}`, { headers: { upgrade: "websocket" } }),
-      );
-      expect(response.status).toBe(403);
-      expect(requests).toEqual([]);
-    },
-  );
+  it.each([
+    "/vendor/serve-sim/helper/ws",
+    "/vendor/serve-emu/ws",
+    "/vendor/linux-desktop/helper/ws",
+  ])("rejects input socket %s for a read-only session", async (path) => {
+    const { handler, requests } = fixture([AuthOrchestrationReadScope]);
+    const response = await handler(
+      new Request(`http://t3.test/api/device-hub${path}`, { headers: { upgrade: "websocket" } }),
+    );
+    expect(response.status).toBe(403);
+    expect(requests).toEqual([]);
+  });
 
   it("requires operate scope for stream tuning", async () => {
     const readOnly = fixture([AuthOrchestrationReadScope]);
@@ -237,7 +238,9 @@ describe("device hub proxy", () => {
                 headers: { authorization: "Bearer session-token" },
                 protocols: [],
               }
-            : null,
+            : hubPath === "/api/devices"
+              ? undefined
+              : null,
         ),
     );
     const routed = await handler(
@@ -255,6 +258,10 @@ describe("device hub proxy", () => {
     );
     expect(unrouted.status).toBe(404);
     expect(requests).toHaveLength(1);
+    const left = await handler(new Request("http://t3.test/api/device-hub/api/devices"));
+    await left.text();
+    expect(requests[1]).toBe("http://hub.test/api/devices");
+    expect(headers[1]?.authorization).toBeUndefined();
   });
 
   it("never forwards the vendor shell endpoint", async () => {
@@ -263,6 +270,16 @@ describe("device hub proxy", () => {
       (
         await handler(
           new Request("http://t3.test/api/device-hub/vendor/serve-sim/exec", { method: "POST" }),
+        )
+      ).status,
+    ).toBe(404);
+    // A Linux desktop takes agent input on this route, outside the viewer's socket.
+    expect(
+      (
+        await handler(
+          new Request("http://t3.test/api/device-hub/vendor/linux-desktop/input", {
+            method: "POST",
+          }),
         )
       ).status,
     ).toBe(404);

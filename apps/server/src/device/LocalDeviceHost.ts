@@ -39,6 +39,7 @@ import * as ProcessRunner from "../processRunner.ts";
 import { releaseAgentDeviceSession } from "./AgentDeviceTarget.ts";
 import * as DeviceHost from "./DeviceHost.ts";
 import { makeDeviceHubOperations } from "./DeviceHubOperations.ts";
+import * as LinuxDesktop from "./LinuxDesktop.ts";
 import {
   agentDeviceStateDir,
   type DeviceToolPaths,
@@ -284,10 +285,20 @@ export const make = Effect.fn("LocalDeviceHost.make")(function* () {
   const runningRef = yield* Ref.make<RunningHost | null>(null);
   const restartDelayRef = yield* Ref.make(0);
   const hostId = LOCAL_DEVICE_HOST_ID;
+  const desktop = yield* LinuxDesktop.make({
+    hostId,
+    stateDir: config.stateDir,
+    environment: environment,
+    hostPlatform,
+  });
+  // Other systems never offer a Linux desktop, so they do not list it as missing either.
+  const hostPlatforms: ReadonlyArray<DevicePlatform> =
+    hostPlatform === "linux" ? ["ios", "android", "linux"] : ["ios", "android"];
 
   const platformAvailability = Effect.fn("LocalDeviceHost.platformAvailability")(function* (
     platform: DevicePlatform,
   ): Effect.fn.Return<DevicePlatformAvailability> {
+    if (platform === "linux") return yield* desktop.availability;
     const reason = yield* platformReason(platform).pipe(
       Effect.provideService(FileSystem.FileSystem, fs),
       Effect.provideService(Path.Path, path),
@@ -297,7 +308,7 @@ export const make = Effect.fn("LocalDeviceHost.make")(function* () {
 
   const summary: Effect.Effect<DeviceHostSummary> = Effect.gen(function* () {
     const [platforms, hubInstalled, agentDeviceInstalled] = yield* Effect.all([
-      Effect.all([platformAvailability("ios"), platformAvailability("android")]),
+      Effect.forEach(hostPlatforms, platformAvailability),
       isDeviceHubInstalled(config.baseDir).pipe(
         Effect.provideService(FileSystem.FileSystem, fs),
         Effect.provideService(Path.Path, path),
@@ -552,6 +563,7 @@ export const make = Effect.fn("LocalDeviceHost.make")(function* () {
       AGENT_DEVICE_NO_UPDATE_NOTIFIER: "1",
       FORCE_COLOR: "0",
       NO_COLOR: "1",
+      ...(yield* desktop.agentEnvironment),
     };
     const toEndpoint = (
       file: typeof AgentDeviceDaemonFile.Type,
@@ -851,14 +863,17 @@ export const make = Effect.fn("LocalDeviceHost.make")(function* () {
 
   const toReady = (running: RunningHost): DeviceHost.DeviceHostReady => ({
     hub: { origin: running.hub.origin } satisfies DeviceHost.DeviceHubEndpoint,
-    devices: makeDeviceHubOperations({
-      hostId,
-      origin: running.hub.origin,
-      http: httpClient,
-      run,
-      platformAvailable: (platform) =>
-        platformAvailability(platform).pipe(Effect.map((availability) => availability.available)),
-    }),
+    devices: desktop.withDesktop(
+      makeDeviceHubOperations({
+        hostId,
+        origin: running.hub.origin,
+        http: httpClient,
+        run,
+        platformAvailable: (platform) =>
+          platformAvailability(platform).pipe(Effect.map((availability) => availability.available)),
+      }),
+    ),
+    upstream: desktop.upstream,
     nodePath: running.hub.nodePath,
     run,
     helpers: running.helpers,
@@ -890,6 +905,7 @@ export const make = Effect.fn("LocalDeviceHost.make")(function* () {
             Effect.andThen(fs.remove(hubStatePath(), { force: true }).pipe(Effect.ignore)),
           ),
           stopAgentDeviceDaemon,
+          desktop.stop,
         ],
         { concurrency: "unbounded", discard: true },
       );

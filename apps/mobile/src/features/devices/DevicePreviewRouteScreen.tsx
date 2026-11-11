@@ -107,6 +107,8 @@ export function DevicePreviewScreen({
   const state = useEnvironmentQuery(deviceEnvironment.state({ environmentId, input: {} }));
   const previews = threadDevicePreviews(state.data, threadId);
   const preview = selectedThreadDevicePreview(previews, selectedKey);
+  // A GNOME desktop has no hardware buttons.
+  const desktop = preview?.session.platform === "linux";
   const onInputConnected = async (connected: boolean) => {
     setInputConnected(connected);
     if (!connected) setControlsVisible(true);
@@ -218,13 +220,17 @@ export function DevicePreviewScreen({
           },
         ]
       : []),
-    {
-      id: "app-switcher",
-      title: "App switcher",
-      icon: "square.on.square",
-      disabled: !inputConnected,
-      onPress: () => streamRef.current?.appSwitcher(),
-    },
+    ...(desktop
+      ? []
+      : [
+          {
+            id: "app-switcher",
+            title: "App switcher",
+            icon: "square.on.square" as const,
+            disabled: !inputConnected,
+            onPress: () => streamRef.current?.appSwitcher(),
+          },
+        ]),
     ...(preview?.session.platform === "ios"
       ? [
           {
@@ -311,12 +317,14 @@ export function DevicePreviewScreen({
           className="flex-row items-center justify-center gap-2 px-3 py-2"
           style={{ paddingBottom: Math.max(insets.bottom, 8) }}
         >
-          <ControlPill
-            accessibilityLabel="Home"
-            icon="house"
-            disabled={!inputConnected}
-            onPress={pressHome}
-          />
+          {desktop ? null : (
+            <ControlPill
+              accessibilityLabel="Home"
+              icon="house"
+              disabled={!inputConnected}
+              onPress={pressHome}
+            />
+          )}
           <DeviceOptionsMenu items={menuItems} />
         </View>
       ) : controlsVisible ? (
@@ -339,12 +347,14 @@ export function DevicePreviewScreen({
               <AppText numberOfLines={1} className="flex-1 text-center font-t3-medium text-base">
                 {preview?.name ?? "Devices"}
               </AppText>
-              <ControlPill
-                accessibilityLabel="Home"
-                icon="house"
-                disabled={!inputConnected}
-                onPress={pressHome}
-              />
+              {desktop ? null : (
+                <ControlPill
+                  accessibilityLabel="Home"
+                  icon="house"
+                  disabled={!inputConnected}
+                  onPress={pressHome}
+                />
+              )}
               <DeviceOptionsMenu items={menuItems} />
             </GlassSurface>
           </View>

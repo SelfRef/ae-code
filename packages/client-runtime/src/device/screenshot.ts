@@ -14,7 +14,12 @@ export class DeviceScreenshotError extends Schema.TaggedError<DeviceScreenshotEr
 }
 
 export async function captureDeviceScreenshot(target: DeviceStreamTarget, signal: AbortSignal) {
-  const vendor = target.platform === "ios" ? "serve-sim" : "serve-emu";
+  const vendor =
+    target.platform === "linux"
+      ? "linux-desktop"
+      : target.platform === "ios"
+        ? "serve-sim"
+        : "serve-emu";
   const url = withDeviceHubQuery(
     `${target.access.httpBase}/vendor/${vendor}/api/screenshot?device=${encodeURIComponent(target.deviceId)}`,
     target.access,
