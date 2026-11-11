@@ -16,6 +16,11 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
   H.264, encoded on the GPU where VA-API is available. It runs in a container without a display or a logged-in user;
   the packages it needs are listed in the [devices guide](./user/devices.md#gnome-desktops).
 
+### Fixed
+
+- The desktop app, the web app (favicon, installed app) and the iOS icon show the blueprint tile with its grid, like the
+  Android app, instead of a flat dark tile.
+
 ## [v2026.11.11] - 2026-11-11
 
 ### Added
