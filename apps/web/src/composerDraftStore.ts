@@ -22,6 +22,7 @@ import {
   ThreadContextRecord,
   EnvironmentContextRecord,
   type ServerProvider,
+  type SyncedComposerDraft,
   type ScopedProjectRef,
   type ScopedThreadRef,
   ThreadId,
@@ -507,6 +508,8 @@ interface ComposerDraftStoreState {
   markDraftThreadPromoting: (threadRef: ComposerThreadTarget, promotedTo?: ScopedThreadRef) => void;
   finalizePromotedDraftThread: (threadRef: ComposerThreadTarget) => void;
   clearDraftThread: (threadRef: ComposerThreadTarget) => void;
+  /** Puts a draft written on another device into this store, as the user would have typed it. */
+  applySyncedDraft: (environmentId: EnvironmentId, draft: SyncedComposerDraft) => void;
   setStickyModelSelection: (modelSelection: ModelSelection | null | undefined) => void;
   setPrompt: (threadRef: ComposerThreadTarget, prompt: string) => void;
   setTerminalContexts: (threadRef: ComposerThreadTarget, contexts: TerminalContextDraft[]) => void;
@@ -2896,6 +2899,109 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
             }
             return removeDraftThreadReferences(state, threadKey);
           });
+        },
+        applySyncedDraft: (environmentId, draft) => {
+          const separator = draft.key.indexOf(":");
+          const id = draft.key.slice(separator + 1);
+          const isNewThread = draft.key.startsWith("draft:");
+          const target: ComposerThreadTarget = isNewThread
+            ? DraftId.make(id)
+            : scopeThreadRef(environmentId, ThreadId.make(id));
+          const content = draft.deleted ? null : draft.content;
+          if (content === null) {
+            if (!isNewThread) {
+              get().setPrompt(target, "");
+              return;
+            }
+            const session = get().draftThreadsByThreadKey[id];
+            if (session !== undefined && draft.promotedTo !== null) {
+              get().markDraftThreadPromoting(
+                target,
+                scopeThreadRef(session.environmentId, ThreadId.make(draft.promotedTo)),
+              );
+              get().finalizePromotedDraftThread(target);
+              return;
+            }
+            get().setPrompt(target, "");
+            // Only the text came from the other device: a draft that still holds attachments stays.
+            if (
+              session !== undefined &&
+              !composerDraftHasUserContent(get().draftsByThreadKey[id])
+            ) {
+              get().clearDraftThread(target);
+            }
+            return;
+          }
+          if (isNewThread) {
+            const synced = content.session;
+            if (synced === null) {
+              return;
+            }
+            const projectRef = scopeProjectRef(environmentId, synced.projectId);
+            set((state) => {
+              const existing = state.draftThreadsByThreadKey[id];
+              const logicalProjectKey =
+                existing?.logicalProjectKey ?? logicalProjectDraftKey(projectDraftKey(projectRef));
+              const next = createDraftThreadState(
+                projectRef,
+                synced.threadId ?? existing?.threadId ?? ThreadId.make(id),
+                logicalProjectKey,
+                existing,
+                {
+                  branch: synced.branch,
+                  worktreePath: synced.worktreePath,
+                  createdAt: synced.createdAt,
+                  envMode: synced.envMode,
+                  startFromOrigin: synced.startFromOrigin ?? false,
+                  ...(content.runtimeMode === null ? {} : { runtimeMode: content.runtimeMode }),
+                  ...(content.interactionMode === null
+                    ? {}
+                    : { interactionMode: content.interactionMode }),
+                },
+              );
+              const mapped = state.logicalProjectDraftThreadKeyByLogicalProjectKey;
+              if (existing !== undefined && draftThreadsEqual(existing, next)) {
+                return state;
+              }
+              return {
+                draftThreadsByThreadKey: { ...state.draftThreadsByThreadKey, [id]: next },
+                // The project's "new thread" pointer moves only when it points nowhere.
+                ...(mapped[logicalProjectKey] === undefined ||
+                state.draftThreadsByThreadKey[mapped[logicalProjectKey]] === undefined
+                  ? {
+                      logicalProjectDraftThreadKeyByLogicalProjectKey: {
+                        ...mapped,
+                        [logicalProjectKey]: id,
+                      },
+                    }
+                  : {}),
+              };
+            });
+          }
+          const current =
+            get().draftsByThreadKey[isNewThread ? id : scopedThreadKey(target as ScopedThreadRef)];
+          if ((current?.prompt ?? "") !== content.prompt) {
+            get().setPrompt(target, content.prompt);
+          }
+          const currentSelection =
+            current?.modelSelectionExplicit && current.activeProvider !== null
+              ? current.modelSelectionByProvider[current.activeProvider]
+              : undefined;
+          if (
+            content.modelSelection !== null &&
+            JSON.stringify(currentSelection) !== JSON.stringify(content.modelSelection)
+          ) {
+            get().setModelSelection(target, content.modelSelection, { explicit: true });
+          }
+          if (content.runtimeMode !== null && current?.runtimeMode !== content.runtimeMode) {
+            get().setRuntimeMode(target, content.runtimeMode);
+          }
+          if (
+            content.interactionMode !== null &&
+            current?.interactionMode !== content.interactionMode
+          ) {
+            get().setInteractionMode(target, content.interactionMode);
+          }
         },
         setStickyModelSelection: (modelSelection) => {
           const normalized = normalizeModelSelection(modelSelection);

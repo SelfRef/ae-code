@@ -29,6 +29,7 @@ import {
   subscribeDraftThreadPromotion,
   useComposerDraftStore,
 } from "./composerDraftStore";
+import { startComposerDraftSyncService } from "./composerDraftSync";
 import { startDefaultThemeAdoption } from "./hooks/useDefaultTheme";
 import { startEnvironmentThemeRepaint } from "./hooks/useEnvironmentTheme";
 import { readLocalStorageValue, subscribeLocalStorageKey } from "./hooks/useLocalStorage";
@@ -207,6 +208,7 @@ export function startAppServices(): AppRouter {
     shellStateAtom: environmentShell.stateAtom,
     pendingThreadIdsAtom: threadEnvironment.pendingThreadIdsAtom,
   });
+  startComposerDraftSyncService(appAtomRegistry);
   startMainAppLocationTracking(router);
   startWorkspaceFocus(router);
   startBackgroundThreadAnnouncements(appAtomRegistry, router);
