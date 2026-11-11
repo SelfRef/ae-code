@@ -35,6 +35,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Fixed
 
+- A Git action's progress shows only in the thread details section (Git or Default branch) that started it, not in both.
 - Forgejo / Gitea: a `GITEA_TOKEN` in the server's environment without an instance no longer hides the signed-in `gt` account (the provider read as not authenticated).
 - Updating a Docker or bare-host server from another app (sidebar, banner) installs the newest GitHub release even when
   the app's own version is a local build that is no release.
