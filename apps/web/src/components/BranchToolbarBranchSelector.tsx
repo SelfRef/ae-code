@@ -14,7 +14,7 @@ import {
   type VcsRef,
   type ThreadId,
 } from "@t3tools/contracts";
-import { GitBranchIcon } from "lucide-react";
+import { FolderGit2Icon, GitBranchIcon } from "lucide-react";
 import {
   useEffect,
   useEffectEvent,
@@ -330,6 +330,7 @@ export function BranchToolbarBranchSelector({
     branchStatusQuery.data?.sourceControlProvider,
   );
   const SourceControlIcon = sourceControlPresentation.Icon;
+  const BranchIcon = displayMode === "panel" && activeWorktreePath ? FolderGit2Icon : GitBranchIcon;
   const canonicalActiveBranch = resolveBranchToolbarValue({
     envMode: effectiveEnvMode,
     activeWorktreePath,
@@ -849,7 +850,7 @@ export function BranchToolbarBranchSelector({
             // NVDA browse mode re-reads a combobox when its attributes change, not when its text does.
             aria-label={`Branch: ${triggerLabel}`}
           >
-            <GitBranchIcon
+            <BranchIcon
               className={cn(
                 "size-3 shrink-0",
                 displayMode === "panel" && THREAD_DETAILS_PANEL_ICON_CLASS,
