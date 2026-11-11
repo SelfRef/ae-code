@@ -24,6 +24,7 @@ import { PullRequestDetailPanel } from "../pullRequest/PullRequestDetailPanel";
 import { PullRequestDetailGhost } from "../pullRequest/PullRequestGhosts";
 import { PullRequestsUnavailableState } from "../pullRequest/PullRequestsUnavailableState";
 import { ThreadIssuesPanel } from "../issue/ThreadIssuesPanel";
+import { ThreadBranchesPanel } from "../branches/ThreadBranchesPanel";
 import { ThreadReleasesPanel } from "../releases/ThreadReleasesPanel";
 import { ThreadPullRequestsPanel } from "../pullRequest/ThreadPullRequestsPanel";
 
@@ -188,6 +189,15 @@ export function RightPanelSurfaceContent(props: {
         <ThreadReleasesPanel
           environmentId={props.environmentId}
           projectId={props.files.projectId}
+          workspaceRoot={props.files.workspaceRoot}
+        />
+      ) : null;
+    case "branches":
+      return props.files.projectId && props.files.workspaceRoot ? (
+        <ThreadBranchesPanel
+          environmentId={props.environmentId}
+          projectId={props.files.projectId}
+          projectName={props.files.projectName ?? ""}
           workspaceRoot={props.files.workspaceRoot}
         />
       ) : null;

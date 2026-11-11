@@ -15,6 +15,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
   and drive the same screen (click, right-click, scroll, type, paste) from web, desktop and Android. The stream is
   H.264, encoded on the GPU where VA-API is available. It runs in a container without a display or a logged-in user;
   the packages it needs are listed in the [devices guide](./user/devices.md#gnome-desktops).
+- Branches open in the right panel (add menu, key `G`), with the page's search, sort and filters.
 
 - Browser: a three-way **View only / Take control / Share control** selector on web and Android. Share control lets you
   click and type in an agent's tab while the agent keeps working: both actions run in one order and nothing the agent
