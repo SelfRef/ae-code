@@ -4,7 +4,6 @@ import { threadKey } from "@t3tools/client-runtime/state/entities";
 import { describe, expect, it } from "vite-plus/test";
 import {
   buildThreadSwitcherThreads,
-  resolveProjectSwitchTarget,
   type BreadcrumbSwitcherThread,
 } from "./breadcrumbSwitcher.logic";
 
@@ -145,58 +144,4 @@ describe("buildThreadSwitcherThreads", () => {
       }),
     ).toEqual([firstPin, secondPin, newer, fallback, older]);
   });
-});
-
-describe("resolveProjectSwitchTarget", () => {
-  it.each([false, true])("picks the newest listed thread when it is pinned: %s", (pinned) => {
-    const olderPin = makeThread("older-pin", {
-      pinnedAt: "2026-01-01T00:00:00.000Z",
-      pinOrderKey: "b",
-      latestUserMessageAt: "2026-01-02T00:00:00.000Z",
-    });
-    const newest = makeThread("newest", {
-      pinnedAt: pinned ? "2026-01-01T00:00:00.000Z" : null,
-      pinOrderKey: pinned ? "n" : null,
-      latestUserMessageAt: "2026-01-03T00:00:00.000Z",
-    });
-    const archived = makeThread("archived", {
-      archivedAt: "2026-01-05T00:00:00.000Z",
-      latestUserMessageAt: "2026-01-04T00:00:00.000Z",
-    });
-    const projectRef = scopeProjectRef(newest.environmentId, newest.projectId);
-
-    expect(
-      resolveProjectSwitchTarget({
-        threads: [archived, olderPin, newest],
-        projectRefs: [projectRef],
-        targetProject: projectRef,
-        hiddenThreadKeys: new Set(),
-        sortOrder: "updated_at",
-      }),
-    ).toEqual({
-      kind: "thread",
-      threadRef: scopeThreadRef(newest.environmentId, newest.id),
-    });
-  });
-
-  it.each(["empty", "filtered"] as const)(
-    "creates a thread in the target project when the list is %s",
-    (state) => {
-      const archived = makeThread("archived", { archivedAt: "2026-01-02T00:00:00.000Z" });
-      const targetProject = scopeProjectRef(
-        EnvironmentId.make("environment-b"),
-        ProjectId.make("project-b"),
-      );
-
-      expect(
-        resolveProjectSwitchTarget({
-          threads: state === "empty" ? [] : [archived],
-          projectRefs: [scopeProjectRef(archived.environmentId, archived.projectId), targetProject],
-          targetProject,
-          hiddenThreadKeys: new Set(),
-          sortOrder: "updated_at",
-        }),
-      ).toEqual({ kind: "new-thread", projectRef: targetProject });
-    },
-  );
 });

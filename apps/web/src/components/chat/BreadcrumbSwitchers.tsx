@@ -19,11 +19,7 @@ import { useRef, useState, type ReactElement, type ReactNode } from "react";
 import { useNewThreadHandler } from "~/hooks/useHandleNewThread";
 import { useSidebarProjectGroups } from "~/hooks/useSidebarProjectGroups";
 import { buildSidebarProjectPickerEntries } from "~/sidebarProjectGrouping";
-import {
-  useHiddenThreadKeys,
-  useQuietThreadShells,
-  useThreadShellsForProjectRefs,
-} from "~/state/entities";
+import { useHiddenThreadKeys, useThreadShellsForProjectRefs } from "~/state/entities";
 import { useOlderSettledShelf, useOlderSettledShelfGrowth } from "~/state/olderSettledShelf";
 import { textDirection } from "~/textDirection";
 import { buildThreadRouteParams } from "~/threadRoutes";
@@ -39,7 +35,7 @@ import {
   MenuSeparator,
   MenuTrigger,
 } from "../ui/menu";
-import { buildThreadSwitcherThreads, resolveProjectSwitchTarget } from "./breadcrumbSwitcher.logic";
+import { buildThreadSwitcherThreads } from "./breadcrumbSwitcher.logic";
 
 const PROJECT_ROW_CAP = 50;
 const THREAD_ROW_CAP = 50;
@@ -90,10 +86,6 @@ function ProjectSwitcherContent(props: {
 }) {
   const [query, setQuery] = useState("");
   const groups = useSidebarProjectGroups();
-  const threads = useQuietThreadShells();
-  const hiddenThreadKeys = useHiddenThreadKeys();
-  const sortOrder = useClientSettings((settings) => settings.sidebarThreadSortOrder);
-  const router = useRouter();
   const newThread = useNewThreadHandler();
   const activeProjectRef = scopeProjectRef(
     props.activeProject.environmentId,
@@ -154,24 +146,9 @@ function ProjectSwitcherContent(props: {
             props.onSelectProject(entry.targetProject);
             return;
           }
-          const target = resolveProjectSwitchTarget({
-            threads,
-            projectRefs: entry.group.memberProjectRefs,
-            targetProject: scopeProjectRef(
-              entry.targetProject.environmentId,
-              entry.targetProject.id,
-            ),
-            hiddenThreadKeys,
-            sortOrder,
-          });
-          if (target.kind === "thread") {
-            void router.navigate({
-              to: "/$environmentId/$threadId",
-              params: buildThreadRouteParams(target.threadRef),
-            });
-          } else {
-            void newThread(target.projectRef);
-          }
+          void newThread(
+            scopeProjectRef(entry.targetProject.environmentId, entry.targetProject.id),
+          );
         }}
       >
         {visible.map(({ group }) => (

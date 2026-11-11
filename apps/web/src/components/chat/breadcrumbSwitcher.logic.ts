@@ -61,25 +61,3 @@ export function buildThreadSwitcherThreads<T extends BreadcrumbSwitcherThread>(
   }
   return [...sortPinnedThreadsByOrderKey(pinned), ...sortThreads(rest, input.sortOrder)];
 }
-
-export type ProjectSwitchTarget =
-  | { readonly kind: "thread"; readonly threadRef: ScopedThreadRef }
-  | { readonly kind: "new-thread"; readonly projectRef: ScopedProjectRef };
-
-/**
- * Where picking a project in the breadcrumb lands: its most recent listed thread,
- * or a new thread in `targetProject` when it has none. Pins don't win here; recency does.
- */
-export function resolveProjectSwitchTarget<T extends BreadcrumbSwitcherThread>(input: {
-  readonly threads: ReadonlyArray<T>;
-  readonly projectRefs: ReadonlyArray<ScopedProjectRef>;
-  readonly targetProject: ScopedProjectRef;
-  readonly hiddenThreadKeys: ReadonlySet<string>;
-  readonly sortOrder: SidebarThreadSortOrder;
-}): ProjectSwitchTarget {
-  const listed = buildThreadSwitcherThreads({ ...input, currentThreadRef: null });
-  const latest = sortThreads(listed, input.sortOrder)[0];
-  return latest
-    ? { kind: "thread", threadRef: scopeThreadRef(latest.environmentId, latest.id) }
-    : { kind: "new-thread", projectRef: input.targetProject };
-}
