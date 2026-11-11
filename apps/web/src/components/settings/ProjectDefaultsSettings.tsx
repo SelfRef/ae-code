@@ -108,6 +108,7 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
   const mixedAutoPull = useScopedSettingsMixed(["defaultAutoPull"]);
   const mixedAgentCredits = useScopedSettingsMixed(["removeAgentCreditsOnMerge"]);
   const mixedMergeMethod = useScopedSettingsMixed(["pullRequestMergeMethod"]);
+  const mixedCurrentBranch = useScopedSettingsMixed(["currentBranchAction"]);
   const mixedQuickMerge = useScopedSettingsMixed(["quickMergeAction"]);
   const modelSource = useScopedSettingSource(["defaultModelSelection"]);
   const isProjectScope = scope.kind === "project" || scope.kind === "checkout";
@@ -513,6 +514,47 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
                   <SelectItem value="merge">{PULL_REQUEST_MERGE_METHOD_LABELS.merge}</SelectItem>
                   <SelectItem value="squash">{PULL_REQUEST_MERGE_METHOD_LABELS.squash}</SelectItem>
                   <SelectItem value="rebase">{PULL_REQUEST_MERGE_METHOD_LABELS.rebase}</SelectItem>
+                </SelectPopup>
+              </Select>
+            }
+          />
+          <SettingsRow
+            serverScoped
+            settingKeys={["currentBranchAction"]}
+            mixed={mixedCurrentBranch}
+            {...searchableSetting("current-branch-action")}
+            description="The main action of the Git button when a thread's branch is ahead of its remote. Creating a pull request stays in the menu."
+            resetAction={
+              settings.currentBranchAction !== "push" ? (
+                <SettingResetButton
+                  label="current branch action"
+                  tooltip="Reset to push"
+                  onClick={() => updateSettings({ currentBranchAction: "push" })}
+                />
+              ) : null
+            }
+            control={
+              <Select
+                value={mixedCurrentBranch ? null : settings.currentBranchAction}
+                onValueChange={(value) => {
+                  if (value === "push" || value === "pull_request")
+                    updateSettings({ currentBranchAction: value });
+                }}
+              >
+                <SelectTrigger size="sm" aria-label="Current branch action">
+                  <SelectValue>
+                    {(value: string | null) =>
+                      value === "pull_request"
+                        ? "Push & create pull request"
+                        : value === null
+                          ? "Mixed"
+                          : "Push"
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectPopup align="end" alignItemWithTrigger={false}>
+                  <SelectItem value="push">Push</SelectItem>
+                  <SelectItem value="pull_request">Push & create pull request</SelectItem>
                 </SelectPopup>
               </Select>
             }

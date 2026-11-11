@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| 42   | Current branch action: a project setting (Push by default) that picks whether the Git button also creates a pull request                                               | done    |
 | 41   | Floating preview: window-style buttons in its top-right corner, shown while the pointer is over it, instead of a dot that opens a pill                                 | done    |
 | [40] | Other ways to run the Android emulator in the Device panel: investigate Cuttlefish and scrcpy; a Google Play image and foldable support are required                   | planned |
 | [39] | File operations in the Files panel: create files and folders, rename, move, copy and delete from a row's or the empty area's menu, on the web and in the Android app   | done    |
@@ -1438,3 +1439,15 @@ current means rebasing that stack onto the newest upstream `main`, never merging
 - **Off by default:** a feature nothing enables fails soft when a rebase drops a piece of it.
 - **Upstream stays an option:** if the maintainers ever ask for it, the additive layout makes a branch a clean PR;
   until then nothing is offered.
+
+## Current branch action (change 42)
+
+The Git button of a thread's branch offered "Push & create PR" whenever the branch was ahead and had no pull request. A
+project-scoped setting `currentBranchAction` (`push` by default, or `pull_request` for the old behavior; Settings → Source
+control, above the default branch action) picks the main action.
+
+- `resolveQuickAction` (`packages/client-runtime/src/state/gitActions.ts`, and the web copy in `GitActionsControl.logic.ts`)
+  takes a `createPr` flag. Off, it never runs `create_pr` / `commit_push_pr`: a dirty branch commits and pushes, an ahead one
+  pushes, and a pushed one with no pull request has no main action (Create PR stays in the menu).
+- Web, desktop and Android follow it (Android: Settings → Source control → "Current branch action").
+- No data migration: a new setting with a default. Servers without it ignore the key; older clients show their old button.

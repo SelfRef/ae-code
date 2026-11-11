@@ -10,6 +10,9 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Changed
 
+- The Git button of a branch pushes by default instead of pushing and creating a pull request (and commits and pushes
+  instead of commits, pushes and creates one). **Settings → Source control → Current branch action**, globally or per
+  project, brings the pull request back as the main action; **Create PR** stays in the menu either way.
 - Merging into the default branch moved out of the Git actions menu into its own **Default branch** section of the thread
   details card (off by default; turn it on from the card's show/hide list). Its button merges the branch, with
   **Merge & push** and **Push n commits** (the default branch as it is) under the arrow; with nothing to merge, the push is

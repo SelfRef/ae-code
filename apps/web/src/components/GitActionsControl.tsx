@@ -43,7 +43,11 @@ import { RadioGroup } from "~/components/ui/radio-group";
 import { Spinner } from "~/components/ui/spinner";
 import { Toggle, ToggleGroup } from "~/components/ui/toggle-group";
 import { cn } from "~/lib/utils";
-import { useClientSettings, useQuickMergeAction } from "~/hooks/useSettings";
+import {
+  useClientSettings,
+  useCurrentBranchAction,
+  useQuickMergeAction,
+} from "~/hooks/useSettings";
 import { PullRequestGlyph } from "./pullRequest/pullRequestIcons";
 import {
   buildMenuItems,
@@ -1136,10 +1140,10 @@ export default function GitActionsControl({
 
   const isDefaultRef = gitStatusForActions?.isDefaultRef ?? false;
 
-  const quickMergeAction = useQuickMergeAction(
-    activeEnvironmentId,
-    activeServerThreadShell?.projectId ?? activeDraftThread?.projectId ?? null,
-  );
+  const settingsProjectId =
+    activeServerThreadShell?.projectId ?? activeDraftThread?.projectId ?? null;
+  const quickMergeAction = useQuickMergeAction(activeEnvironmentId, settingsProjectId);
+  const currentBranchAction = useCurrentBranchAction(activeEnvironmentId, settingsProjectId);
   const defaultBranchActions =
     scope === "defaultBranch"
       ? resolveDefaultBranchActions(
@@ -1168,7 +1172,13 @@ export default function GitActionsControl({
         action: defaultBranchActions.primary.id,
         ...(defaultBranchHint ? { hint: defaultBranchHint } : {}),
       }
-    : resolveQuickAction(gitStatusForActions, isGitActionRunning, isDefaultRef, hasPrimaryRemote);
+    : resolveQuickAction(
+        gitStatusForActions,
+        isGitActionRunning,
+        isDefaultRef,
+        hasPrimaryRemote,
+        currentBranchAction === "pull_request",
+      );
   // Default branch labels already carry their counts.
   const formatActionLabel = (item: Pick<GitQuickAction, "label" | "disabled">) =>
     defaultBranchActions ? item.label : formatQuickActionLabel(item, gitStatusForActions);
