@@ -38,7 +38,7 @@ vi.mock(import("~/state/entities"), async (importOriginal) => ({
           id: "thread",
           environmentId: "environment",
           projectId: "project",
-          worktreePath: state.folder,
+          worktreePath: state.folder === state.workspaceRoot ? null : state.folder,
           branch: null,
           pullRequests: state.pullRequests,
         }) as never,
