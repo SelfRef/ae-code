@@ -5,6 +5,7 @@ import { AsyncResult, Atom } from "effect/reactivity";
 import { parseThreadKey, threadKey } from "./entities.ts";
 import { type AtomCommand, runAtomCommand } from "./runtime.ts";
 import { claimThreadOpen } from "./threadSearch.ts";
+import { threadWokeAt, type ThreadSnoozeShell } from "./threadSettled.ts";
 import type { VisitThreadInput } from "../operations/commands.ts";
 
 // During an active turn the thread's updatedAt advances several times per
@@ -29,6 +30,35 @@ interface VisitedShell {
    * the dispatch and keep the thread marked Woke.
    */
   readonly wokeAt?: string | null | undefined;
+}
+
+/**
+ * A scheduled wake takes effect without a newer server update, so a thread that is open when its
+ * snooze ends would otherwise stay "Woke" on every device. This adds `wokeAt` to the shell and
+ * re-evaluates it when the wake time passes.
+ */
+export function wakeAwareVisitShell<Shell extends ThreadSnoozeShell & VisitedShell>(
+  threadShellAtom: (ref: ScopedThreadRef) => Atom.Atom<Shell | null>,
+) {
+  const family = Atom.family((key: string) => {
+    const ref = parseThreadKey(key);
+    return Atom.make((get) => {
+      const shell = get(threadShellAtom(ref));
+      if (shell === null) return null;
+      const nowMs = Date.now();
+      const wokeAt = threadWokeAt(shell, { now: new Date(nowMs).toISOString() });
+      const wakeAtMs = shell.snoozedUntil == null ? NaN : Date.parse(shell.snoozedUntil);
+      if (wokeAt === null && wakeAtMs > nowMs) {
+        const timer = setTimeout(
+          () => get.refreshSelf(),
+          Math.min(wakeAtMs - nowMs + 50, 2_147_483_647),
+        );
+        get.addFinalizer(() => clearTimeout(timer));
+      }
+      return { ...shell, wokeAt };
+    }).pipe(Atom.withLabel(`thread-visit-shell:${key}`));
+  });
+  return (ref: ScopedThreadRef) => family(threadKey(ref));
 }
 
 export interface ThreadVisitTrackerOptions {

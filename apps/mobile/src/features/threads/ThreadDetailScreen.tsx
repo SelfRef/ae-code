@@ -11,8 +11,10 @@ import { AsyncResult, Atom } from "effect/reactivity";
 import * as Dialog from "../../components/ui/Dialog";
 import { useAtomMount, useAtomValue } from "@effect/atom-react";
 import { mobilePreferencesAtom } from "../../state/preferences";
-import { parseThreadKey, threadKey } from "@t3tools/client-runtime/state/entities";
-import { createThreadVisitTracker } from "@t3tools/client-runtime/state/thread-visits";
+import {
+  createThreadVisitTracker,
+  wakeAwareVisitShell,
+} from "@t3tools/client-runtime/state/thread-visits";
 import { useChildThreadInputs, useThreadReportedModelSelection } from "../../state/entities";
 import { UsageLimitRecoveryCard } from "./UsageLimitRecoveryCard";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -348,30 +350,8 @@ const USER_INPUT_TOGGLE_TIMING = {
   easing: Easing.out(Easing.cubic),
 };
 
-// A scheduled wake can happen without a newer server update, so the tracker
-// is told when one takes effect. The shell's updatedAt ticks while a run
-// streams; the tracker follows it outside React.
-const wakeAwareVisitShell = Atom.family((key: string) => {
-  const ref = parseThreadKey(key);
-  return Atom.make((get) => {
-    const shell = get(environmentThreadShells.threadShellAtom(ref));
-    if (shell === null) return null;
-    const nowMs = Date.now();
-    const wokeAt = threadWokeAt(shell, { now: new Date(nowMs).toISOString() });
-    const wakeAtMs = shell.snoozedUntil == null ? NaN : Date.parse(shell.snoozedUntil);
-    if (wokeAt === null && wakeAtMs > nowMs) {
-      const timer = setTimeout(
-        () => get.refreshSelf(),
-        Math.min(wakeAtMs - nowMs + 50, 2_147_483_647),
-      );
-      get.addFinalizer(() => clearTimeout(timer));
-    }
-    return { ...shell, wokeAt };
-  }).pipe(Atom.withLabel(`mobile-thread-visit-shell:${key}`));
-});
-
 const threadVisitTracker = createThreadVisitTracker({
-  threadShellAtom: (ref) => wakeAwareVisitShell(threadKey(ref)),
+  threadShellAtom: wakeAwareVisitShell(environmentThreadShells.threadShellAtom),
   sessionGenerationAtom: environmentCatalog.sessionGenerationAtom,
   visit: threadEnvironment.visit,
 });
