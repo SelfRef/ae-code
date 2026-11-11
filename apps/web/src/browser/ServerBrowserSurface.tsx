@@ -149,7 +149,7 @@ export function ServerBrowserSurface(props: {
   readonly tabId: string;
   readonly visible: boolean;
   readonly followSize?: boolean;
-  readonly controlPosition?: "top" | "bottom";
+  readonly hideControls?: boolean;
   readonly onFirstFrame?: () => void;
   readonly onViewport?: (viewport: PreviewStreamViewport) => void;
   readonly onControl?: (control: PreviewStreamControl | null) => void;
@@ -164,7 +164,7 @@ export function ServerBrowserSurface(props: {
     tabId,
     visible,
     followSize = true,
-    controlPosition = "top",
+    hideControls = false,
     onFirstFrame,
     onViewport,
     onControl,
@@ -751,32 +751,29 @@ export function ServerBrowserSurface(props: {
       data-server-browser-surface={tabId}
       onMouseUp={handleMouseUp}
     >
-      <div
-        className={cn(
-          "visible relative z-20 flex shrink-0 items-center justify-between gap-2 border-border bg-background px-2 py-1",
-          controlPosition === "bottom" ? "order-last border-t" : "border-b",
-        )}
-      >
-        <span role="status" className="min-w-0 truncate text-xs text-muted-foreground">
-          {previewStreamControlLabel(control)}
-        </span>
-        {control?.canOperate ? (
-          <ToggleGroup
-            aria-label="Browser control"
-            variant="segmented"
-            disabled={control.controller === "another-viewer"}
-            value={[previewStreamControlMode(control)]}
-            onValueChange={([mode]) => {
-              if (mode === "view" || mode === "control" || mode === "share")
-                send(previewStreamControlInput[mode]);
-            }}
-          >
-            <Toggle value="view">View only</Toggle>
-            <Toggle value="control">Take control</Toggle>
-            <Toggle value="share">Share control</Toggle>
-          </ToggleGroup>
-        ) : null}
-      </div>
+      {hideControls ? null : (
+        <div className="visible relative z-20 flex shrink-0 items-center justify-between gap-2 border-b border-border bg-background px-2 py-1">
+          <span role="status" className="min-w-0 truncate text-xs text-muted-foreground">
+            {previewStreamControlLabel(control)}
+          </span>
+          {control?.canOperate ? (
+            <ToggleGroup
+              aria-label="Browser control"
+              variant="segmented"
+              disabled={control.controller === "another-viewer"}
+              value={[previewStreamControlMode(control)]}
+              onValueChange={([mode]) => {
+                if (mode === "view" || mode === "control" || mode === "share")
+                  send(previewStreamControlInput[mode]);
+              }}
+            >
+              <Toggle value="view">View only</Toggle>
+              <Toggle value="control">Take control</Toggle>
+              <Toggle value="share">Share control</Toggle>
+            </ToggleGroup>
+          ) : null}
+        </div>
+      )}
       <div className="relative min-h-0 flex-1">
         {pdfUrl ? (
           <embed

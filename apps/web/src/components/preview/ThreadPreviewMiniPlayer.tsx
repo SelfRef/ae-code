@@ -321,7 +321,7 @@ function BrowserMiniPlayer({ threadRef, tabId, miniPlayer }: Props & { readonly 
               pdfUrl={pdfUrl}
               visible
               followSize={false}
-              controlPosition="bottom"
+              hideControls
               onViewport={(viewport) =>
                 useStreamedSourceSize.setState(
                   (state) =>
