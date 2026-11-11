@@ -8,6 +8,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+## [v2026.11.11.2] - 2026-11-11
+
 ### Changed
 
 - Rebased on the latest upstream T3 Code. The Diff panel now keeps its selection when you leave a thread and come
