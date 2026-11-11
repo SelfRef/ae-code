@@ -205,7 +205,8 @@ export function start(configuration: PreviewStreamConfiguration) {
           const previous = control;
           control = nextControl;
           post({ type: "control", ...nextControl });
-          if (nextControl.controller === "you") agentCursor.style.opacity = "0";
+          if (nextControl.controller === "you" && !nextControl.shared)
+            agentCursor.style.opacity = "0";
           if (nextControl.controller !== "you") clearInput();
           else {
             input.disabled = !interactive;
@@ -265,7 +266,12 @@ export function start(configuration: PreviewStreamConfiguration) {
 
   let agentCursorTimer: ReturnType<typeof setTimeout> | null = null;
   const showAgentCursor = (pointer: PreviewStreamPointer) => {
-    if (!viewport || canvas.width === 0 || canvas.height === 0 || control?.controller === "you")
+    if (
+      !viewport ||
+      canvas.width === 0 ||
+      canvas.height === 0 ||
+      (control?.controller === "you" && !control.shared)
+    )
       return;
     const box = { width: canvas.clientWidth, height: canvas.clientHeight };
     const fit = Math.min(box.width / canvas.width, box.height / canvas.height);
@@ -283,7 +289,7 @@ export function start(configuration: PreviewStreamConfiguration) {
     }
     if (agentCursorTimer !== null) clearTimeout(agentCursorTimer);
     agentCursorTimer = setTimeout(() => {
-      agentCursor.style.opacity = control?.controller === "agent" ? "0.35" : "0";
+      agentCursor.style.opacity = control?.controller === "agent" || control?.shared ? "0.35" : "0";
     }, AGENT_CURSOR_ACTIVE_MS);
   };
 

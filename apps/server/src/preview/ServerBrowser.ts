@@ -214,6 +214,7 @@ export type ServerBrowserViewerOutput =
       readonly _tag: "control";
       readonly canOperate: boolean;
       readonly controller: "agent" | "you" | "another-viewer" | "unclaimed";
+      readonly shared: boolean;
       readonly generation: number;
       readonly dialog: {
         readonly type: string;
@@ -707,6 +708,7 @@ const make = Effect.gen(function* () {
               : tab.control.agentId !== null
                 ? "agent"
                 : "unclaimed",
+        shared: tab.control.controller === viewer.id && tab.control.shared,
         generation: tab.control.generation,
         dialog: dialogStatus(tab),
       });
@@ -1889,7 +1891,7 @@ const make = Effect.gen(function* () {
   };
 
   const tabOwner = (tab: ServerTab) =>
-    tab.control.controller !== null
+    tab.control.exclusive
       ? ("human" as const)
       : tab.control.agentId !== null
         ? ("agent" as const)
@@ -2705,7 +2707,7 @@ const make = Effect.gen(function* () {
           message: "This tab has no agent owner. Ask the user to close it in the browser panel.",
           reason: "unclaimedTab",
         });
-      if (tab.control.controller !== null)
+      if (tab.control.exclusive)
         throw new BrowserControlInterrupted({
           message: "A human controls this tab.",
           reason: "humanControl",
@@ -2716,7 +2718,7 @@ const make = Effect.gen(function* () {
     }
     // Resolve dialogs outside the queue, with ownership checked, to unblock waiting clicks.
     if (request.operation === "dialog") {
-      if (tab.control.controller !== null)
+      if (tab.control.exclusive)
         throw new BrowserControlInterrupted({
           message: "A human controls this tab.",
           reason: "humanControl",
@@ -3346,6 +3348,11 @@ const make = Effect.gen(function* () {
               const taking = tab.control.take(viewer.id);
               broadcastControl(tab);
               await taking;
+              pushFileChooser(tab);
+            } else if (message.type === "shareControl") {
+              const sharing = tab.control.share(viewer.id);
+              broadcastControl(tab);
+              await sharing;
               pushFileChooser(tab);
             } else if (message.type === "releaseControl") {
               const releasing = tab.control.release(viewer.id, () =>

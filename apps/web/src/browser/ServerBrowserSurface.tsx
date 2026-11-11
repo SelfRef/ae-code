@@ -1,7 +1,9 @@
 import {
   createPreviewFramePainter,
   createPreviewStreamClient,
+  previewStreamControlInput,
   previewStreamControlLabel,
+  previewStreamControlMode,
   previewStreamModifiers,
   type PreviewStreamClient,
   type PreviewStreamControl,
@@ -36,6 +38,7 @@ import {
 import { AgentCursorMark } from "~/components/preview/AgentBrowserCursor";
 import { CommandBlock } from "~/components/CommandBlock";
 import { Button } from "~/components/ui/button";
+import { Toggle, ToggleGroup } from "~/components/ui/toggle-group";
 import { Input } from "~/components/ui/input";
 import { toastManager } from "~/components/ui/toast";
 import { cn } from "~/lib/utils";
@@ -754,20 +757,24 @@ export function ServerBrowserSurface(props: {
           controlPosition === "bottom" ? "order-last border-t" : "border-b",
         )}
       >
-        <span role="status" className="text-xs text-muted-foreground">
+        <span role="status" className="min-w-0 truncate text-xs text-muted-foreground">
           {previewStreamControlLabel(control)}
         </span>
         {control?.canOperate ? (
-          <Button
-            variant="outline"
-            size="xs"
+          <ToggleGroup
+            aria-label="Browser control"
+            variant="segmented"
             disabled={control.controller === "another-viewer"}
-            onClick={() =>
-              send({ type: control.controller === "you" ? "releaseControl" : "takeControl" })
-            }
+            value={[previewStreamControlMode(control)]}
+            onValueChange={([mode]) => {
+              if (mode === "view" || mode === "control" || mode === "share")
+                send(previewStreamControlInput[mode]);
+            }}
           >
-            {control.controller === "you" ? "Release control" : "Take control"}
-          </Button>
+            <Toggle value="view">View only</Toggle>
+            <Toggle value="control">Take control</Toggle>
+            <Toggle value="share">Share control</Toggle>
+          </ToggleGroup>
         ) : null}
       </div>
       <div className="relative min-h-0 flex-1">
@@ -789,10 +796,10 @@ export function ServerBrowserSurface(props: {
           onMouseDown={(event) => event.preventDefault()}
           onContextMenu={(event) => event.preventDefault()}
         />
-        {!pdfUrl && agentCursor && control?.controller !== "you" ? (
+        {!pdfUrl && agentCursor && (control?.controller !== "you" || control.shared) ? (
           <AgentCursorMark
             {...agentCursor}
-            controller={control?.controller === "agent" ? "agent" : "none"}
+            controller={control?.controller === "agent" || control?.shared ? "agent" : "none"}
           />
         ) : null}
         {/* Pin top-left to avoid focus scrolling; 16px prevents iOS focus zoom. */}

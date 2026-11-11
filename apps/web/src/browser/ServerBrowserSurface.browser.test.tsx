@@ -41,7 +41,7 @@ function setup() {
   }));
 }
 
-async function renderSurface(controller: PreviewStreamControl["controller"]) {
+async function renderSurface(controller: PreviewStreamControl["controller"], shared = false) {
   const container = document.createElement("div");
   container.style.cssText = "width: 400px; height: 300px; display: flex;";
   await using stack = new AsyncDisposableStack();
@@ -61,7 +61,7 @@ async function renderSurface(controller: PreviewStreamControl["controller"]) {
   await vi.waitFor(() => expect(mocks.createClient).toHaveBeenCalled());
   const handlers = mocks.createClient.mock.calls.at(-1)![1];
   await act(() =>
-    handlers.onControl?.({ canOperate: true, controller, generation: 1, dialog: null }),
+    handlers.onControl?.({ canOperate: true, controller, shared, generation: 1, dialog: null }),
   );
   mocks.sent.length = 0;
   const input = container.querySelector("textarea")!;
@@ -156,6 +156,36 @@ const mouseUp = (canvas: HTMLCanvasElement, button: number) => {
   canvas.dispatchEvent(event);
   return event;
 };
+
+describe("ServerBrowserSurface control modes", () => {
+  it("moves between view only, taking control and sharing it with the agent", async () => {
+    setup();
+    const { screen } = await renderSurface("agent");
+    await using _screen = screen;
+
+    await userEvent.click(screen.getByRole("button", { name: "Share control" }));
+    await userEvent.click(screen.getByRole("button", { name: "Take control" }));
+    expect(mocks.sent).toEqual([{ type: "shareControl" }, { type: "takeControl" }]);
+  });
+
+  it("shows sharing as the pressed mode and releases from it", async () => {
+    setup();
+    const { screen, input } = await renderSurface("you", true);
+    await using _screen = screen;
+
+    await expect
+      .element(screen.getByRole("status"))
+      .toHaveTextContent("You and the agent have control");
+    await expect
+      .element(screen.getByRole("button", { name: "Share control" }))
+      .toHaveAttribute("aria-pressed", "true");
+    expect(
+      input.closest("[data-server-browser-surface]")!.querySelector("textarea")!.disabled,
+    ).toBe(false);
+    await userEvent.click(screen.getByRole("button", { name: "View only" }));
+    expect(mocks.sent).toEqual([{ type: "releaseControl" }]);
+  });
+});
 
 describe("ServerBrowserSurface history", () => {
   it("routes mouse thumb buttons to the preview's history instead of the app", async () => {
