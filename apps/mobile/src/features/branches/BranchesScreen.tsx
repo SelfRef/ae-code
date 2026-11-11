@@ -1,30 +1,52 @@
 import {
   branchMergeState,
   branchProjects,
+  filterBranches,
+  sortBranches,
   threadForBranch,
+  type BranchKind,
+  type BranchMergeFilter,
+  type BranchSort,
 } from "@t3tools/client-runtime/branch-overview";
-import { projectKey, selectIssueProject } from "@t3tools/client-runtime/issue-projects";
-import type { VcsBranchOverviewEntry } from "@t3tools/contracts";
-import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { projectKey } from "@t3tools/client-runtime/issue-projects";
+import { ALL_VCS_REMOTES, type VcsBranchOverviewEntry } from "@t3tools/contracts";
+import { useRef, useState } from "react";
+import { Pressable, ScrollView as RowScrollView, View } from "react-native";
 
 import { AppText as Text } from "../../components/ui/AppText";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { AppActivityIndicator } from "../../components/ui/AppActivityIndicator";
 import { ScreenScrollView as ScrollView } from "../../components/ui/ScreenScrollView";
-import { SegmentedControl } from "../../components/ui/SegmentedControl";
+import { SearchField } from "../../components/ui/SearchField";
 import { cn } from "../../lib/cn";
 import { relativeTime } from "../../lib/time";
 import { useProjects, useThreadShells } from "../../state/entities";
+import { usePageProject } from "../../state/page-project";
 import { useEnvironmentQuery } from "../../state/query";
 import { vcsEnvironment } from "../../state/vcs";
 import { useOpenWorkspaceDetail } from "../layout/useOpenWorkspaceDetail";
+import { ChoiceChip } from "../layout/workspace/ChoiceChip";
 import { SettingsScreen } from "../settings/components/SettingsScreen";
 
-const FILTER_OPTIONS = [
-  { value: "all", label: "All" },
+const SORT_OPTIONS = [
+  { value: "recent", label: "Latest commit" },
+  { value: "oldest", label: "Oldest commit" },
+  { value: "ahead", label: "Most unmerged commits" },
+  { value: "name", label: "Name" },
+] as const satisfies readonly { value: BranchSort; label: string }[];
+
+const UNFILTERED = "all";
+const MERGE_OPTIONS = [
+  { value: UNFILTERED, label: "Any merge state" },
   { value: "unmerged", label: "Not merged" },
+  { value: "merged", label: "Merged" },
+] as const;
+const KIND_OPTIONS = [
+  { value: UNFILTERED, label: "Any kind" },
+  { value: "branch", label: "Branch" },
+  { value: "worktree", label: "Worktree" },
+  { value: "remote", label: "Remote only" },
 ] as const;
 
 function BranchRow(props: {
@@ -99,28 +121,37 @@ export function BranchesScreen() {
   const threads = useThreadShells();
   const openDetail = useOpenWorkspaceDetail();
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const [filter, setFilter] = useState<(typeof FILTER_OPTIONS)[number]["value"]>("all");
-  const project =
-    projects.find((candidate) => projectKey(candidate) === selectedKey) ??
-    selectIssueProject(projects, {});
+  const [sort, setSort] = useState<BranchSort>("recent");
+  const [merge, setMerge] = useState<BranchMergeFilter | typeof UNFILTERED>(UNFILTERED);
+  const [kind, setKind] = useState<BranchKind | typeof UNFILTERED>(UNFILTERED);
+  const [remote, setRemote] = useState<string | undefined>(undefined);
+  const [query, setQuery] = useState("");
+  const searchRef = useRef(null);
+  const project = usePageProject(projects, selectedKey);
   const overview = useEnvironmentQuery(
     project === null
       ? null
       : vcsEnvironment.branchOverview({
           environmentId: project.environmentId,
-          input: { cwd: project.workspaceRoot, fetch: true },
+          input: {
+            cwd: project.workspaceRoot,
+            fetch: true,
+            ...(remote === undefined ? {} : { remote }),
+          },
         }),
   );
   const data = overview.data;
   const unmerged = data?.branches.filter((branch) => branchMergeState(branch) === "unmerged") ?? [];
-  const branches = filter === "unmerged" ? unmerged : (data?.branches ?? []);
-
-  const nextProject = () => {
-    if (projects.length < 2 || project === null) return;
-    const index = projects.findIndex((candidate) => projectKey(candidate) === projectKey(project));
-    const next = projects[(index + 1) % projects.length];
-    if (next) setSelectedKey(projectKey(next));
-  };
+  const branches = sortBranches(
+    filterBranches(data?.branches ?? [], {
+      merge: merge === UNFILTERED ? undefined : merge,
+      kind: kind === UNFILTERED ? undefined : kind,
+      query,
+    }),
+    sort,
+  );
+  const remotes = data?.remotes ?? [];
+  const shownRemote = data?.remote ?? ALL_VCS_REMOTES;
 
   return (
     <SettingsScreen
@@ -142,17 +173,75 @@ export function BranchesScreen() {
           />
         ) : (
           <View className="gap-3">
-            {projects.length > 1 ? (
-              <Button label={`Project: ${project.title} (change)`} onPress={nextProject} />
-            ) : null}
-            <SegmentedControl
-              options={FILTER_OPTIONS}
-              selected={filter}
-              onSelect={setFilter}
-              size="compact"
-              role="tab"
-              className="w-full"
-            />
+            <View className="flex-row">
+              <SearchField
+                inputRef={searchRef}
+                autoFocus={false}
+                accessibilityLabel="Search branches"
+                clearAccessibilityLabel="Clear search"
+                placeholder="Search branches"
+                value={query}
+                onChangeText={setQuery}
+              />
+            </View>
+            <RowScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8 }}
+            >
+              {projects.length > 1 ? (
+                <ChoiceChip
+                  label={project.title}
+                  accessibilityLabel="Choose project"
+                  options={projects.map((candidate) => ({
+                    value: projectKey(candidate),
+                    label: candidate.title,
+                  }))}
+                  selected={projectKey(project)}
+                  onSelect={(key) => {
+                    setSelectedKey(key);
+                    setRemote(undefined);
+                  }}
+                />
+              ) : null}
+              <ChoiceChip
+                label={SORT_OPTIONS.find((option) => option.value === sort)?.label ?? "Sort"}
+                accessibilityLabel="Sort branches"
+                options={SORT_OPTIONS}
+                selected={sort}
+                active={sort !== "recent"}
+                onSelect={setSort}
+              />
+              <ChoiceChip
+                label={MERGE_OPTIONS.find((option) => option.value === merge)?.label ?? ""}
+                accessibilityLabel="Filter by merge state"
+                options={MERGE_OPTIONS}
+                selected={merge}
+                active={merge !== UNFILTERED}
+                onSelect={setMerge}
+              />
+              <ChoiceChip
+                label={KIND_OPTIONS.find((option) => option.value === kind)?.label ?? ""}
+                accessibilityLabel="Filter by kind"
+                options={KIND_OPTIONS}
+                selected={kind}
+                active={kind !== UNFILTERED}
+                onSelect={setKind}
+              />
+              {remotes.length > 1 ? (
+                <ChoiceChip
+                  label={shownRemote === ALL_VCS_REMOTES ? "All remotes" : shownRemote}
+                  accessibilityLabel="Filter by remote"
+                  options={[
+                    ...remotes.map((name) => ({ value: name, label: name })),
+                    { value: ALL_VCS_REMOTES, label: "All remotes" },
+                  ]}
+                  selected={shownRemote}
+                  active={shownRemote !== remotes[0]}
+                  onSelect={setRemote}
+                />
+              ) : null}
+            </RowScrollView>
             {data === null ? (
               overview.error !== null ? (
                 <View className="items-start gap-2 py-4">
@@ -180,8 +269,12 @@ export function BranchesScreen() {
                 {branches.length === 0 ? (
                   <EmptyState
                     variant="plain"
-                    title="Everything is merged"
-                    detail={`No branch has commits that ${data.defaultRef} lacks.`}
+                    title={merge === "unmerged" ? "Everything is merged" : "No matching branches"}
+                    detail={
+                      merge === "unmerged"
+                        ? `No branch has commits that ${data.defaultRef} lacks.`
+                        : "Change the search or the filters to see more."
+                    }
                   />
                 ) : null}
                 {branches.map((branch) => {

@@ -1,36 +1,23 @@
-import {
-  issueProjects,
-  projectKey,
-  selectIssueProject,
-} from "@t3tools/client-runtime/issue-projects";
+import { issueProjects, projectKey } from "@t3tools/client-runtime/issue-projects";
 import type { EnvironmentId, ProjectId, ReleaseSummary } from "@t3tools/contracts";
-import { useEffect, useState } from "react";
-import { BackHandler, Linking, Pressable, View } from "react-native";
+import { useState } from "react";
+import { Linking, Pressable, View } from "react-native";
 
 import { AppText as Text } from "../../components/ui/AppText";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { AppActivityIndicator } from "../../components/ui/AppActivityIndicator";
 import { ScreenScrollView as ScrollView } from "../../components/ui/ScreenScrollView";
+import { SplitPage } from "../../components/ui/SplitPage";
 import { relativeTime } from "../../lib/time";
 import { useProjects } from "../../state/entities";
+import { usePageProject } from "../../state/page-project";
 import { issueEnvironment } from "../../state/issues";
 import { useEnvironmentQuery } from "../../state/query";
 import { useSourceControlSignIn } from "../../state/sourceControl";
+import { ChoiceChip } from "../layout/workspace/ChoiceChip";
 import { SettingsScreen } from "../settings/components/SettingsScreen";
 import { PullRequestMarkdown } from "../pull-requests/PullRequestMarkdown";
-
-function useHardwareBack(active: boolean, onBack: () => void) {
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- subscribes to the platform's back button while a release is open
-  useEffect(() => {
-    if (!active) return;
-    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
-      onBack();
-      return true;
-    });
-    return () => subscription.remove();
-  }, [active, onBack]);
-}
 
 type Target = { readonly environmentId: EnvironmentId; readonly projectId: ProjectId };
 
@@ -203,39 +190,73 @@ function ReleaseDetail(props: { readonly target: Target; readonly id: number }) 
   );
 }
 
-/** The Releases tab: one page that swaps between the list and an open release. */
+/** The Releases tab: the list, with the open release beside it where the page is wide. */
 export function ReleasesScreen() {
   const projects = issueProjects(useProjects(), useSourceControlSignIn().githubSignedOut);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const project =
-    projects.find((candidate) => projectKey(candidate) === selectedKey) ??
-    selectIssueProject(projects, {});
+  const project = usePageProject(projects, selectedKey);
   const [pages, setPages] = useState(1);
   const [open, setOpen] = useState<number | null>(null);
   const [refresh, setRefresh] = useState(0);
-
-  const detail = open !== null;
-  // The page is the whole tab, so the hardware back button has to close the release itself.
   const closeDetail = () => setOpen(null);
-  useHardwareBack(detail, closeDetail);
 
   const target: Target | null = project
     ? { environmentId: project.environmentId, projectId: project.id }
     : null;
-  const nextProject = () => {
-    if (projects.length < 2 || project === null) return;
-    const index = projects.findIndex((candidate) => projectKey(candidate) === projectKey(project));
-    const next = projects[(index + 1) % projects.length];
-    if (next) {
-      setSelectedKey(projectKey(next));
-      setPages(1);
-      setOpen(null);
-    }
-  };
+
+  const list = (
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      showsVerticalScrollIndicator={false}
+      className="flex-1"
+      contentContainerClassName="px-5 pt-4 pb-6"
+    >
+      {target === null || project === null ? (
+        <EmptyState
+          variant="plain"
+          title="No GitHub project"
+          detail="Releases are listed for projects whose repository is on GitHub."
+        />
+      ) : (
+        <View className="gap-3">
+          {projects.length > 1 ? (
+            <View className="flex-row">
+              <ChoiceChip
+                label={project.title}
+                accessibilityLabel="Choose project"
+                options={projects.map((candidate) => ({
+                  value: projectKey(candidate),
+                  label: candidate.title,
+                }))}
+                selected={projectKey(project)}
+                onSelect={(key) => {
+                  setSelectedKey(key);
+                  setPages(1);
+                  setOpen(null);
+                }}
+              />
+            </View>
+          ) : null}
+          <View>
+            {Array.from({ length: pages }, (_, index) => (
+              <ReleasePage
+                key={`${projectKey(project)}:${refresh}:${index + 1}`}
+                target={target}
+                page={index + 1}
+                isLast={index + 1 === pages}
+                onOpen={setOpen}
+                onMore={() => setPages((value) => value + 1)}
+              />
+            ))}
+          </View>
+        </View>
+      )}
+    </ScrollView>
+  );
 
   return (
     <SettingsScreen
-      title={detail ? "Release" : (project?.title ?? "Releases")}
+      title={project?.title ?? "Releases"}
       workspaceRoot
       refresh={{
         accessibilityLabel: "Refresh releases",
@@ -245,47 +266,33 @@ export function ReleasesScreen() {
         },
       }}
     >
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        showsVerticalScrollIndicator={false}
-        className="flex-1"
-        contentContainerClassName="px-5 pt-4 pb-6"
-      >
-        {target === null || project === null ? (
-          <EmptyState
-            variant="plain"
-            title="No GitHub project"
-            detail="Releases are listed for projects whose repository is on GitHub."
-          />
-        ) : detail ? (
-          <View className="gap-3">
-            <Button label="Back to releases" onPress={closeDetail} />
-            <ReleaseDetail
-              key={`${projectKey(project)}:${open}:${refresh}`}
-              target={target}
-              id={open}
-            />
-          </View>
-        ) : (
-          <View className="gap-3">
-            {projects.length > 1 ? (
-              <Button label={`Project: ${project.title} (change)`} onPress={nextProject} />
-            ) : null}
-            <View>
-              {Array.from({ length: pages }, (_, index) => (
-                <ReleasePage
-                  key={`${projectKey(project)}:${refresh}:${index + 1}`}
+      <SplitPage
+        list={list}
+        open={open !== null && target !== null && project !== null}
+        onCloseDetail={closeDetail}
+        emptyDetail={
+          <EmptyState variant="plain" title="Select a release" detail="Its notes show here." />
+        }
+        renderDetail={(compact) =>
+          target !== null && project !== null && open !== null ? (
+            <ScrollView
+              contentInsetAdjustmentBehavior="automatic"
+              showsVerticalScrollIndicator={false}
+              className="flex-1"
+              contentContainerClassName="px-5 pt-4 pb-6"
+            >
+              <View className="gap-3">
+                {compact ? <Button label="Back to releases" onPress={closeDetail} /> : null}
+                <ReleaseDetail
+                  key={`${projectKey(project)}:${open}:${refresh}`}
                   target={target}
-                  page={index + 1}
-                  isLast={index + 1 === pages}
-                  onOpen={setOpen}
-                  onMore={() => setPages((value) => value + 1)}
+                  id={open}
                 />
-              ))}
-            </View>
-          </View>
-        )}
-      </ScrollView>
+              </View>
+            </ScrollView>
+          ) : null
+        }
+      />
     </SettingsScreen>
   );
 }
