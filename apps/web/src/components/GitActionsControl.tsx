@@ -1174,7 +1174,15 @@ export default function GitActionsControl({
     : quickAction.disabled
       ? (quickAction.hint ?? "This action is currently unavailable.")
       : null;
-  const gitActionProgress = resolveGitActionProgressPresentation(vcsActionState);
+  // Both sections share one action state; only the one whose action runs shows its progress.
+  const runsInDefaultBranchSection =
+    vcsActionState.action === "merge" ||
+    vcsActionState.action === "merge_push" ||
+    vcsActionState.action === "push_default";
+  const gitActionProgress =
+    runsInDefaultBranchSection === (scope === "defaultBranch")
+      ? resolveGitActionProgressPresentation(vcsActionState)
+      : null;
   // A fresh draft or a thread with no turns hides commit, push, and diff rows until there is work.
   const quietEmptyDraft =
     (draftId !== undefined || activeServerThreadShell?.latestRun === null) &&
