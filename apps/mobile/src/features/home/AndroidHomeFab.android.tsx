@@ -11,7 +11,20 @@ import {
   androidHomeFabPosition,
   type AndroidHomeFabLayout as SharedAndroidHomeFabLayout,
 } from "./AndroidHomeFab.shared";
+import { isScratchProject } from "@t3tools/client-runtime/state/projects";
+import { useServerConfigs } from "../../state/entities";
+import { useRemoteConnectionStatus } from "../../state/use-remote-environment-registry";
 import { useWorkspaceState } from "../../state/workspace";
+import { useNewTaskFlow } from "../threads/new-task-flow-provider";
+import { getProjectScopeSelectionTarget } from "../threads/new-task-project-selection";
+import { useSelectWorkspaceDetail } from "../layout/workspace/useSelectWorkspaceDetail";
+import { uuidv4 } from "../../lib/uuid";
+import {
+  CHOOSE_PROJECT_ACTION,
+  newThreadMenuActions,
+  newThreadMenuScope,
+  newThreadMenuScopes,
+} from "./new-thread-menu";
 import { FabScrollContext } from "./FabScrollContext";
 import { updateFabScroll } from "./fab-scroll";
 import { useAndroidControlSizing } from "../../components/ui/useAndroidControlSizing";
@@ -43,6 +56,38 @@ export function AndroidHomeFabLayout(props: ComponentProps<typeof SharedAndroidH
   const workspace = useWorkspaceTabs();
   const bottomClearance = insets.bottom + FLOATING_TABS.bottom + FLOATING_TABS.edge + size;
   const context = floatingTabsEnabled && workspace ? { ...workspace, bottomClearance } : workspace;
+  const selectDetail = useSelectWorkspaceDetail();
+  const { projectScopes, selectedEnvironmentId } = useNewTaskFlow();
+  const serverConfigs = useServerConfigs();
+  const { connectedEnvironments } = useRemoteConnectionStatus();
+  const menuScopes = newThreadMenuScopes(projectScopes, (scope) =>
+    scope.projects.every((project) =>
+      isScratchProject(project, serverConfigs.get(project.environmentId)?.scratchWorkspaceRoot),
+    ),
+  );
+  const startInMenuChoice = (id: string) => {
+    const scope = newThreadMenuScope(menuScopes, id);
+    if (scope) {
+      const connected = new Set(
+        connectedEnvironments
+          .filter((environment) => environment.connectionState === "connected")
+          .map((environment) => environment.environmentId),
+      );
+      const project = getProjectScopeSelectionTarget(scope, selectedEnvironmentId, connected);
+      selectDetail({
+        name: "Thread",
+        params: {
+          draft: {
+            requestId: uuidv4(),
+            environmentId: String(project.environmentId),
+            projectId: String(project.id),
+          },
+        },
+      });
+    } else if (id === CHOOSE_PROJECT_ACTION) {
+      selectDetail({ name: "Thread", params: { draft: { requestId: uuidv4() } } });
+    }
+  };
   const scrollState = useRef({ anchor: 0, expanded: true });
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
@@ -71,6 +116,11 @@ export function AndroidHomeFabLayout(props: ComponentProps<typeof SharedAndroidH
           size={size}
           expanded={floatingTabsEnabled ? false : expanded}
           onPress={props.onStartNewTask}
+          menu={{
+            title: "New thread in",
+            actions: newThreadMenuActions(menuScopes),
+            onSelect: startInMenuChoice,
+          }}
           className="absolute"
           style={
             floatingTabsEnabled
