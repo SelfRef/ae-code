@@ -4,6 +4,7 @@ export const BRAND_ASSET_PATHS = {
   developmentIosIconPng: "assets/dev/blueprint-ios-1024.png",
   developmentUniversalIconPng: "assets/dev/blueprint-universal-1024.png",
   developmentDesktopIconPng: "assets/dev/blueprint-macos-1024.png",
+  developmentLinuxIconSvg: "assets/dev/blueprint-linux.svg",
   developmentWindowsIconIco: "assets/dev/blueprint-windows.ico",
   developmentWebFaviconIco: "assets/dev/blueprint-web-favicon.ico",
   developmentWebFavicon16Png: "assets/dev/blueprint-web-favicon-16x16.png",

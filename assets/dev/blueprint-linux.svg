@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none"><defs><clipPath id="tile"><rect width="1024" height="1024" rx="229.0688"/></clipPath></defs><g clip-path="url(#tile)"><g transform="scale(8)">
+  <defs>
+    <linearGradient id="paper" x1="36" y1="0" x2="92" y2="128" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#67C2FF"/>
+      <stop offset="0.44" stop-color="#347FF8"/>
+      <stop offset="1" stop-color="#1538D0"/>
+    </linearGradient>
+    <radialGradient id="cyanGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(92 22) rotate(137) scale(78 70)">
+      <stop stop-color="#D4F6FF" stop-opacity="0.62"/>
+      <stop offset="0.52" stop-color="#65C8FF" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#276AF1" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="edgeShade" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(64 58) rotate(90) scale(77)">
+      <stop offset="0.68" stop-color="#102EBC" stop-opacity="0"/>
+      <stop offset="1" stop-color="#061A88" stop-opacity="0.48"/>
+    </radialGradient>
+    <pattern id="minorGrid" width="4" height="4" patternUnits="userSpaceOnUse">
+      <path d="M4 0H0V4" stroke="#D9F7FF" stroke-width="0.18" opacity="0.38"/>
+    </pattern>
+    <pattern id="majorGrid" width="16" height="16" patternUnits="userSpaceOnUse">
+      <rect width="16" height="16" fill="url(#minorGrid)"/>
+      <path d="M16 0H0V16" stroke="#F0FCFF" stroke-width="0.34" opacity="0.52"/>
+    </pattern>
+    <clipPath id="frame">
+      <rect width="128" height="128"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#frame)">
+    <rect width="128" height="128" fill="url(#paper)"/>
+    <rect width="128" height="128" fill="url(#cyanGlow)"/>
+    <rect x="4" y="4" width="120" height="120" fill="url(#majorGrid)" opacity="0.96"/>
+    <path d="M64 4V124M4 64H124" stroke="#F0FCFF" stroke-width="0.3" opacity="0.46"/>
+    <rect x="5.75" y="5.75" width="116.5" height="116.5" rx="5.5" stroke="#F1FCFF" stroke-width="0.5" opacity="0.66"/>
+
+    <g stroke="#BFE9F7" stroke-linecap="round" opacity="0.2">
+      <path d="M14 19L24 12M17 22L29 13" stroke-width="0.5"/>
+      <path d="M106 25L115 18M104 30L118 20" stroke-width="0.38"/>
+      <path d="M11 108L23 101M16 113L28 105" stroke-width="0.42"/>
+      <path d="M102 113L116 104M107 116L120 108" stroke-width="0.46"/>
+    </g>
+    <g fill="#D7F4FF" opacity="0.22">
+      <circle cx="18" cy="30" r="0.45"/>
+      <circle cx="112" cy="38" r="0.35"/>
+      <circle cx="22" cy="98" r="0.3"/>
+      <circle cx="109" cy="94" r="0.5"/>
+      <circle cx="94" cy="14" r="0.32"/>
+    </g>
+    <rect width="128" height="128" fill="url(#edgeShade)"/>
+  </g>
+</g><g transform="translate(-29.505 -42.197) scale(8.4610)">
+  <defs>
+    <marker id="arrowStart" markerWidth="5" markerHeight="5" refX="1.2" refY="2.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M4.5 0.6L1 2.5L4.5 4.4" fill="none" stroke="#DDF7FF" stroke-width="0.8" stroke-linecap="round"/>
+    </marker>
+    <marker id="arrowEnd" markerWidth="5" markerHeight="5" refX="3.8" refY="2.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0.5 0.6L4 2.5L0.5 4.4" fill="none" stroke="#DDF7FF" stroke-width="0.8" stroke-linecap="round"/>
+    </marker>
+  </defs>
+
+  <g stroke="#DDF7FF" stroke-linecap="round" stroke-linejoin="round">
+    <g opacity="0.9" stroke-width="0.44">
+      <path d="M15.5309 31V25.6M64.3309 31V25.6M68.1653 31V25.6M107.365 31V25.6"/>
+      <path d="M16.9 27.2H62.96" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
+      <path d="M69.54 27.2H105.99" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
+      <path d="M33.4509 97.3V103M46.4109 97.3V103M65.3653 97.3V103M109.925 97.3V103"/>
+      <path d="M34.82 101.1H45.04" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
+      <path d="M66.74 101.1H108.55" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
+      <path d="M10.2 37H6.1M10.2 47.6H6.1M10.2 93H6.1"/>
+      <path d="M7.9 38.4V46.2" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
+      <path d="M7.9 49V91.6" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
+    </g>
+
+    <g opacity="0.58" stroke-width="0.34">
+      <path d="M12.5 35.1H66.8M39.9309 94.8V44.5M64.3309 34.2V49.9M68.1653 34.2V49.9" stroke-dasharray="1.6 1.6"/>
+      <path d="M65.3653 65.2H109.925M87.2 32.7V98.2" stroke-dasharray="1.2 2"/>
+      <circle cx="87.2" cy="65.2" r="20.8"/>
+      <circle cx="87.2" cy="65.2" r="1.1"/>
+    </g>
+
+    <g opacity="0.76" stroke-width="0.4">
+      <path d="M24 20V24M22 22H26M101 17V21M99 19H103M114 106V110M112 108H116"/>
+      <path d="M54 107L57 110M57 107L54 110M16 74L19 77M19 74L16 77"/>
+      <path d="M74 22H82M78 18V26" stroke-dasharray="0.7 1.1"/>
+    </g>
+  </g>
+</g><g transform="translate(-29.505 -42.197) scale(8.4610)"><defs><linearGradient id="glyph" gradientUnits="userSpaceOnUse" x1="0" y1="23.877" x2="0" y2="95.077"><stop offset="0" stop-color="#F5F9FD"/><stop offset="1" stop-color="#D2E0EF"/></linearGradient></defs>
+  <g transform="translate(64 65.48) scale(1.0085) translate(-58.301 -59.477)">
+    <path d="M 11.501 95.077 L 34.801 32.277 Q 36.501 27.977 39.701 25.927 Q 42.901 23.877 47.001 23.877 Q 50.401 23.877 53.001 25.377 Q 55.601 26.877 57.801 30.177 L 58.801 32.377 Q 60.001 30.077 62.001 28.427 Q 64.001 26.777 66.651 25.927 Q 69.301 25.077 72.401 25.077 L 105.101 25.077 L 105.101 35.577 L 73.801 35.577 Q 70.101 35.577 67.851 37.577 Q 65.601 39.577 64.901 42.427 Q 64.201 45.277 65.201 47.977 L 67.401 54.177 L 101.601 54.177 L 101.601 64.777 L 71.301 64.777 L 76.701 78.877 Q 77.701 81.677 79.451 83.127 Q 81.201 84.577 84.201 84.577 L 105.101 84.577 L 105.101 95.077 L 80.801 95.077 Q 75.401 95.077 71.601 92.277 Q 67.801 89.477 66.401 85.577 L 64.201 79.577 L 29.601 79.577 L 24.001 95.077 Z M 33.201 68.977 L 60.701 68.977 L 49.401 36.277 Q 49.001 35.277 48.451 34.777 Q 47.901 34.277 47.101 34.277 Q 46.301 34.277 45.801 34.827 Q 45.301 35.377 45.001 36.277 Z" fill="url(#glyph)"/>
+  </g>
+</g></g></svg>
