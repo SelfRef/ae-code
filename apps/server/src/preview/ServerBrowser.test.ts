@@ -1028,6 +1028,53 @@ it.live(
     ).pipe(Effect.provide(layer)),
 );
 
+it.live(
+  "lets the agent keep acting while a viewer shares control and locks it out on takeover",
+  () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { browser, broker, tabId } = yield* ready;
+        const viewer = yield* browser.attachViewer(viewerInput(tabId, true));
+        const agentEvaluates = broker.invoke({
+          scope,
+          tabId,
+          operation: "evaluate",
+          input: { expression: "read()" },
+        });
+        yield* viewer.input({ type: "shareControl" });
+        yield* viewer.input({ type: "text", text: "typed" });
+        expect(contexts[0]!.sessions.at(-1)!.send).toHaveBeenCalledWith("Input.insertText", {
+          text: "typed",
+        });
+        expect(yield* agentEvaluates).toBe("evaluated");
+        expect(yield* Queue.takeAll(viewer.output)).toContainEqual(
+          expect.objectContaining({ _tag: "control", controller: "you", shared: true }),
+        );
+        const status = yield* broker.invoke<PreviewAutomationStatus>({
+          scope,
+          tabId,
+          operation: "status",
+          input: {},
+        });
+        expect(status.control?.owner).not.toBe("human");
+        expect(
+          yield* broker.invoke({
+            scope,
+            tabId,
+            operation: "evaluate",
+            input: { expression: "again()" },
+          }),
+        ).toBe("evaluated");
+        yield* viewer.input({ type: "takeControl" });
+        const locked = yield* broker
+          .invoke<void>({ scope, tabId, operation: "evaluate", input: { expression: "late()" } })
+          .pipe(Effect.flip);
+        expect(locked).toMatchObject({ reason: "humanControl" });
+        yield* viewer.input({ type: "releaseControl" });
+      }),
+    ).pipe(Effect.provide(layer)),
+);
+
 it.live("reports a pending dialog without evaluating the page and resolves it explicitly", () =>
   Effect.scoped(
     Effect.gen(function* () {

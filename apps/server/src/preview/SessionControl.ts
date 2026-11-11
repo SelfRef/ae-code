@@ -34,6 +34,7 @@ export class SessionControl {
   private pending: Promise<void> = Promise.resolve();
   private readonly handoff = new Set<Promise<void>>();
   private owner: string | null = null;
+  private sharing = false;
   private epoch = 0;
   private closed = false;
 
@@ -44,6 +45,16 @@ export class SessionControl {
 
   get controller() {
     return this.owner;
+  }
+
+  /** A viewer shares the tab with its agent: both may act, so the agent is never locked out. */
+  get shared() {
+    return this.sharing;
+  }
+
+  /** A viewer owns the tab alone; the agent waits until it releases or shares. */
+  get exclusive() {
+    return this.owner !== null && !this.sharing;
   }
 
   get generation() {
@@ -81,9 +92,13 @@ export class SessionControl {
       });
   }
 
-  private changeOwner(owner: string | null) {
+  /** Only moving between no viewer and a sharing one leaves the agent's refs and queued work alone. */
+  private changeOwner(owner: string | null, sharing = false) {
+    const quiet = !this.exclusive && (owner === null ? this.sharing : sharing);
     this.latestHuman = null;
     this.owner = owner;
+    this.sharing = sharing;
+    if (quiet) return;
     this.epoch++;
     this.onGenerationChange();
   }
@@ -118,18 +133,18 @@ export class SessionControl {
           reason: "agentMismatch",
         }),
       );
-    if (this.owner !== null)
+    if (this.exclusive)
       return Promise.reject(
         new BrowserControlInterrupted({
           message: "A human controls this tab.",
           reason: "humanControl",
         }),
       );
-    return this.action(() => this.agentMayAct(agentId) && this.owner === null, run, deadlineMs);
+    return this.action(() => this.agentCanActNow(agentId), run, deadlineMs);
   }
 
   agentCanActNow(agentId: string) {
-    return this.agentMayAct(agentId) && this.owner === null;
+    return this.agentMayAct(agentId) && !this.exclusive;
   }
 
   /** Read without control or queueing so agents can observe without delaying human input. */
@@ -182,7 +197,17 @@ export class SessionControl {
     if (this.owner !== null && this.owner !== viewerId) {
       throw new BrowserControlInterrupted({ message: "Another viewer controls this browser tab." });
     }
-    if (this.owner !== viewerId) this.changeOwner(viewerId);
+    if (this.owner !== viewerId || this.sharing) this.changeOwner(viewerId);
+    return this.human(viewerId, async () => {});
+  }
+
+  /** Acts beside the agent: both queue in one order, and nothing the agent has queued is dropped. */
+  async share(viewerId: string) {
+    this.assertOpen();
+    if (this.owner !== null && this.owner !== viewerId) {
+      throw new BrowserControlInterrupted({ message: "Another viewer controls this browser tab." });
+    }
+    if (!this.sharing) this.changeOwner(viewerId, true);
     return this.human(viewerId, async () => {});
   }
 

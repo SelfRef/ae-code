@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { createPreviewStreamClient, type PreviewStreamControl } from "./serverBrowserStream.ts";
+import {
+  createPreviewStreamClient,
+  previewStreamControlLabel,
+  previewStreamControlMode,
+  type PreviewStreamControl,
+} from "./serverBrowserStream.ts";
 
 class FakeSocket extends EventTarget {
   static readonly OPEN = 1;
@@ -59,6 +64,7 @@ describe("preview stream control", () => {
   const agent: PreviewStreamControl = {
     canOperate: true,
     controller: "agent",
+    shared: false,
     generation: 1,
     dialog: null,
   };
@@ -105,6 +111,23 @@ describe("preview stream control", () => {
     socket.control({ ...agent, generation: 2 });
     expect(client.send({ type: "text", text: "late input" })).toBe(false);
     expect(client.send({ type: "dialog", accept: false })).toBe(false);
+    client.stop();
+  });
+
+  it("starts sharing from the agent's tab and keeps input open while sharing", () => {
+    const { client, socket, onControl } = connect();
+    socket.control(agent);
+    expect(client.send({ type: "shareControl" })).toBe(true);
+    expect(client.send({ type: "reload" })).toBe(false);
+    const sharing = { ...agent, controller: "you" as const, shared: true };
+    socket.control(sharing);
+    expect(onControl).toHaveBeenLastCalledWith(sharing);
+    expect(previewStreamControlMode(sharing)).toBe("share");
+    expect(previewStreamControlLabel(sharing)).toBe("You and the agent have control");
+    expect(client.send({ type: "text", text: "typed" })).toBe(true);
+    expect(client.send({ type: "takeControl" })).toBe(true);
+    expect(previewStreamControlMode({ ...sharing, shared: false })).toBe("control");
+    expect(previewStreamControlMode(agent)).toBe("view");
     client.stop();
   });
 

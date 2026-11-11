@@ -16,6 +16,10 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
   H.264, encoded on the GPU where VA-API is available. It runs in a container without a display or a logged-in user;
   the packages it needs are listed in the [devices guide](./user/devices.md#gnome-desktops).
 
+- Browser: a three-way **View only / Take control / Share control** selector on web and Android. Share control lets you
+  click and type in an agent's tab while the agent keeps working: both actions run in one order and nothing the agent
+  queued is cancelled. Take control still locks the agent out until you release it.
+
 ### Fixed
 
 - The desktop app, the web app (favicon, installed app) and the iOS icon show the blueprint tile with its grid, like the
