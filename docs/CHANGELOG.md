@@ -11,6 +11,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 ### Changed
 
 - Settings → Environments: each environment checks its own server for a newer GitHub release instead of comparing with this app's version, so a local build here no longer offers or hides updates. The update icon is larger.
+- Chat breadcrumb: picking a project in the project switcher starts a new thread in it instead of opening its newest thread.
 
 ### Fixed
 

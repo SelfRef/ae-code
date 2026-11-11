@@ -300,7 +300,8 @@ discussion #22991 (picker discoverability); discussion #31438 "Project and threa
 Done: the two commits are one commit on the fork's `main` (MIT, authorship kept; the second fixed the first, so they
 were squashed). They merged cleanly. The diff is 5 files, +725/−71: three new files (`BreadcrumbSwitchers.tsx`,
 `breadcrumbSwitcher.logic.ts` and its test) and edits to `ChatHeader.tsx` (~130 lines, the rebase risk) and its browser
-test. Both test files pass. If upstream adopts the discussion, drop the commit.
+test. Both test files pass. Picking a project in the switcher starts a new thread in it (the branch opened the project's newest thread, which could be a
+settled one). If upstream adopts the discussion, drop the commit.
 
 ## Claude usage limits with a setup-token (change 5)
 
