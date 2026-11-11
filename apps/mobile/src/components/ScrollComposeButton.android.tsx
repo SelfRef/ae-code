@@ -1,3 +1,6 @@
+import type { MenuAction } from "@react-native-menu/menu";
+import * as Haptics from "expo-haptics";
+import { AndroidAnchoredMenu } from "./ui/AndroidAnchoredMenu.android";
 import { NativeThemeHost } from "./ui/NativeThemeHost.android";
 import { Box, ExtendedFloatingActionButton, Icon, Text } from "@expo/ui/jetpack-compose";
 import {
@@ -17,6 +20,12 @@ import { resolveScaledTextRole } from "../lib/appearancePreferences";
 export function ScrollComposeButton(props: {
   readonly expanded: boolean;
   readonly onPress: () => void;
+  /** Opens on long press; the button still starts a thread on tap. */
+  readonly menu?: {
+    readonly title: string;
+    readonly actions: readonly MenuAction[];
+    readonly onSelect: (id: string) => void;
+  };
   readonly size?: number;
   readonly className?: string;
   readonly style?: StyleProp<ViewStyle>;
@@ -87,21 +96,40 @@ export function ScrollComposeButton(props: {
         </NativeThemeHost>
       </View>
       {/* The visual host is wider than the button; only this target intercepts list touches. */}
-      <Pressable
-        onPress={props.onPress}
-        accessibilityRole="button"
-        accessibilityLabel="New thread"
-        android_ripple={{ foreground: true }}
+      <AndroidAnchoredMenu
+        actions={props.menu?.actions ?? []}
+        title={props.menu?.title}
+        onPressAction={({ nativeEvent }) => props.menu?.onSelect(nativeEvent.event)}
         style={{
           position: "absolute",
           right: 0,
           top: 0,
           bottom: 0,
           width: props.expanded ? buttonWidth * scale : fabSize,
-          borderRadius: 16 * scale,
-          overflow: "hidden",
         }}
-      />
+      >
+        {(open) => (
+          <Pressable
+            onPress={props.onPress}
+            onLongPress={
+              props.menu
+                ? () => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    open();
+                  }
+                : undefined
+            }
+            accessibilityRole="button"
+            accessibilityLabel="New thread"
+            accessibilityActions={
+              props.menu ? [{ name: "longpress", label: "Choose project" }] : []
+            }
+            onAccessibilityAction={props.menu ? open : undefined}
+            android_ripple={{ foreground: true }}
+            style={{ flex: 1, borderRadius: 16 * scale, overflow: "hidden" }}
+          />
+        )}
+      </AndroidAnchoredMenu>
     </View>
   );
 }

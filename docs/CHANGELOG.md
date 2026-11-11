@@ -10,6 +10,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Added
 
+- Android: long-press the New thread button for a menu of your most recent projects (with icons) to start a thread in one, or to choose another project.
 - Settings → General → Confirmations: choose when closing a terminal asks first (never, only while a command is running, or always). The default asks only while a command is running, not at an idle shell.
 
 ### Changed
