@@ -62,6 +62,12 @@ const renderLayer = (svg: string, size: number, wordmark: boolean) =>
       .toBuffer(),
   );
 
+// The tile as one vector image (Linux icon themes scale it to any size).
+const composeSvg = (layers: { background: string; annotations: string; text: string }) => {
+  const frame = wordmarkTransform(CANVAS);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${CANVAS}" height="${CANVAS}" viewBox="0 0 ${CANVAS} ${CANVAS}" fill="none"><defs><clipPath id="tile"><rect width="${CANVAS}" height="${CANVAS}" rx="${CANVAS * CORNER_RADIUS_FRACTION}"/></clipPath></defs><g clip-path="url(#tile)"><g transform="scale(${CANVAS / 128})">${innerSvg(layers.background)}</g><g transform="${frame}">${innerSvg(layers.annotations)}</g><g transform="${frame}">${innerSvg(layerSvg(layers.text))}</g></g></svg>\n`;
+};
+
 const roundedMask = (size: number, fill = "#fff") =>
   Buffer.from(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><rect width="${size}" height="${size}" rx="${size * CORNER_RADIUS_FRACTION}" fill="${fill}"/></svg>`,
@@ -177,6 +183,7 @@ const exportBlueprintIcons = Effect.gen(function* () {
     ["assets/dev/blueprint-ios-1024.png", tile],
     ["assets/dev/blueprint-universal-1024.png", tile],
     ["assets/dev/blueprint-macos-1024.png", yield* renderMacTile(tile)],
+    ["assets/dev/blueprint-linux.svg", Buffer.from(composeSvg(layers))],
     ["assets/dev/blueprint-windows.ico", ico],
     ["assets/dev/blueprint-web-apple-touch-180.png", web["apple-touch-icon.png"]],
     ["assets/dev/blueprint-web-favicon-16x16.png", web["favicon-16x16.png"]],

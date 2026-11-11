@@ -20,6 +20,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 - The desktop app, the web app (favicon, installed app) and the iOS icon show the blueprint tile with its grid, like the
   Android app, instead of a flat dark tile.
+- Linux: the app also installs its icon as an SVG, so docks and launchers scale it at any size.
 
 ## [v2026.11.11] - 2026-11-11
 

@@ -129,7 +129,19 @@ export const make = Effect.gen(function* () {
   const iconsDir = environment.path.join(environment.linuxApplicationsDir, "..", "icons");
   const iconPath = environment.path.join(iconsDir, `${environment.linuxDesktopEntryName}.png`);
   const hicolorDir = environment.path.join(iconsDir, "hicolor");
-  const themeIconDir = environment.path.join(hicolorDir, LINUX_THEME_ICON_SIZE, "apps");
+  const themeIcons = [
+    {
+      resource: `icons/${LINUX_THEME_ICON_SIZE}.png`,
+      dir: environment.path.join(hicolorDir, LINUX_THEME_ICON_SIZE, "apps"),
+      extension: "png",
+    },
+    // Themes and docks prefer the vector icon at any size.
+    {
+      resource: "icon.svg",
+      dir: environment.path.join(hicolorDir, "scalable", "apps"),
+      extension: "svg",
+    },
+  ] as const;
 
   const writeDesktopEntry = Effect.gen(function* () {
     // Distribution packages that run on a shared Electron set
@@ -217,19 +229,21 @@ export const make = Effect.gen(function* () {
       .pipe(Effect.map((info) => Option.getOrUndefined(info.mtime)?.getTime() ?? 0));
 
   const installThemeIcons = Effect.gen(function* () {
-    const source = yield* assets.resolveResourcePath(`icons/${LINUX_THEME_ICON_SIZE}.png`);
-    if (Option.isNone(source)) return;
-    const icon = yield* fileSystem.readFile(source.value);
-    const targets = linuxThemeIconNames(environment.linuxDesktopEntryName).map((name) =>
-      environment.path.join(themeIconDir, `${name}.png`),
-    );
+    const targets: string[] = [];
     let changed = false;
-    for (const target of targets) {
-      const current = yield* fileSystem.readFile(target).pipe(Effect.option);
-      if (Option.isSome(current) && sameBytes(current.value, icon)) continue;
-      yield* fileSystem.makeDirectory(themeIconDir, { recursive: true });
-      yield* fileSystem.writeFile(target, icon);
-      changed = true;
+    for (const { resource, dir, extension } of themeIcons) {
+      const source = yield* assets.resolveResourcePath(resource);
+      if (Option.isNone(source)) continue;
+      const icon = yield* fileSystem.readFile(source.value);
+      for (const name of linuxThemeIconNames(environment.linuxDesktopEntryName)) {
+        const target = environment.path.join(dir, `${name}.${extension}`);
+        targets.push(target);
+        const current = yield* fileSystem.readFile(target).pipe(Effect.option);
+        if (Option.isSome(current) && sameBytes(current.value, icon)) continue;
+        yield* fileSystem.makeDirectory(dir, { recursive: true });
+        yield* fileSystem.writeFile(target, icon);
+        changed = true;
+      }
     }
     // Creating a cache would leave GTK reading stale icons from other installers.
     // A newer icon retries a refresh that failed on an earlier launch.
@@ -248,7 +262,7 @@ export const make = Effect.gen(function* () {
     }
   }).pipe(
     Effect.catch((error) =>
-      logWarning("app id theme icon install failed", { themeIconDir, category: error._tag }),
+      logWarning("app id theme icon install failed", { hicolorDir, category: error._tag }),
     ),
   );
 

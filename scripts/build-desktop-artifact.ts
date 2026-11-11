@@ -124,6 +124,7 @@ export const readWorkspaceConfig = Effect.fn("readWorkspaceConfig")(function* ()
 interface DesktopBuildIconAssets {
   readonly macIconPng: string;
   readonly linuxIconPng: string;
+  readonly linuxIconSvg: string;
   readonly windowsIconIco: string;
 }
 
@@ -2556,19 +2557,21 @@ export const stageDesktopDmgBackground = Effect.fn("stageDesktopDmgBackground")(
 const stageLinuxIcons = Effect.fn("build-desktop-artifact.stageLinuxIcons")(function* (
   stageResourcesDir: string,
   sourcePng: string,
+  sourceSvg: string,
   verbose: boolean,
 ) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
-  if (!(yield* fs.exists(sourcePng))) {
-    return yield* new DesktopIconSourceMissingError({
-      platform: "linux",
-      sourcePath: sourcePng,
-    });
+  for (const sourcePath of [sourcePng, sourceSvg]) {
+    if (!(yield* fs.exists(sourcePath))) {
+      return yield* new DesktopIconSourceMissingError({ platform: "linux", sourcePath });
+    }
   }
 
   const iconPath = path.join(stageResourcesDir, "icon.png");
   yield* fs.copyFile(sourcePng, iconPath);
+  // Outside icons/: electron-builder reads that folder as a set of NxN PNGs.
+  yield* fs.copyFile(sourceSvg, path.join(stageResourcesDir, "icon.svg"));
 
   const iconsDir = path.join(stageResourcesDir, "icons");
   yield* fs.makeDirectory(iconsDir, { recursive: true });
@@ -2721,6 +2724,7 @@ export function isDesktopPreviewVersion(version: string): boolean {
 const desktopBuildIconAssets: DesktopBuildIconAssets = {
   macIconPng: BRAND_ASSET_PATHS.developmentDesktopIconPng,
   linuxIconPng: BRAND_ASSET_PATHS.developmentUniversalIconPng,
+  linuxIconSvg: BRAND_ASSET_PATHS.developmentLinuxIconSvg,
   windowsIconIco: BRAND_ASSET_PATHS.developmentWindowsIconIco,
 };
 
@@ -2973,7 +2977,12 @@ const assertPlatformBuildResources = Effect.fn("assertPlatformBuildResources")(f
   }
 
   if (platform === "linux") {
-    yield* stageLinuxIcons(stageResourcesDir, iconAssets.linuxIconPng, verbose);
+    yield* stageLinuxIcons(
+      stageResourcesDir,
+      iconAssets.linuxIconPng,
+      iconAssets.linuxIconSvg,
+      verbose,
+    );
     return;
   }
 
@@ -3783,6 +3792,7 @@ const buildDesktopArtifactUnlocked = Effect.fn("buildDesktopArtifactUnlocked")(f
     {
       macIconPng: path.join(repoRoot, iconAssets.macIconPng),
       linuxIconPng: path.join(repoRoot, iconAssets.linuxIconPng),
+      linuxIconSvg: path.join(repoRoot, iconAssets.linuxIconSvg),
       windowsIconIco: path.join(repoRoot, iconAssets.windowsIconIco),
     },
     options.verbose,
