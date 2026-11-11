@@ -51,7 +51,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 | [4]  | Project and thread switchers in the chat breadcrumb (ported from a community branch, below)                                                                            | done    |
 | 3    | Claude reply text streams while it is written (upstream's `ClaudeAdapterV2` drops `text_delta`, issue #17270; port of the closed PR #22165 onto the 2026-11-08 `main`) | done    |
 | [2]  | GitHub Issues: read-only list and detail per project on the web (`/issues`) and in the Android app; comment, edit, label, close/reopen still planned                   | partly  |
-| [1]  | Linux desktop as a Device-panel device (headless Mutter/GNOME Shell + capture + input)                                                                                 | planned |
+| [1]  | Linux desktop as a Device-panel device (headless Mutter/GNOME Shell + capture + input)                                                                                 | done    |
 | [0]  | Rebrand as AE Code: own app id and state dir, Aperte icon                                                                                                              | done    |
 
 [0]: #identity-change-0
@@ -136,53 +136,30 @@ The `~/.t3` `T3CODE_HOME` default is also what a pre-existing upstream `t3 servi
 
 ## Linux desktop in the Device panel (change 1)
 
-T3's Device panel is the right surface: live stream, touch/click input, screenshots, accessibility tree and
-the `device_*` agent tools, per thread. It is closed over `ios | android`, so a third platform needs both a
-**host** (something that produces frames and takes input) and a few **enum/allowlist touch points**.
+Status: done. The Device panel's local host lists a **GNOME desktop** next to Android emulators when the
+server runs on Linux with GNOME Shell: a headless GNOME Shell session for testing GTK apps and Shell
+extensions, watched and driven from web, desktop and Android, and by agents through `device_*` and
+`agent-device`. User guide: [devices.md](./user/devices.md#gnome-desktops); internals:
+[devices.md](./internals/devices.md#gnome-desktops-are-a-process-the-local-host-spawns).
 
-### Findings in the source (`ade473018d`)
-
-- `packages/contracts/src/device.ts`: `DevicePlatform = Schema.Literals(["ios","android"])`. About 130 non-test files
-  mention `"android"`, but most are display/label branches; the load-bearing ones are the contract, the
-  platform availability record and `DeviceActions`.
-- `apps/server/src/device/DeviceHost.ts`: the `DeviceHost` interface (local, SSH, EAS and Simlock hosts implement it);
-  `DeviceHostReady.upstream?` lets a host name its own HTTP upstream instead of the bundled hub.
-- `DeviceHubProxy.ts`: the browser never talks to the hub directly; the proxy allowlists exact paths
-  (`/vendor/serve-sim/*`, `/vendor/serve-emu/*`). A new backend needs its own allowlist entries.
-- Client stream (`packages/client-runtime/src/device/stream.ts`): WebRTC/avcc, MJPEG fallback
-  `…/stream.mjpeg`, input over a WebSocket. **If the desktop backend speaks the `serve-emu` protocol the client
-  needs almost no change.**
-- Agent tools: `agent-device` (MIT, Callstack) already has a **Linux platform** (AT-SPI tree through
-  `atspi-dump.py`; `xdotool` on X11, `ydotool` on Wayland; `scrot`/`import`/`gnome-screenshot` or `grim`;
-  a pluggable `input` provider). `AgentDeviceShim.ts` is where T3 starts it.
-
-### Design
-
-1. **Backend: `linux-desktop-host`, a small standalone service** (own package/process, not in T3's tree beyond a
-   host adapter). Runs `gnome-shell --headless --wayland --virtual-monitor WxH` (or plain `mutter --headless` for
-   apps that don't need the Shell) in its own D-Bus session, with:
-   - **Capture:** `org.gnome.Mutter.ScreenCast` (record the virtual monitor) → PipeWire → GStreamer (`pipewiresrc !
-     jpegenc` for MJPEG, `x264enc` for avcc later) served as `serve-emu`-compatible endpoints.
-   - **Input:** `org.gnome.Mutter.RemoteDesktop` (pointer absolute/relative, buttons, scroll, keycodes). No
-     `/dev/uinput` and no root.
-   - **Tree/screenshot for the agent:** AT-SPI (`agent-device --platform linux`) plus the ScreenCast frame.
-   - GOA, Shell extensions, portals and the real session run as in a normal GNOME login: that is the point.
-2. **T3 side (the fork's whole diff):**
-   - add `"linux"` to `DevicePlatform` and the matching availability/summary fields;
-   - a `DesktopDeviceHost` implementing `DeviceHost`, returning `upstream` = the backend (config: URL or the
-     env var `T3_DESKTOP_HOST`; off when unset, so the fork behaves like upstream by default);
-   - `DeviceHubProxy.ts` allowlist entries for the backend's paths;
-   - client: platform label/icon, a desktop-shaped frame (no phone bezel, pointer instead of touch, keyboard
-     capture), tool wiring in `AgentDeviceShim.ts` for `--platform linux`.
-3. **Windows later:** same host interface, backend = a VM (QEMU/KVM + RDP/VNC) behind the same protocol; the T3
-   change from step 2 does not repeat.
-
-Unverified (spike before building): ScreenCast/RemoteDesktop without a logged-in GNOME session (permissions,
-`--headless` flags of the installed gnome-shell), PipeWire in a rootless container, frame rate of software-rendered
-MJPEG at 1440×900.
-
-Spike order: the backend alone (headless GNOME Shell + ScreenCast + RemoteDesktop, a `curl`able MJPEG stream and a
-scripted click, no T3 change), then the contract/host/proxy/client changes against it.
+- **Platform:** `"linux"` in `DevicePlatform`. Only Linux hosts list it, so other systems do not show it as missing.
+  EAS and Simlock hosts never offer it. Clients older than the change reject a device state that lists a desktop.
+- **Backend:** no separate service and no Docker. The local host spawns a Python helper
+  (`apps/server/src/device/linuxDesktopFiles.ts`, written under the T3 home) that runs GNOME Shell with its own
+  D-Bus, PipeWire and XDG dirs, drives it through Mutter's ScreenCast and RemoteDesktop D-Bus APIs, and serves
+  serve-sim's formats on loopback behind a token. It runs as an ordinary child process of the server, so it works
+  inside an unprivileged container (`cap_drop: ALL`, no `/dev/uinput`, no logind). Checked with GNOME Shell 50.1
+  on Ubuntu 26.04.
+- **Stream:** H.264 through VA-API when a render node is there (zero-copy DMA-BUF; 58 fps at 1440×900 for about 4% of
+  one core on a Radeon RX 7800 XT, against about 30% for software MJPEG), else `x264enc` or `openh264enc`, else MJPEG
+  only. The viewer falls back to MJPEG where WebCodecs is unavailable (plain-HTTP remote origins), as on iOS.
+- **Proxy:** `/vendor/linux-desktop/` routes (stream, screenshot, input socket); the host's `upstream` sends them to the
+  helper, everything else to the hub (`undefined` from `upstream` now means "the hub").
+- **Agents:** agent-device's own Linux backend (AT-SPI) with `ydotool`/`grim` shims and a window-origin fix for
+  Wayland; `device_open` returns a desktop-specific guide and the `t3-desktop-run` wrapper for apps an agent built.
+- **Not done:** one desktop per environment (sessions of several threads share it), no SSH-host desktops, no audio,
+  no clipboard sync beyond pasting text into the desktop, Xwayland only if the host installs it, iOS clients untouched.
+  Windows later would be the same host interface with a VM behind it.
 
 ## Issues panel (change 2)
 

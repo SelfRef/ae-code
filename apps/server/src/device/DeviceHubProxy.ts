@@ -32,6 +32,8 @@ const ALLOWED_PATHS: ReadonlyArray<RegExp> = [
   /^\/vendor\/serve-emu\/api$/,
   /^\/vendor\/serve-emu\/api\/(devices|screenshot|stream-mode|stream-settings|accessibility|fold)$/,
   /^\/vendor\/serve-emu\/health$/,
+  /^\/vendor\/linux-desktop\/api$/,
+  /^\/vendor\/linux-desktop\/helper\/[^/]+\/(stream\.mjpeg|stream\.avcc)$/,
 ];
 
 // Paths that take methods besides GET; one missing from ALLOWED_PATHS takes no GET.
@@ -42,12 +44,14 @@ const MUTABLE_PATHS: ReadonlyArray<RegExp> = [
   /^\/vendor\/serve-emu\/webrtc\/(offer|close)$/,
   /^\/vendor\/serve-emu\/api\/(screenshot|stream-mode|stream-settings)$/,
   /^\/vendor\/serve-emu\/api\/fold$/,
+  /^\/vendor\/linux-desktop\/api\/screenshot$/,
 ];
 
 const ALLOWED_WS_PATHS: ReadonlyArray<RegExp> = [
   /^\/api\/devices\/ws$/,
   /^\/vendor\/serve-sim\/helper\/ws$/,
   /^\/vendor\/serve-emu\/ws$/,
+  /^\/vendor\/linux-desktop\/helper\/ws$/,
 ];
 
 const DROPPED_REQUEST_HEADERS = new Set([

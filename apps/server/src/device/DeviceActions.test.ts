@@ -152,6 +152,19 @@ describe("runDeviceAction", () => {
         expect(calls.map((call) => call.args.at(-1))).toEqual(permissions);
       }),
   );
+
+  it.effect("runs no adb or simctl command for a Linux desktop", () =>
+    Effect.gen(function* () {
+      const { ready, calls } = makeReady();
+      const error = yield* runDeviceAction(ready, "linux", {
+        type: "openUrl",
+        deviceId: "gnome-desktop",
+        url: "https://example.com",
+      }).pipe(Effect.flip);
+      expect(error._tag).toBe("DeviceActionUnavailableError");
+      expect(calls).toEqual([]);
+    }),
+  );
 });
 
 describe("readDeviceDetail", () => {

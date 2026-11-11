@@ -10,16 +10,42 @@ import {
 } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
+import * as Path from "effect/Path";
+import * as ServerConfig from "../../../config.ts";
 import * as DeviceService from "../../../device/DeviceService.ts";
+import { linuxDesktopPaths, linuxDesktopRunCommand } from "../../../device/LinuxDesktop.ts";
 import { threadWorkspaceRoot } from "../../../project/threadWorkspaceRoot.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
 import { DeviceScreenshotToolkit, DeviceStandardToolkit, DeviceToolkit } from "./tools.ts";
 
 function agentDeviceTargetArgs(device: DeviceSummary): ReadonlyArray<string> {
+  // agent-device knows one Linux device, the desktop it runs on.
+  if (device.platform === "linux") return ["--platform", "linux"];
   return device.platform === "ios"
     ? ["--platform", "ios", "--udid", device.id]
     : ["--platform", "android", "--serial", device.id];
+}
+
+/** A GNOME desktop session runs apps rather than installed packages, so it gets its own guide. */
+export function linuxDesktopQuickStart(device: DeviceSummary, command: string, runCommand: string) {
+  const executable = shellWord(command);
+  const runner = shellWord(runCommand);
+  return [
+    `The user is watching ${device.name} (${device.version}) in the Device panel: a headless GNOME Shell session of its own, with its own settings and extensions.`,
+    `Drive it with ${executable}. It is bound to this desktop and session, so it needs no --platform, --config or --session flags. Use this exact path; login shells may reset PATH.`,
+    "Every click, text entry, key press and screenshot on this desktop goes through it, so the user can watch. Snapshots show the focused window.",
+    `  ${executable} open <command>  # starts an installed app such as gnome-text-editor on this desktop`,
+    `  ${runner} <command> [args] &  # starts anything else on it, such as an app you built`,
+    `  ${executable} open --surface frontmost-app  # then follows the focused window, whatever started it`,
+    `  ${executable} snapshot -i  # accessibility tree with @eN refs`,
+    `  ${executable} press @e3 --settle`,
+    `  ${executable} fill @e5 "text" --settle`,
+    `  ${executable} screenshot /tmp/shot.png  # or call device_screenshot to look`,
+    `Prefer snapshot refs over coordinates. Run ${executable} help <command> for flags.`,
+    `Shell extensions: ${runner} gnome-extensions install --force <zip>, then restart the desktop (device_close with shutdown: true, then device_open; GNOME Shell finds new extensions only when it starts), then ${runner} gnome-extensions enable <uuid>. Settings and extensions persist across restarts.`,
+    "Each device_open returns its own command. The command is removed when the device closes or T3 Code restarts; call device_open again if it is missing.",
+  ].join("\n");
 }
 
 const shellWord = (value: string) =>
@@ -180,7 +206,7 @@ const pickDevice = Effect.fn("handlers.pickDevice")(function* (
   const platforms = new Set(candidates.map((device) => device.platform));
   if (input.platform === undefined && platforms.size > 1) {
     return yield* new DeviceToolUnavailableError({
-      reason: "Both iOS and Android devices are available; pass platform or deviceId.",
+      reason: "Devices of more than one platform are available; pass platform or deviceId.",
     });
   }
   return candidates.find((device) => device.booted) ?? candidates[0]!;
@@ -273,6 +299,16 @@ const handlers = {
         });
       }
       const command = launcher.value;
+      if (device.platform === "linux") {
+        const config = yield* ServerConfig.ServerConfig;
+        const path = yield* Path.Path;
+        const runCommand = linuxDesktopRunCommand(linuxDesktopPaths(path, config.stateDir), path);
+        return {
+          device,
+          agentDevice: { command, targetArgs, session: agent.session },
+          quickStart: linuxDesktopQuickStart(device, command, runCommand),
+        };
+      }
       return {
         device,
         agentDevice: { command, targetArgs, session: agent.session },

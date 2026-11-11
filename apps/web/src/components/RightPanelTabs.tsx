@@ -37,6 +37,7 @@ import { horizontalListSortingStrategy, SortableContext, useSortable } from "@dn
 import { CSS } from "@dnd-kit/utilities";
 import {
   Smartphone,
+  Monitor,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -71,6 +72,7 @@ import { useStableCallback } from "~/hooks/useStableCallback";
 import { Button } from "~/components/ui/button";
 import { MorphIcon } from "~/components/MorphIcon";
 import { AndroidIcon, AppleIcon } from "~/components/Icons";
+import { devicePlatformName } from "@t3tools/client-runtime/device/model";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { Kbd } from "~/components/ui/kbd";
 import {
@@ -425,7 +427,7 @@ function RightPanelEmptyState(props: {
     },
     {
       label: "Device",
-      description: "Watch an iOS Simulator or Android Emulator.",
+      description: "Watch an iOS Simulator, Android Emulator or GNOME desktop.",
       icon: Smartphone,
       shortcut: "M",
       available: props.deviceAvailable,
@@ -735,6 +737,8 @@ function SurfaceIcon({
         <AppleIcon className="size-3 shrink-0" />
       ) : surface.target?.platform === "android" ? (
         <AndroidIcon className="size-3 shrink-0" />
+      ) : surface.target?.platform === "linux" ? (
+        <Monitor className="size-3 shrink-0" />
       ) : (
         <Smartphone className="size-3 shrink-0" />
       );
@@ -1641,8 +1645,7 @@ function DeviceTabTooltip(props: {
       <span>{props.title}</span>
       {target ? (
         <span className="text-muted-foreground">
-          {host?.label ?? "Device host"} ·{" "}
-          {device?.version ?? (target.platform === "ios" ? "iOS" : "Android")}
+          {host?.label ?? "Device host"} · {device?.version ?? devicePlatformName(target.platform)}
         </span>
       ) : null}
     </div>

@@ -15,6 +15,17 @@ export interface DeviceAccessorySource {
 
 export type DeviceAssetSource = DeviceModelSource | DeviceAccessorySource;
 
+export const devicePlatformName = (platform: DevicePlatform) =>
+  platform === "ios" ? "iOS" : platform === "android" ? "Android" : "GNOME";
+
+/** What a platform's devices are called in lists. */
+export const devicePlatformDevices = (platform: DevicePlatform) =>
+  platform === "ios"
+    ? "iOS Simulators"
+    : platform === "android"
+      ? "Android Emulators"
+      : "GNOME desktops";
+
 export function resolveDeviceModelId(platform: DevicePlatform, name: string): DeviceModelId | null {
   if (platform !== "ios") return null;
   if (/^iPhone Duo$/i.test(name)) return "iphone-duo";

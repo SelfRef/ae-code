@@ -21,6 +21,7 @@ The fork is kept as a linear stack of patch commits on top of upstream's `main`,
 - **Project and thread switchers in the chat breadcrumb.** Jump to another project or thread without going back to the sidebar.
 - **Running subagents in the sidebar.** A thread whose turn ended while subagents still work reads "N subagents" instead of a stalled "Waiting".
 - **Thread details defaults.** Usage limits and Context window are shown by default; Open in editor is shown by default only on desktop.
+- **GNOME desktop in the Device panel.** A headless GNOME Shell session next to the Android emulator, for testing GTK apps and Shell extensions: you and agents see and drive the same screen, streamed as H.264 (GPU-encoded where VA-API is available). It runs in a container without a display or a logged-in user. ([guide](./docs/user/devices.md#gnome-desktops))
 
 ### Privacy
 
@@ -68,8 +69,9 @@ Optional:
 - Device panel with an Android emulator: `nodejs` (the device hub is a Node program; without it the panel reports "Local device support requires Node.js"), `android-tools` and `ffmpeg` (Arch's build includes libx264), plus `android-emulator` and `android-sdk-cmdline-tools-latest` from the AUR and an AVD created with `avdmanager`. The emulator's bundled qemu also needs `libxkbfile` (`extra`), or it fails with `error while loading shared libraries: libxkbfile.so.1`. The panel finds the SDK through `ANDROID_HOME`, which a service started by systemd does not inherit from your shell: set it in the unit (`Environment=ANDROID_HOME=%h/Android/Sdk`) and restart.
 - Building the Android app yourself (`vp run mobile:install android` when no prebuilt client is cached): `jdk21-openjdk` (it replaces `jre21-openjdk-headless`; Gradle needs `javac`), plus the SDK packages the React Native version in `apps/mobile` pins, installed with `sdkmanager` after `yes | sdkmanager --licenses`: `platforms;android-37.0`, `build-tools;37.0.0` and `ndk;27.1.12297006` (see `node_modules/react-native/gradle/libs.versions.toml`). Set `JAVA_HOME=/usr/lib/jvm/java-21-openjdk`.
 - Device panel with a physical Android phone: `android-tools`. The device hub brings its own scrcpy.
+- Device panel with a GNOME desktop (for GTK apps and Shell extensions): `gnome-shell`, `pipewire`, `wireplumber`, `gst-plugin-pipewire`, `gst-plugins-good`, `python-gobject`, `gst-python` and `at-spi2-core`, plus `nodejs` for the device hub. For the live H.264 stream add `gst-plugin-va` with your GPU's VA-API driver (Mesa's for AMD, `intel-media-driver` for Intel), or `gst-plugins-ugly` to encode in software; without either the panel falls back to a still-image stream. The session is separate from your own GNOME login and needs no display. See [GNOME desktops](./docs/user/devices.md#gnome-desktops) for the Debian and Ubuntu packages.
 
-The iOS Simulator needs macOS, so the Device panel offers Android only on Arch.
+The iOS Simulator needs macOS, so the Device panel offers Android and GNOME desktops on Arch.
 
 ### Server on a bare host
 
@@ -103,7 +105,7 @@ RUN npm install -g @anthropic-ai/claude-code @openai/codex opencode-ai
 USER ae
 ```
 
-Other things worth adding the same way: an Android SDK (with `/dev/kvm` passed to the container for an emulator), a Docker CLI, Playwright's browsers, a CLI for another forge such as `az` for Azure DevOps, and your own SSH keys or git config. Add `-e T3CODE_SELF_UPDATE=true` to let Settings → About install newer releases in place (the server restarts, the container does not); otherwise pull a newer image.
+Other things worth adding the same way: an Android SDK (with `/dev/kvm` passed to the container for an emulator), the [GNOME desktop packages](./docs/user/devices.md#gnome-desktops) (pass a `/dev/dri/renderD*` node for GPU encoding), a Docker CLI, Playwright's browsers, a CLI for another forge such as `az` for Azure DevOps, and your own SSH keys or git config. Add `-e T3CODE_SELF_UPDATE=true` to let Settings → About install newer releases in place (the server restarts, the container does not); otherwise pull a newer image.
 
 ### Desktop app (Arch Linux)
 
