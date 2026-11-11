@@ -111,6 +111,7 @@ import { requestConfirmDialog } from "~/confirmDialog";
 import { useUpdateEnvironmentSettings } from "~/hooks/useSettings";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { environmentIdsKey } from "~/state/environmentAtomList";
+import { environmentLatestReleasesAtom, releaseUpdateTarget } from "~/state/environmentRelease";
 import { environmentUpdateStatesAtom, serverEnvironment } from "~/state/server";
 import {
   ServerUpdateAction,
@@ -282,17 +283,25 @@ function ConnectionsSettingsContent({
       environmentIdsKey(savedEnvironments.map(({ environmentId }) => environmentId)),
     ),
   );
+  const savedLatestReleases = useAtomValue(
+    environmentLatestReleasesAtom(
+      environmentIdsKey(savedEnvironments.map(({ environmentId }) => environmentId)),
+    ),
+  );
   const savedServerUpdateStates = savedEnvironments.map((environment, index) => ({
     environment,
     updateStatus: savedUpdateStates[index]!.status,
+    updateTarget: releaseUpdateTarget(
+      environment.serverConfig?.environment.serverVersion,
+      savedLatestReleases[index]!,
+    ),
   }));
   const savedServerUpdateTargets = savedServerUpdateStates.flatMap(
-    ({ environment, updateStatus }): ServerUpdateTarget[] => {
-      const mismatch = resolveServerConfigVersionMismatch(environment.serverConfig);
+    ({ environment, updateStatus, updateTarget }): ServerUpdateTarget[] => {
       const selfUpdate = resolveServerSelfUpdateCapability(environment.serverConfig);
       const desktopAppUpdate = supportsDesktopAppUpdate(environment.serverConfig);
       if (
-        !mismatch ||
+        updateTarget === null ||
         updateStatus === "running" ||
         !environment.entry.enabled ||
         environment.connection.phase !== "connected" ||
@@ -309,7 +318,7 @@ function ConnectionsSettingsContent({
           selfUpdate,
           installation: environment.serverConfig?.environment.capabilities.serverInstallation,
           desktopAppUpdate,
-          targetVersion: mismatch.clientVersion,
+          targetVersion: updateTarget,
         },
       ];
     },

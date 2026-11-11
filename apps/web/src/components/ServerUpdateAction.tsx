@@ -328,8 +328,8 @@ export function ServerUpdateAction({
   if (updatesDenial !== undefined) {
     return appearance === "icon" ? (
       <ManagedControl reason={updatesDenial}>
-        <Button size="icon-xs" variant="ghost-muted" aria-label={updatesDenial} disabled>
-          <CircleArrowUpIcon className="size-3.5" />
+        <Button size="icon-sm" variant="ghost-muted" aria-label={updatesDenial} disabled>
+          <CircleArrowUpIcon className="size-4" />
         </Button>
       </ManagedControl>
     ) : (
@@ -368,7 +368,7 @@ export function ServerUpdateAction({
         <TooltipTrigger
           render={
             <Button
-              size="icon-xs"
+              size="icon-sm"
               variant="ghost-muted"
               className={className}
               aria-label={`${actionLabel} for ${serverLabel}`}
@@ -377,7 +377,7 @@ export function ServerUpdateAction({
             />
           }
         >
-          <CircleArrowUpIcon className="size-3.5" />
+          <CircleArrowUpIcon className="size-4" />
         </TooltipTrigger>
         <TooltipPopup side="top">{actionLabel}</TooltipPopup>
       </Tooltip>
