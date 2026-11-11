@@ -85,7 +85,7 @@ import { useClientSettings } from "../hooks/useSettings";
 import { getFileMetadataQueryAtom } from "../hooks/useFileMetadata";
 import { FileMetadataThreadContext } from "../hooks/FileMetadataThreadProvider";
 import { useLocalStorage } from "../hooks/useLocalStorage";
-import { attachedTerminalSessionAtom } from "../state/terminalSessions";
+import { anyTerminalRunning, attachedTerminalSessionAtom } from "../state/terminalSessions";
 import { appAtomRegistry } from "../rpc/atomRegistry";
 import { serverEnvironment } from "../state/server";
 import { previewEnvironment } from "../state/preview";
@@ -1691,7 +1691,10 @@ export default function ThreadTerminalDrawer({
   const confirmCloseTerminal = (terminalId: string) => {
     if (!canOperateTerminal) return;
     const label = terminalLabelById.get(terminalId) ?? getTerminalLabel(terminalId);
-    void confirmTerminalClose([label]).then((confirmed) => {
+    void confirmTerminalClose(
+      [label],
+      anyTerminalRunning(threadRef.environmentId, threadRef.threadId, [terminalId]),
+    ).then((confirmed) => {
       if (confirmed && readEnvironmentScope(threadRef.environmentId, AuthTerminalOperateScope)) {
         onCloseTerminal(terminalId, threadRef);
       }

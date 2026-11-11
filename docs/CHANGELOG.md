@@ -8,6 +8,10 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+### Added
+
+- Settings → General → Confirmations: choose when closing a terminal asks first (never, only while a command is running, or always). The default asks only while a command is running, not at an idle shell.
+
 ### Changed
 
 - Settings → Environments: each environment checks its own server for a newer GitHub release instead of comparing with this app's version, so a local build here no longer offers or hides updates. The update icon is larger.

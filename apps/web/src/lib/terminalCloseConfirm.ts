@@ -1,3 +1,4 @@
+import { getClientSettings } from "~/hooks/useSettings";
 import { readLocalApi } from "~/localApi";
 
 let pendingConfirmations = 0;
@@ -8,7 +9,10 @@ export function isTerminalCloseConfirmPending(): boolean {
 
 export async function confirmTerminalClose(
   labels: readonly [string, ...string[]],
+  hasRunningProcess: boolean,
 ): Promise<boolean> {
+  const mode = getClientSettings().confirmTerminalClose;
+  if (mode === "never" || (mode === "running" && !hasRunningProcess)) return true;
   const localApi = readLocalApi();
   if (!localApi) return true;
   pendingConfirmations += 1;

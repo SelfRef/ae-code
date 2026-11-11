@@ -20,6 +20,7 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { AsyncResult, Atom } from "effect/reactivity";
 
+import { appAtomRegistry } from "../rpc/atomRegistry";
 import { formatEnvironmentQueryError } from "./query";
 import { terminalEnvironment } from "./terminal";
 import { environmentSession, sessionHasScope, useEnvironmentScope } from "./session";
@@ -229,6 +230,16 @@ export function useKnownTerminalSessions(input: {
       ? NO_KNOWN_TERMINAL_SESSIONS_ATOM
       : knownTerminalSessionsAtom(input.environmentId, input.threadId),
   );
+}
+
+export function anyTerminalRunning(
+  environmentId: EnvironmentId,
+  threadId: ThreadId,
+  terminalIds: ReadonlyArray<string>,
+): boolean {
+  const sessions = appAtomRegistry.get(knownTerminalSessionsAtom(environmentId, threadId)) ?? [];
+  const running = selectRunningSubprocessTerminalIds(sessions);
+  return terminalIds.some((terminalId) => running.includes(terminalId));
 }
 
 export function useThreadRunningTerminalIds(input: {

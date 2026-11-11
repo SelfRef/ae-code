@@ -386,21 +386,25 @@ export function useChatTerminalActions(input: ChatTerminalActionsInput) {
   const requestCloseTerminal = (terminalId: string) => {
     if (!hasTerminalWriteAccess()) return;
     const label = activeTerminalLabelsById.get(terminalId) ?? getTerminalLabel(terminalId);
-    void confirmTerminalClose([label]).then((confirmed) => {
-      if (confirmed && readEnvironmentScope(environmentId, AuthTerminalOperateScope)) {
-        closeTerminal(terminalId);
-      }
-    });
+    void confirmTerminalClose([label], runningTerminalIds.includes(terminalId)).then(
+      (confirmed) => {
+        if (confirmed && readEnvironmentScope(environmentId, AuthTerminalOperateScope)) {
+          closeTerminal(terminalId);
+        }
+      },
+    );
   };
   const requestCloseTerminalStable = useStableCallback(requestCloseTerminal);
   const requestClosePanelTerminal = (terminalId: string) => {
     if (!hasTerminalWriteAccess()) return;
     const label = activeTerminalLabelsById.get(terminalId) ?? getTerminalLabel(terminalId);
-    void confirmTerminalClose([label]).then((confirmed) => {
-      if (confirmed && readEnvironmentScope(environmentId, AuthTerminalOperateScope)) {
-        closePanelTerminal(terminalId);
-      }
-    });
+    void confirmTerminalClose([label], runningTerminalIds.includes(terminalId)).then(
+      (confirmed) => {
+        if (confirmed && readEnvironmentScope(environmentId, AuthTerminalOperateScope)) {
+          closePanelTerminal(terminalId);
+        }
+      },
+    );
   };
   const requestClosePanelTerminalStable = useStableCallback(requestClosePanelTerminal);
   const openTerminalIfClosed = () => {
