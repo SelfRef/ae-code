@@ -1349,6 +1349,18 @@ export function VoiceSettingsPanel() {
             </Select>
           }
         />
+        <SettingsRow
+          {...searchableSetting("voice-composer-button")}
+          title="Microphone button"
+          description="Show the microphone button in the message box. The dictation shortcut keeps working when it is hidden."
+          control={
+            <Switch
+              aria-label="Show microphone button in the message box"
+              checked={settings.showVoiceButton}
+              onCheckedChange={(checked) => void updateClientSettings({ showVoiceButton: checked })}
+            />
+          }
+        />
       </SettingsSection>
 
       <SettingsSection id="voice-transcription" title="Transcription">

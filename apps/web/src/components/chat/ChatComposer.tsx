@@ -137,6 +137,7 @@ import {
   useAttachmentUploadStore,
 } from "../../lib/attachmentUploadQueue";
 import { attachmentUploadBlockReason } from "../../lib/attachmentUploadState";
+import { useClientSettings } from "../../hooks/useSettings";
 import { useDictationShortcut } from "../../speech/useDictationShortcut";
 import { useDictationSubmissionShortcut } from "../../speech/useDictationSubmissionShortcut";
 import { useEnvironmentSpeechInput } from "../../speech/useEnvironmentSpeechInput";
@@ -1851,6 +1852,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const { blocksSubmission: voiceInputActive, submitAfterDictation } = speechInput;
   // A compact footer gives the dictation capsule the whole row beside the send button.
   const dictationTakesFooter = isComposerFooterCompact && speechInput.state.phase !== "idle";
+  const showVoiceButton = useClientSettings((settings) => settings.showVoiceButton);
   const submissionTarget = activePendingProgress ? "pending-user-input" : "provider-turn";
   const submissionBlocked = isComposerSubmissionBlocked({
     submissionTarget,
@@ -3787,12 +3789,14 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                           onCancel={() => speechInput.cancel()}
                           onSkipPostProcessing={() => speechInput.skipPostProcessing()}
                         />
-                        <ComposerSpeechButton
-                          state={speechInput.state}
-                          shortcutLabel={dictationShortcutLabel}
-                          disabled={dictationDisabled}
-                          onStart={() => void speechInput.start()}
-                        />
+                        {showVoiceButton ? (
+                          <ComposerSpeechButton
+                            state={speechInput.state}
+                            shortcutLabel={dictationShortcutLabel}
+                            disabled={dictationDisabled}
+                            onStart={() => void speechInput.start()}
+                          />
+                        ) : null}
                       </>
                     ) : null}
                     <VoiceInputSetup
