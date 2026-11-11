@@ -206,7 +206,8 @@ Built differently from the plan below, to stay small:
   oldest, comments) goes to GitHub's search; "created by me" and "assigned to me" are its `author:@me` and `assignee:@me`.
 - **Right panel**: an "Issues" tab (add menu, key `I`) lists and reads the thread's project issues beside the chat, same
   list and detail as the page. Offered when the thread's project is on GitHub.
-- **Android**: an Issues tab next to Threads, Pulls and Usage. Settings → Navigation chooses which tabs show; Pulls is
+- **Android**: an Issues tab next to Threads, Pulls and Usage. `SplitPage` shows the open issue (or release) beside the list
+  once the page is 640 dp wide, such as unfolded, and replaces the list below that. Sort, state and "mine" chips match the web. Settings → Navigation chooses which tabs show; Pulls is
   hidden by default (the choice is saved once changed).
 - Not built: everything that writes (phase B), MCP tools (C), threads from issues (D), iOS.
 
@@ -1293,7 +1294,8 @@ branch and from its own upstream. Read-only; nothing here switches, pulls, pushe
   project that is not archived or a scratch one. The sort and filters live in the URL (`branchSort`, `merge`, `kind`,
   `remote`).
 - **Android**: a Branches tab before Issues (a page like Issues and Releases; the row's "Open thread" opens it). The tab bar
-  holds four tabs, so with Pulls hidden Usage moves under the overflow entry.
+  holds four tabs, so with Pulls hidden Usage moves under the overflow entry. Search, sort and filter chips (merge state,
+  kind, remote) and a project chip share their logic with the web (`filterBranches`, `sortBranches`).
 - No data migration.
 
 ## File operations (change 39)

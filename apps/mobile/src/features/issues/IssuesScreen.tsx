@@ -1,11 +1,13 @@
-import {
-  issueProjects,
-  projectKey,
-  selectIssueProject,
-} from "@t3tools/client-runtime/issue-projects";
-import type { EnvironmentId, IssueListState, IssueSummary, ProjectId } from "@t3tools/contracts";
-import { useEffect, useRef, useState } from "react";
-import { BackHandler, Linking, Pressable, View } from "react-native";
+import { issueProjects, projectKey } from "@t3tools/client-runtime/issue-projects";
+import type {
+  EnvironmentId,
+  IssueListSort,
+  IssueListState,
+  IssueSummary,
+  ProjectId,
+} from "@t3tools/contracts";
+import { useRef, useState } from "react";
+import { Linking, Pressable, ScrollView as RowScrollView, View } from "react-native";
 
 import { AppText as Text } from "../../components/ui/AppText";
 import { Button } from "../../components/ui/Button";
@@ -13,13 +15,14 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { AppActivityIndicator } from "../../components/ui/AppActivityIndicator";
 import { ScreenScrollView as ScrollView } from "../../components/ui/ScreenScrollView";
 import { SearchField } from "../../components/ui/SearchField";
-import { SegmentedControl } from "../../components/ui/SegmentedControl";
-import { cn } from "../../lib/cn";
+import { SplitPage } from "../../components/ui/SplitPage";
 import { relativeTime } from "../../lib/time";
 import { useProjects } from "../../state/entities";
+import { usePageProject } from "../../state/page-project";
 import { issueEnvironment } from "../../state/issues";
 import { useEnvironmentQuery } from "../../state/query";
 import { useSourceControlSignIn } from "../../state/sourceControl";
+import { ChoiceChip } from "../layout/workspace/ChoiceChip";
 import { SettingsScreen } from "../settings/components/SettingsScreen";
 import { PullRequestMarkdown } from "../pull-requests/PullRequestMarkdown";
 import { issueStateLabel } from "./issueStateLabel";
@@ -30,17 +33,21 @@ const STATE_OPTIONS = [
   { value: "all", label: "All" },
 ] as const satisfies readonly { value: IssueListState; label: string }[];
 
-function useHardwareBack(active: boolean, onBack: () => void) {
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- subscribes to the platform's back button while an issue is open
-  useEffect(() => {
-    if (!active) return;
-    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
-      onBack();
-      return true;
-    });
-    return () => subscription.remove();
-  }, [active, onBack]);
-}
+const SORT_OPTIONS = [
+  { value: "updated", label: "Recently updated" },
+  { value: "newest", label: "Newest" },
+  { value: "oldest", label: "Oldest" },
+  { value: "comments", label: "Most commented" },
+] as const satisfies readonly { value: IssueListSort; label: string }[];
+
+const INVOLVEMENT_OPTIONS = [
+  { value: "all", label: "Everyone" },
+  { value: "author", label: "Created by me" },
+  { value: "assignee", label: "Assigned to me" },
+] as const;
+
+/** GitHub's own search syntax: `@me` is the signed-in user. */
+const INVOLVEMENT_QUALIFIER = { author: "author:@me", assignee: "assignee:@me" } as const;
 
 type Target = { readonly environmentId: EnvironmentId; readonly projectId: ProjectId };
 
@@ -87,6 +94,7 @@ function IssueRow(props: { readonly issue: IssueSummary; readonly onPress: () =>
 function IssuePage(props: {
   readonly target: Target;
   readonly state: IssueListState;
+  readonly sort: IssueListSort;
   readonly query: string;
   readonly page: number;
   readonly isLast: boolean;
@@ -99,6 +107,7 @@ function IssuePage(props: {
       input: {
         projectId: props.target.projectId,
         state: props.state,
+        ...(props.sort === "updated" ? {} : { sort: props.sort }),
         ...(props.query ? { query: props.query } : {}),
         page: props.page,
       },
@@ -203,43 +212,146 @@ function IssueDetail(props: { readonly target: Target; readonly number: number }
   );
 }
 
-/** The Issues tab: one page that swaps between the list and an open issue. */
+/** The Issues tab: the list, with the open issue beside it where the page is wide. */
 export function IssuesScreen() {
   const projects = issueProjects(useProjects(), useSourceControlSignIn().githubSignedOut);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const project =
-    projects.find((candidate) => projectKey(candidate) === selectedKey) ??
-    selectIssueProject(projects, {});
+  const project = usePageProject(projects, selectedKey);
   const [state, setState] = useState<IssueListState>("open");
+  const [sort, setSort] = useState<IssueListSort>("updated");
+  const [involves, setInvolves] = useState<"all" | "author" | "assignee">("all");
   const [draft, setDraft] = useState("");
   const [query, setQuery] = useState("");
   const [pages, setPages] = useState(1);
   const [open, setOpen] = useState<number | null>(null);
   const [refresh, setRefresh] = useState(0);
   const searchRef = useRef(null);
-
-  const detail = open !== null;
-  // The page is the whole tab, so the hardware back button has to close the issue itself.
   const closeDetail = () => setOpen(null);
-  useHardwareBack(detail, closeDetail);
 
   const target: Target | null = project
     ? { environmentId: project.environmentId, projectId: project.id }
     : null;
-  const nextProject = () => {
-    if (projects.length < 2 || project === null) return;
-    const index = projects.findIndex((candidate) => projectKey(candidate) === projectKey(project));
-    const next = projects[(index + 1) % projects.length];
-    if (next) {
-      setSelectedKey(projectKey(next));
-      setPages(1);
-      setOpen(null);
-    }
+  const searchText = [involves === "all" ? "" : INVOLVEMENT_QUALIFIER[involves], query]
+    .filter(Boolean)
+    .join(" ");
+  const restart = () => {
+    setPages(1);
+    setOpen(null);
   };
+
+  const list = (
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      showsVerticalScrollIndicator={false}
+      className="flex-1"
+      contentContainerClassName="px-5 pt-4 pb-6"
+    >
+      {target === null || project === null ? (
+        <EmptyState
+          variant="plain"
+          title="No GitHub project"
+          detail="Issues are listed for projects whose repository is on GitHub."
+        />
+      ) : (
+        <View className="gap-3">
+          <View className="flex-row">
+            <SearchField
+              inputRef={searchRef}
+              autoFocus={false}
+              accessibilityLabel="Search issues"
+              clearAccessibilityLabel="Clear search"
+              placeholder="Search issues"
+              value={draft}
+              onChangeText={(value) => {
+                setDraft(value);
+                if (value === "" && query !== "") {
+                  setQuery("");
+                  restart();
+                }
+              }}
+              onSubmitEditing={() => {
+                setQuery(draft.trim());
+                restart();
+              }}
+            />
+          </View>
+          <RowScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8 }}
+          >
+            {projects.length > 1 ? (
+              <ChoiceChip
+                label={project.title}
+                accessibilityLabel="Choose project"
+                options={projects.map((candidate) => ({
+                  value: projectKey(candidate),
+                  label: candidate.title,
+                }))}
+                selected={projectKey(project)}
+                onSelect={(key) => {
+                  setSelectedKey(key);
+                  restart();
+                }}
+              />
+            ) : null}
+            <ChoiceChip
+              label={SORT_OPTIONS.find((option) => option.value === sort)?.label ?? "Sort"}
+              accessibilityLabel="Sort issues"
+              options={SORT_OPTIONS}
+              selected={sort}
+              active={sort !== "updated"}
+              onSelect={(value) => {
+                setSort(value);
+                restart();
+              }}
+            />
+            <ChoiceChip
+              label={STATE_OPTIONS.find((option) => option.value === state)?.label ?? "State"}
+              accessibilityLabel="Filter by state"
+              options={STATE_OPTIONS}
+              selected={state}
+              active={state !== "open"}
+              onSelect={(value) => {
+                setState(value);
+                restart();
+              }}
+            />
+            <ChoiceChip
+              label={INVOLVEMENT_OPTIONS.find((option) => option.value === involves)?.label ?? ""}
+              accessibilityLabel="Filter by involvement"
+              options={INVOLVEMENT_OPTIONS}
+              selected={involves}
+              active={involves !== "all"}
+              onSelect={(value) => {
+                setInvolves(value);
+                restart();
+              }}
+            />
+          </RowScrollView>
+          <View>
+            {Array.from({ length: pages }, (_, index) => (
+              <IssuePage
+                key={`${projectKey(project)}:${state}:${sort}:${searchText}:${refresh}:${index + 1}`}
+                target={target}
+                state={state}
+                sort={sort}
+                query={searchText}
+                page={index + 1}
+                isLast={index + 1 === pages}
+                onOpen={setOpen}
+                onMore={() => setPages((value) => value + 1)}
+              />
+            ))}
+          </View>
+        </View>
+      )}
+    </ScrollView>
+  );
 
   return (
     <SettingsScreen
-      title={detail ? "Issue" : (project?.title ?? "Issues")}
+      title={project?.title ?? "Issues"}
       workspaceRoot
       refresh={{
         accessibilityLabel: "Refresh issues",
@@ -249,81 +361,33 @@ export function IssuesScreen() {
         },
       }}
     >
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        showsVerticalScrollIndicator={false}
-        className="flex-1"
-        contentContainerClassName="px-5 pt-4 pb-6"
-      >
-        {target === null || project === null ? (
-          <EmptyState
-            variant="plain"
-            title="No GitHub project"
-            detail="Issues are listed for projects whose repository is on GitHub."
-          />
-        ) : detail ? (
-          <View className="gap-3">
-            <Button label="Back to issues" onPress={closeDetail} />
-            <IssueDetail
-              key={`${projectKey(project)}:${open}:${refresh}`}
-              target={target}
-              number={open}
-            />
-          </View>
-        ) : (
-          <View className="gap-3">
-            {projects.length > 1 ? (
-              <Button label={`Project: ${project.title} (change)`} onPress={nextProject} />
-            ) : null}
-            <View className="flex-row">
-              <SearchField
-                inputRef={searchRef}
-                autoFocus={false}
-                accessibilityLabel="Search issues"
-                clearAccessibilityLabel="Clear search"
-                placeholder="Search issues"
-                value={draft}
-                onChangeText={(value) => {
-                  setDraft(value);
-                  if (value === "" && query !== "") {
-                    setQuery("");
-                    setPages(1);
-                  }
-                }}
-                onSubmitEditing={() => {
-                  setQuery(draft.trim());
-                  setPages(1);
-                }}
-              />
-            </View>
-            <SegmentedControl
-              options={STATE_OPTIONS}
-              selected={state}
-              onSelect={(value) => {
-                setState(value);
-                setPages(1);
-              }}
-              size="compact"
-              role="tab"
-              className={cn("w-full")}
-            />
-            <View>
-              {Array.from({ length: pages }, (_, index) => (
-                <IssuePage
-                  key={`${projectKey(project)}:${state}:${query}:${refresh}:${index + 1}`}
+      <SplitPage
+        list={list}
+        open={open !== null && target !== null && project !== null}
+        onCloseDetail={closeDetail}
+        emptyDetail={
+          <EmptyState variant="plain" title="Select an issue" detail="Its discussion shows here." />
+        }
+        renderDetail={(compact) =>
+          target !== null && project !== null && open !== null ? (
+            <ScrollView
+              contentInsetAdjustmentBehavior="automatic"
+              showsVerticalScrollIndicator={false}
+              className="flex-1"
+              contentContainerClassName="px-5 pt-4 pb-6"
+            >
+              <View className="gap-3">
+                {compact ? <Button label="Back to issues" onPress={closeDetail} /> : null}
+                <IssueDetail
+                  key={`${projectKey(project)}:${open}:${refresh}`}
                   target={target}
-                  state={state}
-                  query={query}
-                  page={index + 1}
-                  isLast={index + 1 === pages}
-                  onOpen={setOpen}
-                  onMore={() => setPages((value) => value + 1)}
+                  number={open}
                 />
-              ))}
-            </View>
-          </View>
-        )}
-      </ScrollView>
+              </View>
+            </ScrollView>
+          ) : null
+        }
+      />
     </SettingsScreen>
   );
 }
