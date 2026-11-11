@@ -8,6 +8,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+## [v2026.11.11] - 2026-11-11
+
 ### Added
 
 - Branches, Issues and Releases (web): the title row is the thread header's project switcher followed by the page name, and it
