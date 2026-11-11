@@ -19,6 +19,7 @@ import {
   MIN_SIDEBAR_AUTO_SETTLE_AFTER_DAYS,
   type ResponseStreamingMode,
   type QuitConfirmationMode,
+  type TerminalCloseConfirmationMode,
   SidebarProjectSortOrder,
   ScreenReaderAnnouncements,
   ToolCallVisibility,
@@ -143,6 +144,12 @@ const QUIT_CONFIRMATION_MODE_LABELS: Record<QuitConfirmationMode, string> = {
   direct: msg("Direct"),
   hold: msg("Hold"),
   "double-click": msg("Double press"),
+};
+
+const TERMINAL_CLOSE_CONFIRMATION_LABELS: Record<TerminalCloseConfirmationMode, string> = {
+  never: "Never",
+  running: "While running",
+  always: "Always",
 };
 
 const DEFAULT_DRIVER_KIND = ProviderDriverKind.make("codex");
@@ -442,6 +449,9 @@ export function useSettingsRestore(onRestored?: () => void) {
     ...(settings.confirmThreadDelete !== DEFAULT_UNIFIED_SETTINGS.confirmThreadDelete
       ? ["Delete confirmation"]
       : []),
+    ...(settings.confirmTerminalClose !== DEFAULT_UNIFIED_SETTINGS.confirmTerminalClose
+      ? ["Terminal close confirmation"]
+      : []),
     ...(settings.confirmQuit !== DEFAULT_UNIFIED_SETTINGS.confirmQuit ? ["Quit shortcut"] : []),
     ...(isTextGenerationModelDirty ? ["Text generation model"] : []),
     ...(settings.threadTitleInstructions !== DEFAULT_UNIFIED_SETTINGS.threadTitleInstructions
@@ -555,6 +565,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       confirmThreadArchive: DEFAULT_UNIFIED_SETTINGS.confirmThreadArchive,
       confirmThreadDelete: DEFAULT_UNIFIED_SETTINGS.confirmThreadDelete,
       confirmThreadUnpin: DEFAULT_UNIFIED_SETTINGS.confirmThreadUnpin,
+      confirmTerminalClose: DEFAULT_UNIFIED_SETTINGS.confirmTerminalClose,
       confirmQuit: DEFAULT_UNIFIED_SETTINGS.confirmQuit,
       textGenerationModelSelection: DEFAULT_UNIFIED_SETTINGS.textGenerationModelSelection,
       threadTitleInstructions: DEFAULT_UNIFIED_SETTINGS.threadTitleInstructions,
@@ -865,6 +876,49 @@ export function GeneralSettingsPanel() {
               }
               aria-label={gt("Confirm thread deletion")}
             />
+          }
+        />
+        <SettingsRow
+          {...searchableSetting("terminal-close-confirmation")}
+          description="Ask before closing a terminal. While running only asks when a command is running, not at an idle shell."
+          resetAction={
+            settings.confirmTerminalClose !== DEFAULT_UNIFIED_SETTINGS.confirmTerminalClose ? (
+              <SettingResetButton
+                label="terminal close confirmation"
+                onClick={() =>
+                  updateSettings({
+                    confirmTerminalClose: DEFAULT_UNIFIED_SETTINGS.confirmTerminalClose,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Select
+              value={settings.confirmTerminalClose}
+              onValueChange={(value) => {
+                if (value === "never" || value === "running" || value === "always") {
+                  updateSettings({ confirmTerminalClose: value });
+                }
+              }}
+            >
+              <SelectTrigger
+                size="sm"
+                className="w-full sm:w-40"
+                aria-label="Terminal close confirmation"
+              >
+                <SelectValue>
+                  {TERMINAL_CLOSE_CONFIRMATION_LABELS[settings.confirmTerminalClose]}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectPopup align="end" alignItemWithTrigger={false}>
+                {Object.entries(TERMINAL_CLOSE_CONFIRMATION_LABELS).map(([value, label]) => (
+                  <SelectItem hideIndicator key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectPopup>
+            </Select>
           }
         />
         {isElectron ? (

@@ -281,6 +281,9 @@ export const QuitConfirmationMode = Schema.Literals(["direct", "hold", "double-c
 export type QuitConfirmationMode = typeof QuitConfirmationMode.Type;
 const DEFAULT_QUIT_CONFIRMATION_MODE: QuitConfirmationMode = "hold";
 
+export const TerminalCloseConfirmationMode = Schema.Literals(["never", "running", "always"]);
+export type TerminalCloseConfirmationMode = typeof TerminalCloseConfirmationMode.Type;
+
 const LegacyConfirmQuit = Schema.Boolean.pipe(
   Schema.decodeTo(
     QuitConfirmationMode,
@@ -470,6 +473,9 @@ export const ClientSettingsSchema = Schema.Struct({
   confirmThreadArchive: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   confirmThreadDelete: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   confirmThreadUnpin: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+  confirmTerminalClose: TerminalCloseConfirmationMode.pipe(
+    Schema.withDecodingDefault(Effect.succeed("running")),
+  ),
   diffFilesCollapsed: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   diffIgnoreWhitespace: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   diffLayout: DiffLayout.pipe(Schema.withDecodingDefault(Effect.succeed(DEFAULT_DIFF_LAYOUT))),
@@ -2096,6 +2102,7 @@ export const ClientSettingsPatch = Schema.Struct({
   confirmThreadArchive: Schema.optionalKey(Schema.Boolean),
   confirmThreadDelete: Schema.optionalKey(Schema.Boolean),
   confirmThreadUnpin: Schema.optionalKey(Schema.Boolean),
+  confirmTerminalClose: Schema.optionalKey(TerminalCloseConfirmationMode),
   diffFilesCollapsed: Schema.optionalKey(Schema.Boolean),
   diffIgnoreWhitespace: Schema.optionalKey(Schema.Boolean),
   diffLayout: Schema.optionalKey(DiffLayout),

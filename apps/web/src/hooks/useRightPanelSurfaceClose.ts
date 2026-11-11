@@ -24,6 +24,7 @@ import { readThreadShell } from "../state/entities";
 import { previewEnvironment } from "../state/preview";
 import { readEnvironmentScope, useEnvironmentScope } from "../state/session";
 import { environmentShell } from "../state/shell";
+import { anyTerminalRunning } from "../state/terminalSessions";
 import { threadEnvironment } from "../state/threads";
 import { useAtomCommand } from "../state/use-atom-command";
 import { useTerminalUiStateStore } from "../terminalUiStateStore";
@@ -150,11 +151,12 @@ export function useRightPanelSurfaceClose(input: {
     const otherLabels = surface.terminalIds
       .filter((terminalId) => terminalId !== surface.activeTerminalId)
       .map(labelFor);
-    void confirmTerminalClose([labelFor(surface.activeTerminalId), ...otherLabels]).then(
-      (confirmed) => {
-        if (confirmed) finishClose([surface]);
-      },
-    );
+    void confirmTerminalClose(
+      [labelFor(surface.activeTerminalId), ...otherLabels],
+      anyTerminalRunning(threadRef.environmentId, threadRef.threadId, surface.terminalIds),
+    ).then((confirmed) => {
+      if (confirmed) finishClose([surface]);
+    });
   });
   const closeOtherSurfaces = useStableCallback((surface: RightPanelSurface) =>
     closeSurfaces(surfaces.filter((entry) => entry.id !== surface.id)),
