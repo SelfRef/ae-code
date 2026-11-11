@@ -237,6 +237,12 @@ control → Merge strategy** to **Squash into one commit** to land a branch of s
 commit with a generated message; the thread's branch is reset to that commit, so its own commits
 remain only in the reflog, and the commit skips git hooks.
 
+On Android a floating button at the bottom right of a thread does the next step of the usual
+worktree flow: **Commit** while there are uncommitted changes, **Merge** once they are committed
+but not in the default branch, and **Settle** once they are merged. It is hidden while the agent
+works, and for a thread that never changed any files. Turn it off with **Commit, merge & settle
+button** under **Settings → Source control → This device**.
+
 To make **Merge & push** the main action, set **Settings → Source control → Default branch action**
 globally or for a project.
 
