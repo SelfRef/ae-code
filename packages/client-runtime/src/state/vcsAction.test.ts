@@ -137,7 +137,9 @@ describe("vcsActionState", () => {
       operation: "run_change_request",
       label: "Running source control action",
       actionId,
+      action,
     });
+    expect(initial.action).toBe(action);
     const phase = applyVcsActionProgressEvent(
       initial,
       progress({

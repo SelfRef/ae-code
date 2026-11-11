@@ -310,6 +310,7 @@ export function useGitStackedAction(scope: SourceControlActionScope) {
         operation: "run_change_request",
         label: "Running source control action",
         actionId: input.actionId,
+        action: input.action,
       }),
     );
     const result = await runStackedAction(input);
