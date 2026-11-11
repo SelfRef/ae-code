@@ -47,6 +47,7 @@ import {
   Globe2,
   MessagesSquare,
   Plus,
+  GitBranchIcon,
   TagIcon,
   TerminalSquare,
   Volume2Icon,
@@ -150,6 +151,7 @@ export interface RightPanelTabsProps {
   onAddIssues?: (() => void) | undefined;
   /** Absent where the project has no GitHub releases. */
   onAddReleases?: (() => void) | undefined;
+  onAddBranches?: (() => void) | undefined;
   onAddDevice: () => void;
   /** Absent where side chats are not offered. */
   onAddSideChat?: (() => void) | undefined;
@@ -338,6 +340,7 @@ function RightPanelEmptyState(props: {
   onAddIssues?: (() => void) | undefined;
   /** Absent where the project has no GitHub releases. */
   onAddReleases?: (() => void) | undefined;
+  onAddBranches?: (() => void) | undefined;
   onAddDevice: () => void;
   /** Absent where side chats are not offered. */
   onAddSideChat?: (() => void) | undefined;
@@ -400,6 +403,18 @@ function RightPanelEmptyState(props: {
             available: props.issuesAvailable === true,
             disabledReason: SURFACE_UNAVAILABLE_HINTS.issues,
             onClick: props.onAddReleases,
+          },
+        ]
+      : []),
+    ...(props.onAddBranches
+      ? [
+          {
+            label: "Branches",
+            icon: GitBranchIcon,
+            shortcut: "G",
+            available: true,
+            disabledReason: "",
+            onClick: props.onAddBranches,
           },
         ]
       : []),
@@ -636,6 +651,8 @@ function surfaceTitle(
       return "Issues";
     case "releases":
       return "Releases";
+    case "branches":
+      return "Branches";
     case "device":
       return surface.title ?? surface.target?.name ?? "Device";
     case "side-chat":
@@ -732,6 +749,8 @@ function SurfaceIcon({
       return <CircleDotIcon className="size-3 shrink-0" />;
     case "releases":
       return <TagIcon className="size-3 shrink-0" />;
+    case "branches":
+      return <GitBranchIcon className="size-3 shrink-0" />;
     case "side-chat":
       return <SideChatTabIcon environmentId={environmentId} threadId={surface.threadId} />;
     case "device":
@@ -1196,6 +1215,18 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
           },
         ]
       : []),
+    ...(props.onAddBranches
+      ? [
+          {
+            label: "Branches",
+            icon: GitBranchIcon,
+            shortcut: "G",
+            available: true,
+            disabledReason: "",
+            onClick: props.onAddBranches,
+          },
+        ]
+      : []),
     {
       label: "Pull Request",
       icon: PullRequestGlyph.pullRequest,
@@ -1626,6 +1657,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             onAddPullRequests={props.onAddPullRequests}
             onAddIssues={props.onAddIssues}
             onAddReleases={props.onAddReleases}
+            onAddBranches={props.onAddBranches}
             onAddDevice={props.onAddDevice}
             onAddSideChat={props.onAddSideChat}
             browserAvailable={props.browserAvailable}

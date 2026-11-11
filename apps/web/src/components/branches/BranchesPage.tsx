@@ -9,7 +9,12 @@ import {
   type BranchMergeFilter,
   type BranchSort,
 } from "@t3tools/client-runtime/branch-overview";
-import { ALL_VCS_REMOTES, type VcsBranchOverviewEntry } from "@t3tools/contracts";
+import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
+import {
+  ALL_VCS_REMOTES,
+  type VcsBranchOverviewEntry,
+  type VcsBranchOverviewResult,
+} from "@t3tools/contracts";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   ArrowDownAZIcon,
@@ -157,14 +162,19 @@ function BranchRow({
   );
 }
 
-export function BranchesPage() {
-  const search = useSearch({ from: "/_chat/branches" });
-  const navigate = useNavigate();
-  const projects = branchProjects(useProjects());
-  const project = usePageProject(projects, search);
-  const threads = useQuietThreadShells();
-  const [query, setQuery] = useState("");
-  const overview = useEnvironmentQuery(
+export interface BranchFilters {
+  merge?: BranchMergeFilter | undefined;
+  kind?: BranchKind | undefined;
+  /** A remote's name, or `all`; absent means the first remote. */
+  remote?: string | undefined;
+  branchSort?: BranchSort | undefined;
+}
+
+export function useBranchOverview(
+  project: Pick<EnvironmentProject, "environmentId" | "workspaceRoot"> | null,
+  remote: string | undefined,
+) {
+  return useEnvironmentQuery(
     project === null
       ? null
       : vcsEnvironment.branchOverview({
@@ -172,33 +182,52 @@ export function BranchesPage() {
           input: {
             cwd: project.workspaceRoot,
             fetch: true,
-            ...(search.remote === undefined ? {} : { remote: search.remote }),
+            ...(remote === undefined ? {} : { remote }),
           },
         }),
   );
+}
 
-  const update = (patch: { [K in keyof typeof search]?: (typeof search)[K] | undefined }) => {
-    const next = Object.entries({ ...search, ...patch }).filter(([, value]) => value !== undefined);
-    void navigate({ to: "/branches", search: Object.fromEntries(next) as typeof search });
-  };
+export function BranchSummary({ data }: { data: VcsBranchOverviewResult | null }) {
+  if (!data?.isRepo) return null;
+  const unmerged = data.branches.filter((b) => branchMergeState(b) === "unmerged").length;
+  return (
+    <span className="min-w-0 truncate text-xs text-muted-foreground">
+      {unmerged > 0 ? `${unmerged} not merged into ${data.defaultRef}` : "All merged"}
+    </span>
+  );
+}
 
+/** Search, sort and filters over the project's branches, shared by the page and the right-panel tab. */
+export function BranchList({
+  project,
+  overview,
+  filters,
+  onFilters,
+}: {
+  project: Pick<EnvironmentProject, "environmentId" | "id" | "title"> | null;
+  overview: ReturnType<typeof useBranchOverview>;
+  filters: BranchFilters;
+  onFilters: (patch: BranchFilters) => void;
+}) {
+  const navigate = useNavigate();
+  const threads = useQuietThreadShells();
+  const [query, setQuery] = useState("");
   const data = overview.data;
   const remotes = data?.remotes ?? [];
   const remote = data === null ? ALL_VCS_REMOTES : (data.remote ?? ALL_VCS_REMOTES);
-  const unmergedCount =
-    data?.branches.filter((b) => branchMergeState(b) === "unmerged").length ?? 0;
   const branches = sortBranches(
     filterBranches(data?.branches ?? [], {
-      merge: search.merge,
-      kind: search.kind,
+      merge: filters.merge,
+      kind: filters.kind,
       query,
     }),
-    search.branchSort ?? "recent",
+    filters.branchSort ?? "recent",
   );
   const filterCount = [
-    search.merge,
-    search.kind,
-    search.remote !== undefined && search.remote !== remotes[0],
+    filters.merge,
+    filters.kind,
+    filters.remote !== undefined && filters.remote !== remotes[0],
   ].filter(Boolean).length;
   const remoteOptions: ReadonlyArray<PullRequestFilterOption<string>> = [
     { value: ALL_VCS_REMOTES, label: "All remotes", Icon: LayersIcon },
@@ -206,23 +235,7 @@ export function BranchesPage() {
   ];
 
   return (
-    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none">
-      <ProjectPageHeader
-        title="Branches"
-        project={project}
-        projects={projects}
-        onProject={(next) =>
-          update({ environmentId: next.environmentId, projectId: next.id, remote: undefined })
-        }
-      >
-        {data?.isRepo ? (
-          <span className="min-w-0 truncate text-xs text-muted-foreground">
-            {unmergedCount > 0
-              ? `${unmergedCount} not merged into ${data.defaultRef}`
-              : "All merged"}
-          </span>
-        ) : null}
-      </ProjectPageHeader>
+    <>
       <div className="flex flex-wrap items-center gap-2 border-b p-3">
         <InputGroup className="min-w-0 basis-full flex-1 sm:basis-0 **:[input]:h-9 sm:**:[input]:h-8">
           <InputGroupAddon>
@@ -241,25 +254,25 @@ export function BranchesPage() {
           triggerIcon={<ArrowDownUpIcon aria-hidden className="size-4" />}
           triggerLabel="Sort"
           outlined
-          value={search.branchSort ?? "recent"}
+          value={filters.branchSort ?? "recent"}
           options={SORT_OPTIONS}
-          onChange={(sort) => update({ branchSort: sort === "recent" ? undefined : sort })}
+          onChange={(sort) => onFilters({ branchSort: sort === "recent" ? undefined : sort })}
         />
         <ListFiltersMenu count={filterCount}>
           <PullRequestFilterRadioSubmenu
             label="Merge state"
-            value={search.merge ?? UNFILTERED}
+            value={filters.merge ?? UNFILTERED}
             options={MERGE_OPTIONS}
             onChange={(next) =>
-              update({ merge: next === UNFILTERED ? undefined : (next as BranchMergeFilter) })
+              onFilters({ merge: next === UNFILTERED ? undefined : (next as BranchMergeFilter) })
             }
           />
           <PullRequestFilterRadioSubmenu
             label="Kind"
-            value={search.kind ?? UNFILTERED}
+            value={filters.kind ?? UNFILTERED}
             options={KIND_OPTIONS}
             onChange={(next) =>
-              update({ kind: next === UNFILTERED ? undefined : (next as BranchKind) })
+              onFilters({ kind: next === UNFILTERED ? undefined : (next as BranchKind) })
             }
           />
           {remotes.length > 1 ? (
@@ -267,7 +280,7 @@ export function BranchesPage() {
               label="Remote"
               value={remote}
               options={remoteOptions}
-              onChange={(next) => update({ remote: next })}
+              onChange={(next) => onFilters({ remote: next })}
             />
           ) : null}
         </ListFiltersMenu>
@@ -311,10 +324,10 @@ export function BranchesPage() {
               <Empty size="compact">
                 <EmptyHeader>
                   <EmptyTitle>
-                    {search.merge === "unmerged" ? "Everything is merged" : "No matching branches"}
+                    {filters.merge === "unmerged" ? "Everything is merged" : "No matching branches"}
                   </EmptyTitle>
                   <EmptyDescription>
-                    {search.merge === "unmerged"
+                    {filters.merge === "unmerged"
                       ? `No branch has commits that ${data.defaultRef} lacks.`
                       : "Change the search or the filters to see more."}
                   </EmptyDescription>
@@ -349,6 +362,35 @@ export function BranchesPage() {
           </>
         )}
       </div>
+    </>
+  );
+}
+
+export function BranchesPage() {
+  const search = useSearch({ from: "/_chat/branches" });
+  const navigate = useNavigate();
+  const projects = branchProjects(useProjects());
+  const project = usePageProject(projects, search);
+  const overview = useBranchOverview(project, search.remote);
+
+  const update = (patch: { [K in keyof typeof search]?: (typeof search)[K] | undefined }) => {
+    const next = Object.entries({ ...search, ...patch }).filter(([, value]) => value !== undefined);
+    void navigate({ to: "/branches", search: Object.fromEntries(next) as typeof search });
+  };
+
+  return (
+    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none">
+      <ProjectPageHeader
+        title="Branches"
+        project={project}
+        projects={projects}
+        onProject={(next) =>
+          update({ environmentId: next.environmentId, projectId: next.id, remote: undefined })
+        }
+      >
+        <BranchSummary data={overview.data} />
+      </ProjectPageHeader>
+      <BranchList project={project} overview={overview} filters={search} onFilters={update} />
     </SidebarInset>
   );
 }
