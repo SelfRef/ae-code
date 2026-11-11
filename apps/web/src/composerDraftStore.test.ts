@@ -2956,3 +2956,71 @@ describe("composerDraftStore checkout pull request", () => {
     }
   });
 });
+
+describe("composerDraftStore applySyncedDraft", () => {
+  const projectId = ProjectId.make("project-sync");
+  const draftId = DraftId.make("draft-sync");
+  const threadId = ThreadId.make("thread-sync");
+  const threadRef = scopeThreadRef(TEST_ENVIRONMENT_ID, threadId);
+
+  const content = (prompt: string, session = false) => ({
+    prompt,
+    records: [],
+    modelSelection: null,
+    runtimeMode: null,
+    interactionMode: null,
+    session: session
+      ? {
+          projectId,
+          branch: "feat/x",
+          worktreePath: null,
+          envMode: "local" as const,
+          createdAt: "2026-11-11T00:00:00.000Z",
+        }
+      : null,
+  });
+  const synced = (key: string, body: ReturnType<typeof content> | null, promotedTo?: string) =>
+    ({
+      key,
+      revision: 1,
+      updatedAt: "2026-11-11T00:00:00.000Z",
+      updatedBy: "other",
+      deleted: body === null,
+      promotedTo: promotedTo ?? null,
+      content: body,
+    }) as never;
+
+  beforeEach(resetComposerDraftStore);
+
+  it("writes a thread's text and clears it on a tombstone", () => {
+    const store = useComposerDraftStore.getState();
+    store.applySyncedDraft(
+      TEST_ENVIRONMENT_ID,
+      synced(`thread:${threadId}`, content("from phone")),
+    );
+    expect(useComposerDraftStore.getState().getComposerDraft(threadRef)?.prompt).toBe("from phone");
+
+    store.applySyncedDraft(TEST_ENVIRONMENT_ID, synced(`thread:${threadId}`, null));
+    expect(useComposerDraftStore.getState().getComposerDraft(threadRef)).toBeNull();
+  });
+
+  it("opens a new-thread draft with its session, and follows a promotion to the sent thread", () => {
+    const store = useComposerDraftStore.getState();
+    store.applySyncedDraft(
+      TEST_ENVIRONMENT_ID,
+      synced(`draft:${draftId}`, content("new idea", true)),
+    );
+    const state = useComposerDraftStore.getState();
+    expect(state.getDraftSession(draftId)).toMatchObject({
+      environmentId: TEST_ENVIRONMENT_ID,
+      projectId,
+      branch: "feat/x",
+    });
+    expect(state.getComposerDraft(draftId)?.prompt).toBe("new idea");
+    expect(Object.values(state.logicalProjectDraftThreadKeyByLogicalProjectKey)).toEqual([draftId]);
+
+    store.applySyncedDraft(TEST_ENVIRONMENT_ID, synced(`draft:${draftId}`, null, threadId));
+    expect(useComposerDraftStore.getState().getDraftSession(draftId)).toBeNull();
+    expect(useComposerDraftStore.getState().getPromotedDraftRedirect(draftId)).toEqual(threadRef);
+  });
+});

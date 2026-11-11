@@ -27,6 +27,10 @@
       "types": "./src/composerThreadItems.ts",
       "default": "./src/composerThreadItems.ts"
     },
+    "./composer-draft-sync": {
+      "types": "./src/composerDraftSync.ts",
+      "default": "./src/composerDraftSync.ts"
+    },
     "./composer-model-mentions": {
       "types": "./src/composerModelMentions.ts",
       "default": "./src/composerModelMentions.ts"
@@ -238,6 +242,10 @@
     "./state/presentation": {
       "types": "./src/state/presentation.ts",
       "default": "./src/state/presentation.ts"
+    },
+    "./state/composer-drafts": {
+      "types": "./src/state/composerDrafts.ts",
+      "default": "./src/state/composerDrafts.ts"
     },
     "./state/device": {
       "types": "./src/state/device.ts",
