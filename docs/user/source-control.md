@@ -179,6 +179,10 @@ Use a thread's Git actions to commit, push, and create a pull request. T3 Code c
 messages, review titles, and descriptions from your changes. Descriptions also draw on the work in
 the thread, including the checks it ran.
 
+A thread's Git button pushes the branch by default; **Create PR** is in its menu. To make
+**Push & create PR** the main action, set **Settings → Source control → Current branch action**
+globally or for a project.
+
 An existing fork PR can appear beside the branch even if you pushed without setting an upstream.
 If its badge is missing because several remotes hold that branch, set the branch's upstream to
 the intended remote with `git branch --set-upstream-to=<remote>/<branch>`.

@@ -1117,6 +1117,13 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["pull request merge squash rebase last selected"],
   },
   {
+    id: "current-branch-action",
+    title: "Current branch action",
+    to: "/settings/source-control",
+    scope: "project-defaults",
+    searchTerms: ["push branch pull request merge request git button quick action create"],
+  },
+  {
     id: "quick-merge-action",
     title: "Default branch action",
     to: "/settings/source-control",
