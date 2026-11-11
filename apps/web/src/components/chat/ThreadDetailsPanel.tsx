@@ -224,8 +224,8 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
               {props.gitCwd && (show.branch || show.git) ? (
                 <ThreadDetailsSection
                   headingId="thread-details-version-control-heading"
-                  title="Version Control"
-                  showHeading={false}
+                  title={show.branch ? "Current branch" : "Version Control"}
+                  showHeading={show.branch && density === "full"}
                   separated={density === "full"}
                 >
                   <div className="flex flex-col">
@@ -251,7 +251,7 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
                 <ThreadDetailsSection
                   headingId="thread-details-default-branch-heading"
                   title="Default branch"
-                  showHeading={false}
+                  showHeading={density === "full"}
                 >
                   <div className="flex flex-col">
                     <GitActionsControl
@@ -285,7 +285,9 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
                 />
               ) : null}
 
-              {visible.usage ? <ThreadDetailsUsage {...props.usage} /> : null}
+              {visible.usage ? (
+                <ThreadDetailsUsage {...props.usage} showHeading={density === "full"} />
+              ) : null}
 
               {visible.context && props.usage.contextWindow ? (
                 <ThreadDetailsContext usage={props.usage.contextWindow} />
