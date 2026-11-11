@@ -132,6 +132,7 @@ import {
   useAttachmentUploadStore,
 } from "../../lib/attachmentUploadQueue";
 import { attachmentUploadBlockReason } from "../../lib/attachmentUploadState";
+import { useClientSettings } from "../../hooks/useSettings";
 import { useDictationShortcut } from "../../speech/useDictationShortcut";
 import { useDictationSubmissionShortcut } from "../../speech/useDictationSubmissionShortcut";
 import { useEnvironmentSpeechInput } from "../../speech/useEnvironmentSpeechInput";
@@ -1824,6 +1825,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     },
   });
   const { blocksSubmission: voiceInputActive, submitAfterDictation } = speechInput;
+  const showVoiceButton = useClientSettings((settings) => settings.showVoiceButton);
   const submissionTarget = activePendingProgress ? "pending-user-input" : "provider-turn";
   const submissionBlocked = isComposerSubmissionBlocked({
     submissionTarget,
@@ -3631,14 +3633,16 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                           onCancel={() => speechInput.cancel()}
                           onSkipPostProcessing={() => speechInput.skipPostProcessing()}
                         />
-                        <ComposerSpeechButton
-                          state={speechInput.state}
-                          progress={null}
-                          shortcutLabel={dictationShortcutLabel}
-                          disabled={dictationDisabled}
-                          onStart={() => void speechInput.start()}
-                          onCancel={() => speechInput.cancel()}
-                        />
+                        {showVoiceButton ? (
+                          <ComposerSpeechButton
+                            state={speechInput.state}
+                            progress={null}
+                            shortcutLabel={dictationShortcutLabel}
+                            disabled={dictationDisabled}
+                            onStart={() => void speechInput.start()}
+                            onCancel={() => speechInput.cancel()}
+                          />
+                        ) : null}
                       </>
                     ) : null}
                     <VoiceInputSetup

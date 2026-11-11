@@ -561,6 +561,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["speech voice keyboard hotkey hold toggle auto"],
   },
   {
+    id: "voice-composer-button",
+    title: "Microphone button",
+    to: "/settings/voice",
+    searchTerms: ["hide show voice dictation composer message box input"],
+  },
+  {
     id: "speech-language",
     title: "Transcription language",
     to: "/settings/voice",

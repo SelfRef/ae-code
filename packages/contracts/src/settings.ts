@@ -558,6 +558,7 @@ export const ClientSettingsSchema = Schema.Struct({
   // Device-local input device id. An empty string follows the operating system default.
   voiceMicrophone: Schema.String.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
   voiceShortcutMode: VoiceShortcutMode.pipe(Schema.withDecodingDefault(Effect.succeed("auto"))),
+  showVoiceButton: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   speechLanguage: SpeechLanguage.pipe(Schema.withDecodingDefault(Effect.succeed("auto"))),
   speechTranslateToEnglish: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   speechCustomWords: SpeechCustomWords.pipe(Schema.withDecodingDefault(Effect.succeed([]))),
@@ -2097,6 +2098,7 @@ export const ClientSettingsPatch = Schema.Struct({
   timestampFormat: Schema.optionalKey(TimestampFormat),
   voiceMicrophone: Schema.optionalKey(Schema.String),
   voiceShortcutMode: Schema.optionalKey(VoiceShortcutMode),
+  showVoiceButton: Schema.optionalKey(Schema.Boolean),
   speechLanguage: Schema.optionalKey(SpeechLanguage),
   speechTranslateToEnglish: Schema.optionalKey(Schema.Boolean),
   speechCustomWords: Schema.optionalKey(SpeechCustomWords),

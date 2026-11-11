@@ -502,6 +502,7 @@ describe("voice settings", () => {
       speechPostProcessingEnabled: true,
     };
     expect(decodeClientSettings({}).speechSilenceFiltering).toBe(true);
+    expect(decodeClientSettings({}).showVoiceButton).toBe(true);
     expect(decodeClientSettingsPatch({ speechSilenceFiltering: false })).toEqual({
       speechSilenceFiltering: false,
     });
