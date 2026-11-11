@@ -15,7 +15,7 @@ This checkout is a personal fork (`origin` = SelfRef/ae-code, `upstream` = pingd
 - The fork is public: keep it generic, with no hostnames, paths or details of the setup it is deployed in.
 - Renaming or moving anything persisted (state dirs, profile names, database or settings locations) needs a row and migration steps in the "Data migration" section of `docs/ROADMAP.md`, in the same commit.
 - Keep upstream's identifiers (env vars, package and component names, file names) and change values only, so rebases stay small.
-- The fork has no git hooks (upstream's pre-commit hook and its `prepare` script are removed), so nothing formats on commit: run `vp fmt <files>` and `vp run check:changed` yourself. If the host has no Node, run them from a `node` container that mounts this checkout, and commit on the host.
+- The fork has no git hooks (upstream's pre-commit hook and its `prepare` script are removed), so nothing formats on commit: run `vp fmt <files>` on changed source files, and `vp run check:changed` when a change could break something (see Verifying), yourself. If the host has no Node, run them from a `node` container that mounts this checkout, and commit on the host.
 
 ## Constraints that shape every change
 
@@ -80,7 +80,7 @@ An empty database is a bad test. Seed your worktree's `.t3` with a copy of real 
 
 ## Verifying
 
-- Before committing, run `vp run check:changed`. It runs CI's fast checks for changed files: format, lint, knip, typecheck of affected packages and dependents, tests beside changes, and the cross-file checks those miss.
+- Run `vp run check:changed` before committing only when the change could plausibly break something it covers (source, types, tests, config or dependencies). Skip it for docs, changelog, roadmap and comment-only edits, and don't repeat it when nothing changed since the last green run. It runs CI's fast checks for changed files: format, lint, knip, typecheck of affected packages and dependents, tests beside changes, and the cross-file checks those miss.
 - While you iterate, run `vp test run <files>`. For big files, add `-t "<name>"`.
 - Use `vp run typecheck`; it caches per package. Each package runs `effect-tsgo tsrs --noEmit`, the Rust TypeScript 7 checker with Effect's diagnostics built in. There is no `typescript` package to run.
 - Run `node -e` snippets from `apps/server` or the owning package. `effect` does not resolve from the repo root.
