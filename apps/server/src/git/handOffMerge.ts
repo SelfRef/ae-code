@@ -3,6 +3,7 @@ import * as Cause from "effect/Cause";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
+import { modelSelectionsEqual } from "@t3tools/shared/model";
 
 import * as ThreadManagementService from "../orchestration-v2/ThreadManagementService.ts";
 
@@ -28,6 +29,7 @@ function mergeHandOffPrompt(input: { readonly push: boolean; readonly error: str
 /**
  * Hands a failed merge to the thread's agent as a system notice, the way compaction runs as its
  * own turn, and resolves once that turn ends. False when the agent could not be started.
+ * A `modelSelection` is for this turn only: the thread's own model is put back afterwards.
  */
 export const handOffMerge = Effect.fn("handOffMerge")(
   function* (input: {
@@ -60,11 +62,34 @@ export const handOffMerge = Effect.fn("handOffMerge")(
       creationSource: "server",
       dispatchMode: { type: "queue_after_active" },
     });
-    yield* threads.waitForThread({
-      projectId: thread.value.projectId,
-      threadId: input.threadId,
-      timeoutMs: WAIT_MS,
-    });
+    // The turn switched the thread's model; put it back unless someone picked another meanwhile.
+    const restoreModel = Effect.gen(function* () {
+      const override = input.modelSelection;
+      if (override === undefined || modelSelectionsEqual(override, thread.value.modelSelection)) {
+        return;
+      }
+      const now = yield* threads.getThreadShell(input.threadId);
+      if (now === null || !modelSelectionsEqual(now.modelSelection, override)) {
+        return;
+      }
+      yield* threads.dispatch({
+        type: "thread.model-selection.set",
+        commandId: CommandId.make(`server:merge-hand-off:${input.uuid}:restore-model`),
+        threadId: input.threadId,
+        modelSelection: thread.value.modelSelection,
+      });
+    }).pipe(
+      Effect.catchCause((cause) =>
+        Effect.logWarning("failed to restore the thread's model after a merge", { cause }),
+      ),
+    );
+    yield* threads
+      .waitForThread({
+        projectId: thread.value.projectId,
+        threadId: input.threadId,
+        timeoutMs: WAIT_MS,
+      })
+      .pipe(Effect.ensuring(restoreModel));
     return true;
   },
   (effect) =>
