@@ -16,6 +16,10 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
   Branches filters by merge state, kind and remote and searches by name; Issues sorts by update, creation or comments
   and filters by state and "created by me" / "assigned to me".
 
+- Android: Issues and Releases show the open item beside the list when the page is wide (unfolded, tablet) and one at a
+  time otherwise. Branches, Issues and Releases open on the last chat's project, choose it from a chip, and Branches and
+  Issues get the same sort and filters as the web.
+
 ### Changed
 
 - The Git button of a branch pushes by default instead of pushing and creating a pull request (and commits and pushes
