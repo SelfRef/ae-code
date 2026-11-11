@@ -1270,7 +1270,8 @@ branch and from its own upstream. Read-only; nothing here switches, pulls, pushe
   Releases; it opens on the project of the last opened chat), search, Sort (latest/oldest commit, most unmerged, name) and
   Filters (merge state, kind, remote), a sidebar button before Issues and a command-palette action. Shown for every
   project that is not archived or a scratch one. The sort and filters live in the URL (`branchSort`, `merge`, `kind`,
-  `remote`).
+  `remote`). The right panel has a "Branches" tab (key `G`) with the same search, sort and filters for the thread's
+  project (kept in the tab, not the URL); the page and the tab share `BranchList`.
 - **Android**: a Branches tab before Issues (a page like Issues and Releases; the row's "Open thread" opens it). The tab bar
   holds four tabs, so with Pulls hidden Usage moves under the overflow entry. Search, sort and filter chips (merge state,
   kind, remote) and a project chip share their logic with the web (`filterBranches`, `sortBranches`).
