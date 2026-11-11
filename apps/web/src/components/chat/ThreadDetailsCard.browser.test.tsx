@@ -45,6 +45,7 @@ function Card({
   rows = 1,
   automationRows = 0,
   serverOverflowRows = 0,
+  secondaryHeight = 0,
 }: {
   threadRef: ScopedThreadRef;
   inline: boolean;
@@ -55,6 +56,8 @@ function Card({
   automationRows?: number;
   /** Rows of 100px that expanded server lists add, which density ignores. */
   serverOverflowRows?: number;
+  /** Pixel height of a second card under the first; 0 renders none. */
+  secondaryHeight?: number;
 }) {
   return (
     // The web root renders in StrictMode, which re-runs ref callbacks on every mount.
@@ -77,6 +80,11 @@ function Card({
           anchor={fixture.anchor}
           handle={fixture.handle}
           contentKey={String(rows)}
+          renderSecondary={() =>
+            secondaryHeight > 0 ? (
+              <div data-testid="secondary" style={{ height: secondaryHeight }} />
+            ) : null
+          }
         >
           {(density) => (
             <>
@@ -195,4 +203,19 @@ it("stays full while expanded server rows overflow", async () => {
   await expect
     .element(page.getByRole("region", { name: "Thread details" }))
     .toHaveAttribute("data-density", "full");
+});
+
+it("leaves room for a second card under the first", async () => {
+  using fixture = setup();
+  await using screen = await render(<Card threadRef={threadB} inline fixture={fixture} rows={3} />);
+  const card = page.getByRole("region", { name: "Thread details" });
+  await expect.element(card).toHaveAttribute("data-density", "full");
+
+  await screen.rerender(
+    <Card threadRef={threadB} inline fixture={fixture} rows={3} secondaryHeight={150} />,
+  );
+  await expect.element(card).toHaveAttribute("data-density", "compact");
+  const secondary = page.getByTestId("secondary").element().getBoundingClientRect();
+  const first = page.getByText("Details for thread-b").element().getBoundingClientRect();
+  expect(secondary.top).toBeGreaterThanOrEqual(first.bottom);
 });
