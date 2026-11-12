@@ -32,6 +32,26 @@ function checkoutPathOf(porcelain: string, branch: string): string | null {
   return null;
 }
 
+/** The default branch's name: the remote's, else a local `main` or `master`; null when neither is known. */
+export const resolveDefaultBranch = Effect.fn("GitManager.resolveDefaultBranch")(function* (
+  git: Git,
+  cwd: string,
+) {
+  const remote = yield* git.resolvePrimaryRemoteName(cwd).pipe(Effect.orElseSucceed(() => null));
+  const originDefault = remote === null ? null : yield* git.resolveDefaultBranchName(cwd, remote);
+  if (originDefault !== null) return originDefault;
+  for (const candidate of ["main", "master"]) {
+    const exists = yield* git.execute({
+      operation: "GitManager.resolveDefaultBranch.probe",
+      cwd,
+      args: ["show-ref", "--verify", "--quiet", `refs/heads/${candidate}`],
+      allowNonZeroExit: true,
+    });
+    if (exists.exitCode === 0) return candidate;
+  }
+  return null;
+});
+
 /**
  * Fast-forwards the default branch to `branch` (rebasing `branch` onto it first when it moved),
  * and optionally pushes the default branch. Runs in the default branch's own checkout, whose
@@ -79,18 +99,7 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
     );
 
   const remote = yield* git.resolvePrimaryRemoteName(cwd).pipe(Effect.orElseSucceed(() => null));
-  const originDefault = remote === null ? null : yield* git.resolveDefaultBranchName(cwd, remote);
-  let base = originDefault;
-  if (base === null) {
-    for (const candidate of ["main", "master"]) {
-      if (
-        yield* succeeds("probe", ["show-ref", "--verify", "--quiet", `refs/heads/${candidate}`])
-      ) {
-        base = candidate;
-        break;
-      }
-    }
-  }
+  const base = yield* resolveDefaultBranch(git, cwd);
   if (base === null) return yield* fail("Could not tell which branch is the default branch.");
   if (base === branch && !input.pushOnly)
     return yield* fail(`${branch} is the default branch; there is nothing to merge.`);

@@ -11,7 +11,12 @@ import {
 } from "@t3tools/client-runtime/branch-overview";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
 import {
+  isAtomCommandInterrupted,
+  squashAtomCommandFailure,
+} from "@t3tools/client-runtime/state/runtime";
+import {
   ALL_VCS_REMOTES,
+  AuthSourceControlWriteScope,
   type VcsBranchOverviewEntry,
   type VcsBranchOverviewResult,
 } from "@t3tools/contracts";
@@ -29,12 +34,16 @@ import {
   LayersIcon,
   MessageSquareIcon,
   SearchIcon,
+  Trash2Icon,
 } from "lucide-react";
 import { useState } from "react";
 
+import { requestConfirmDialog } from "~/confirmDialog";
 import { usePageProject } from "~/hooks/usePageProject";
 import { useProjects, useQuietThreadShells } from "~/state/entities";
 import { useEnvironmentQuery } from "~/state/query";
+import { useEnvironmentScope } from "~/state/session";
+import { useAtomCommand } from "~/state/use-atom-command";
 import { vcsEnvironment } from "~/state/vcs";
 import { formatRelativeTimeLabel } from "~/timestampFormat";
 import { cn } from "~/lib/utils";
@@ -46,6 +55,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../ui/empty";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group";
 import { SidebarInset } from "../ui/sidebar";
 import { Spinner } from "../ui/spinner";
+import { toastManager } from "../ui/toast";
 import { ListFiltersMenu, ListRefreshButton } from "../ListToolbar";
 import { ProjectPageHeader } from "../ProjectPageHeader";
 import { PullRequestGlyph } from "../pullRequest/pullRequestIcons";
@@ -205,7 +215,7 @@ export function BranchList({
   filters,
   onFilters,
 }: {
-  project: Pick<EnvironmentProject, "environmentId" | "id" | "title"> | null;
+  project: Pick<EnvironmentProject, "environmentId" | "id" | "title" | "workspaceRoot"> | null;
   overview: ReturnType<typeof useBranchOverview>;
   filters: BranchFilters;
   onFilters: (patch: BranchFilters) => void;
@@ -214,6 +224,57 @@ export function BranchList({
   const threads = useQuietThreadShells();
   const [query, setQuery] = useState("");
   const data = overview.data;
+  const deleteMergedBranches = useAtomCommand(vcsEnvironment.deleteMergedBranches, {
+    reportFailure: false,
+  });
+  const canDelete = useEnvironmentScope(
+    project?.environmentId ?? null,
+    AuthSourceControlWriteScope,
+  );
+  // Plain local branches the default branch already contains: nothing is lost by deleting them.
+  const mergedBranches = (data?.branches ?? []).filter(
+    (branch) =>
+      !branch.isRemoteOnly &&
+      !branch.isDefault &&
+      !branch.current &&
+      branch.worktreePath === null &&
+      branchMergeState(branch) === "merged",
+  );
+  const deleteMerged = async () => {
+    if (project === null || mergedBranches.length === 0) return;
+    const names = mergedBranches.map((branch) => branch.name);
+    const shown = names.slice(0, 8).join(", ");
+    const confirmed = await requestConfirmDialog(
+      `Delete ${names.length} merged ${names.length === 1 ? "branch" : "branches"}?\n${shown}${names.length > 8 ? ` and ${names.length - 8} more` : ""} ${names.length === 1 ? "is" : "are"} already in ${data?.defaultRef ?? "the default branch"}. Remote copies stay.`,
+      { variant: "destructive" },
+    );
+    if (confirmed !== true) return;
+    const result = await deleteMergedBranches({
+      environmentId: project.environmentId,
+      input: { cwd: project.workspaceRoot, refNames: names },
+    });
+    if (result._tag === "Failure") {
+      if (isAtomCommandInterrupted(result)) return;
+      const error = squashAtomCommandFailure(result);
+      toastManager.add({
+        type: "error",
+        title: "Could not delete branches",
+        description: error instanceof Error ? error.message : "An error occurred.",
+      });
+    } else {
+      const { deleted, skipped } = result.value;
+      toastManager.add({
+        type: skipped.length > 0 ? "warning" : "success",
+        title: `Deleted ${deleted.length} ${deleted.length === 1 ? "branch" : "branches"}`,
+        ...(skipped.length > 0
+          ? {
+              description: `Kept ${skipped.map((entry) => `${entry.name} (${entry.reason})`).join("; ")}`,
+            }
+          : {}),
+      });
+    }
+    overview.refresh();
+  };
   const remotes = data?.remotes ?? [];
   const remote = data === null ? ALL_VCS_REMOTES : (data.remote ?? ALL_VCS_REMOTES);
   const branches = sortBranches(
@@ -284,6 +345,17 @@ export function BranchList({
             />
           ) : null}
         </ListFiltersMenu>
+        {mergedBranches.length > 0 && canDelete ? (
+          <Button
+            size="compact"
+            variant="outline"
+            aria-label={`Delete ${mergedBranches.length} merged branches`}
+            onClick={() => void deleteMerged()}
+          >
+            <Trash2Icon />
+            <span>Delete merged ({mergedBranches.length})</span>
+          </Button>
+        ) : null}
         <ListRefreshButton
           label="Refresh branches"
           refreshing={overview.isPending}

@@ -3224,6 +3224,10 @@ export const layerWsRpc = (
         [WS_METHODS.vcsBranchOverview]: (input) => gitWorkflow.branchOverview(input),
         [WS_METHODS.vcsCreateWorktree]: (input) =>
           gitWorkflow.createWorktree(input).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
+        [WS_METHODS.vcsDeleteMergedBranches]: (input) =>
+          gitWorkflow
+            .deleteMergedBranches(input)
+            .pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
         [WS_METHODS.vcsRemoveWorktree]: (input) =>
           gitWorkflow.removeWorktree(input).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
         [WS_METHODS.vcsCreateRef]: (input) =>

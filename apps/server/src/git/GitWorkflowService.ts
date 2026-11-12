@@ -23,6 +23,8 @@ import {
   type VcsForcePushPreview,
   type VcsForcePushResult,
   type VcsPullResult,
+  type VcsDeleteMergedBranchesInput,
+  type VcsDeleteMergedBranchesResult,
   type VcsRemoveWorktreeInput,
   type GitResolvePullRequestResult,
   type GitRunStackedActionInput,
@@ -33,6 +35,7 @@ import {
   type VcsStatusResult,
 } from "@t3tools/contracts";
 
+import { deleteMergedBranches } from "./deleteMergedBranches.ts";
 import * as GitManager from "./GitManager.ts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
 import * as VcsDriverRegistry from "../vcs/VcsDriverRegistry.ts";
@@ -125,6 +128,9 @@ export class GitWorkflowService extends Context.Service<
     readonly removeWorktree: (
       input: VcsRemoveWorktreeInput,
     ) => Effect.Effect<void, GitCommandError>;
+    readonly deleteMergedBranches: (
+      input: VcsDeleteMergedBranchesInput,
+    ) => Effect.Effect<VcsDeleteMergedBranchesResult, GitCommandError>;
     readonly pruneWorktrees: (input: {
       readonly cwd: string;
     }) => Effect.Effect<void, GitCommandError>;
@@ -512,6 +518,11 @@ export const make = Effect.gen(function* () {
     removeWorktree: Effect.fn("GitWorkflowService.removeWorktree")(function (input) {
       return ensureGitCommand("GitWorkflowService.removeWorktree", input.cwd).pipe(
         Effect.andThen(git.removeWorktree(input)),
+      );
+    }),
+    deleteMergedBranches: Effect.fn("GitWorkflowService.deleteMergedBranches")(function (input) {
+      return ensureGitCommand("GitWorkflowService.deleteMergedBranches", input.cwd).pipe(
+        Effect.andThen(deleteMergedBranches(git, input)),
       );
     }),
     pruneWorktrees: Effect.fn("GitWorkflowService.pruneWorktrees")(function (input) {

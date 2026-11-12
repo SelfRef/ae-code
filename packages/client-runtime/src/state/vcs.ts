@@ -375,6 +375,13 @@ export function createVcsEnvironmentAtoms<R, E>(
       label: "environment-data:vcs:cancel-worktree-setup",
       tag: WS_METHODS.worktreeSetupCancel,
     }),
+    deleteMergedBranches: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:vcs:delete-merged-branches",
+      tag: WS_METHODS.vcsDeleteMergedBranches,
+      scheduler: vcsCommandScheduler,
+      concurrency: vcsCommandConcurrency,
+      onSettled: invalidateRefs,
+    }),
     removeWorktree: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:vcs:remove-worktree",
       tag: WS_METHODS.vcsRemoveWorktree,

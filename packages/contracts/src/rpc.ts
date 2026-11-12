@@ -472,7 +472,12 @@ import {
   SourceControlSignInPrompt,
   SourceControlSignInResult,
 } from "./sourceControl.ts";
-import { VcsBranchOverviewInput, VcsBranchOverviewResult } from "./branchOverview.ts";
+import {
+  VcsBranchOverviewInput,
+  VcsBranchOverviewResult,
+  VcsDeleteMergedBranchesInput,
+  VcsDeleteMergedBranchesResult,
+} from "./branchOverview.ts";
 import { VcsError } from "./vcs.ts";
 import { Project, ProjectMutation, ProjectMutationError } from "./project.ts";
 
@@ -529,6 +534,7 @@ export const WS_METHODS = {
   vcsRefreshStatus: "vcs.refreshStatus",
   vcsListRefs: "vcs.listRefs",
   vcsBranchOverview: "vcs.branchOverview",
+  vcsDeleteMergedBranches: "vcs.deleteMergedBranches",
   vcsCreateWorktree: "vcs.createWorktree",
   vcsRemoveWorktree: "vcs.removeWorktree",
   vcsCreateRef: "vcs.createRef",
@@ -1701,6 +1707,12 @@ const WsVcsBranchOverviewRpc = Rpc.make(WS_METHODS.vcsBranchOverview, {
   error: Schema.Union([GitCommandError, EnvironmentAuthorizationError]),
 });
 
+const WsVcsDeleteMergedBranchesRpc = Rpc.make(WS_METHODS.vcsDeleteMergedBranches, {
+  payload: VcsDeleteMergedBranchesInput,
+  success: VcsDeleteMergedBranchesResult,
+  error: Schema.Union([GitCommandError, EnvironmentAuthorizationError]),
+});
+
 const WsVcsCreateWorktreeRpc = Rpc.make(WS_METHODS.vcsCreateWorktree, {
   // Worktrees use the managed folder; required null path preserves compatibility with older servers.
   payload: Schema.Struct({ ...VcsCreateWorktreeInput.fields, path: Schema.Null }),
@@ -2516,6 +2528,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsGitPreparePullRequestThreadRpc,
   WsVcsListRefsRpc,
   WsVcsBranchOverviewRpc,
+  WsVcsDeleteMergedBranchesRpc,
   WsVcsCreateWorktreeRpc,
   WsVcsRemoveWorktreeRpc,
   WsVcsCreateRefRpc,

@@ -24,7 +24,7 @@ export function ThreadBranchesPanel({
         <BranchSummary data={overview.data} />
       </header>
       <BranchList
-        project={{ environmentId, id: projectId, title: projectName }}
+        project={{ environmentId, id: projectId, title: projectName, workspaceRoot }}
         overview={overview}
         filters={filters}
         onFilters={(patch) => setFilters((current) => ({ ...current, ...patch }))}
