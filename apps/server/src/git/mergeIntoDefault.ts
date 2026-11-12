@@ -220,6 +220,10 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
       : undefined;
 
   const commitSha = yield* baseSha();
+  // Marks the branch as merged for the status; the key is read in `GitVcsDriverCore`.
+  if (!input.pushOnly) {
+    yield* git.writeConfigValue({ cwd, key: `branch.${branch}.t3-merged-sha`, value: commitSha });
+  }
   if (!input.push) {
     return {
       status: merged ? "already_merged" : "merged",

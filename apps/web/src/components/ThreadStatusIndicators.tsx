@@ -411,6 +411,8 @@ function ThreadPullRequestMiniListItem({
   );
 }
 
+const MERGED_PRESENTATION = resolvePullRequestState({ state: "merged", isDraft: false });
+
 export function prStatusIndicator(
   pr: ThreadPr,
   provider: VcsStatusResult["sourceControlProvider"] | null | undefined,
@@ -703,6 +705,12 @@ export function ThreadRowLeadingStatus({ thread }: { thread: SidebarThreadSummar
     pr,
     linkedPullRequest?.sourceControlProvider ?? resolveDisplayedThreadPrProvider(displayedPrInput),
   );
+  // Without a pull request, a merge into the default branch is the only sign the work landed.
+  const mergedIntoDefault =
+    pr === null &&
+    thread.branch !== null &&
+    visibleGitStatus?.refName === thread.branch &&
+    visibleGitStatus.mergedIntoDefault === true;
   const threadStatus = resolveThreadStatusPill({
     thread: {
       ...thread,
@@ -720,7 +728,9 @@ export function ThreadRowLeadingStatus({ thread }: { thread: SidebarThreadSummar
     <span
       ref={statusRef}
       className={
-        prStatus || threadStatus ? "inline-flex shrink-0 items-center gap-1.5" : "contents"
+        prStatus || threadStatus || mergedIntoDefault
+          ? "inline-flex shrink-0 items-center gap-1.5"
+          : "contents"
       }
     >
       {prStatus && pr ? (
@@ -738,6 +748,21 @@ export function ThreadRowLeadingStatus({ thread }: { thread: SidebarThreadSummar
           <TooltipPopup side="top">
             <PrStatusTooltipContent status={prStatus} />
           </TooltipPopup>
+        </Tooltip>
+      ) : null}
+      {mergedIntoDefault ? (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <span
+                aria-label="Merged into the default branch"
+                className={`inline-flex items-center justify-center ${MERGED_PRESENTATION.toneClassName}`}
+              />
+            }
+          >
+            <MERGED_PRESENTATION.Icon className="size-3" />
+          </TooltipTrigger>
+          <TooltipPopup side="top">Merged into the default branch</TooltipPopup>
         </Tooltip>
       ) : null}
       {pendingLink ? (

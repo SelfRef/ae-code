@@ -77,6 +77,14 @@ describe("default branch actions", () => {
     expect(resolve({ ...ahead, hasWorkingTreeChanges: true }).primary.label).toBe("Commit & merge");
   });
 
+  it("says a merged branch is merged", () => {
+    expect(resolve(status({ mergedIntoDefault: true })).items[0]).toMatchObject({
+      label: "Merged",
+      disabled: true,
+    });
+    expect(resolve(status()).items[0]?.label).toBe("Merge");
+  });
+
   it("puts the push on the button when there is nothing to merge", () => {
     const actions = resolve(status({ defaultAheadCount: 1 }));
     expect(actions.primary).toMatchObject({

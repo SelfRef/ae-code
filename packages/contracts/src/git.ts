@@ -241,6 +241,8 @@ const VcsStatusLocalShape = {
   isDefaultRef: Schema.Boolean,
   refName: Schema.NullOr(TrimmedNonEmptyStringSchema),
   hasWorkingTreeChanges: Schema.Boolean,
+  // The thread's branch was merged into the default branch and has no commits since.
+  mergedIntoDefault: Schema.optional(Schema.Boolean),
   workingTree: Schema.Struct({
     // Absolute worktree root on the environment that every files[].path is
     // relative to. Absent when the server could not resolve it.

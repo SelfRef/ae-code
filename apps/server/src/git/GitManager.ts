@@ -1311,6 +1311,7 @@ export const make = Effect.gen(function* () {
       hasWorkingTreeChanges: details.hasWorkingTreeChanges,
       workingTree: details.workingTree,
       ...(details.branchChanges ? { branchChanges: details.branchChanges } : {}),
+      ...(details.mergedIntoDefault ? { mergedIntoDefault: true } : {}),
     } satisfies VcsStatusLocalResult;
   });
   const localStatusResultCache = yield* Cache.makeWith(readLocalStatus, {
