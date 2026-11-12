@@ -35,6 +35,7 @@ import { vcsEnvironment } from "../../state/vcs";
 import { useOpenWorkspaceDetail } from "../layout/useOpenWorkspaceDetail";
 import { ChoiceChip } from "../layout/workspace/ChoiceChip";
 import { SettingsScreen } from "../settings/components/SettingsScreen";
+import { CommitsView } from "./CommitsView";
 
 const SORT_OPTIONS = [
   { value: "recent", label: "Latest commit" },
@@ -61,6 +62,7 @@ function BranchRow(props: {
   readonly defaultRef: string | null;
   readonly threadTitle: string | null;
   readonly onOpenThread: () => void;
+  readonly onOpenCommits: () => void;
 }) {
   const { branch } = props;
   const state = branchMergeState(branch);
@@ -107,17 +109,29 @@ function BranchRow(props: {
           {branch.lastCommitSubject ? ` · ${branch.lastCommitSubject}` : ""}
         </Text>
       ) : null}
-      {props.threadTitle !== null ? (
+      <View className="flex-row items-center gap-4 pt-1">
         <Pressable
           accessibilityRole="button"
-          onPress={props.onOpenThread}
-          className="self-start pt-1 active:opacity-70"
+          accessibilityLabel={`Commit history of ${branch.name}`}
+          onPress={props.onOpenCommits}
+          className="active:opacity-70"
         >
-          <Text textRole="footnote" className="font-t3-bold text-primary" numberOfLines={1}>
-            Open thread: {props.threadTitle}
+          <Text textRole="footnote" className="font-t3-bold text-primary">
+            Commits
           </Text>
         </Pressable>
-      ) : null}
+        {props.threadTitle !== null ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={props.onOpenThread}
+            className="min-w-0 shrink active:opacity-70"
+          >
+            <Text textRole="footnote" className="font-t3-bold text-primary" numberOfLines={1}>
+              Open thread: {props.threadTitle}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -133,6 +147,7 @@ export function BranchesScreen() {
   const [kind, setKind] = useState<BranchKind | typeof UNFILTERED>(UNFILTERED);
   const [remote, setRemote] = useState<string | undefined>(undefined);
   const [query, setQuery] = useState("");
+  const [commitsRef, setCommitsRef] = useState<string | null>(null);
   const searchRef = useRef(null);
   const project = usePageProject(projects, selectedKey);
   const overview = useEnvironmentQuery(
@@ -206,6 +221,17 @@ export function BranchesScreen() {
   );
   const remotes = data?.remotes ?? [];
   const shownRemote = data?.remote ?? ALL_VCS_REMOTES;
+
+  if (commitsRef !== null && project !== null) {
+    return (
+      <CommitsView
+        project={project}
+        branches={(data?.branches ?? []).map((branch) => branch.name)}
+        initialRef={commitsRef}
+        onBack={() => setCommitsRef(null)}
+      />
+    );
+  }
 
   return (
     <SettingsScreen
@@ -347,6 +373,7 @@ export function BranchesScreen() {
                       branch={branch}
                       defaultRef={data.defaultRef}
                       threadTitle={thread?.title ?? null}
+                      onOpenCommits={() => setCommitsRef(branch.name)}
                       onOpenThread={() => {
                         if (thread)
                           openDetail({
