@@ -88,6 +88,7 @@ export type ThreadGitMenuProps = {
   readonly threadId: ThreadId | string;
   readonly currentBranch: string | null;
   readonly hasThread?: boolean;
+  readonly isWorktree?: boolean;
   readonly gitStatus: VcsStatusResult | null;
   readonly gitOperationLabel: string | null;
   readonly onOpenFilesInspector?: () => void;
@@ -345,15 +346,18 @@ export function threadTerminalMenu(props: ThreadGitControlsProps): AppBarMenu | 
 /** The thread's git menu, shared by the thread bar and Review. */
 export function useThreadGitMenuDefinition(props: ThreadGitMenuProps): AppBarMenu | null {
   const model = useThreadGitControlModel(props);
+  const icon = props.isWorktree
+    ? "git.worktree"
+    : "point.topleft.down.curvedto.point.bottomright.up";
   return {
     title: "Git controls",
-    icon: "point.topleft.down.curvedto.point.bottomright.up",
+    icon,
     separateBackground: false,
     items: [
       {
         id: "git-status",
         title: compactMenuBranchLabel(model.currentBranchLabel),
-        icon: "point.topleft.down.curvedto.point.bottomright.up",
+        icon,
         disabled: true,
         subtitle: compactMenuStatus(props.gitStatus),
         onPress: () => {},

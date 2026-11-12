@@ -823,6 +823,7 @@ function ThreadRouteContent(
         ? () => void handleMergeBack()
         : undefined,
     currentBranch: selectedThread?.branch ?? null,
+    isWorktree: Boolean(selectedThread?.worktreePath ?? selectedThreadDetailWorktreePath),
     gitStatus: gitStatus.data,
     gitOperationLabel: gitState.gitOperationLabel,
     canOpenTerminal:
