@@ -233,25 +233,34 @@ export const make = Effect.gen(function* () {
   const read = <A>(input: {
     readonly host: string;
     readonly operation: string;
+    readonly method?: "POST" | "PATCH";
     readonly path: string;
+    readonly body?: unknown;
     readonly decode: (raw: string) => Result.Result<A, unknown>;
   }) =>
-    api.rest({ host: input.host, operation: input.operation, path: input.path }).pipe(
-      Effect.mapError((error) => providerError(input.operation, error)),
-      Effect.flatMap((response) => {
-        const decoded = input.decode(response.body);
-        return Result.isSuccess(decoded)
-          ? Effect.succeed(decoded.success)
-          : Effect.fail(
-              failure(
-                input.operation,
-                "failed",
-                "GitHub answered with something this build cannot read.",
-                { cause: decoded.failure },
-              ),
-            );
-      }),
-    );
+    api
+      .rest({
+        host: input.host,
+        operation: input.operation,
+        path: input.path,
+        ...(input.method === undefined ? {} : { method: input.method, body: input.body }),
+      })
+      .pipe(
+        Effect.mapError((error) => providerError(input.operation, error)),
+        Effect.flatMap((response) => {
+          const decoded = input.decode(response.body);
+          return Result.isSuccess(decoded)
+            ? Effect.succeed(decoded.success)
+            : Effect.fail(
+                failure(
+                  input.operation,
+                  "failed",
+                  "GitHub answered with something this build cannot read.",
+                  { cause: decoded.failure },
+                ),
+              );
+        }),
+      );
 
   const listIssues: IssueProviderApi["listIssues"] = Effect.fn("GitHubIssueProvider.listIssues")(
     function* (input) {
@@ -320,6 +329,82 @@ export const make = Effect.gen(function* () {
     },
   );
 
+  const createIssue: IssueProviderApi["createIssue"] = Effect.fn("GitHubIssueProvider.createIssue")(
+    function* (input) {
+      const path = yield* repositoryPath("createIssue", input.repository);
+      const created = yield* read({
+        host: input.host,
+        operation: "createIssue",
+        method: "POST",
+        path: `repos/${path}/issues`,
+        body: {
+          title: input.title,
+          body: input.body,
+          labels: input.labels,
+          assignees: input.assignees,
+        },
+        decode: decodeIssue,
+      });
+      return summaryOf(created);
+    },
+  );
+
+  const updateIssue: IssueProviderApi["updateIssue"] = Effect.fn("GitHubIssueProvider.updateIssue")(
+    function* (input) {
+      const path = yield* repositoryPath("updateIssue", input.repository);
+      const issuePath = `repos/${path}/issues/${input.number}`;
+      // The endpoint edits a pull request just as well, which this tool must not do.
+      const current = yield* read({
+        host: input.host,
+        operation: "updateIssue",
+        path: issuePath,
+        decode: decodeIssue,
+      });
+      if (current.pull_request !== undefined) {
+        return yield* failure(
+          "updateIssue",
+          "not-found",
+          `#${input.number} is a pull request, not an issue.`,
+        );
+      }
+      const updated = yield* read({
+        host: input.host,
+        operation: "updateIssue",
+        method: "PATCH",
+        path: issuePath,
+        body: {
+          title: input.title,
+          body: input.body,
+          state: input.state,
+          state_reason:
+            input.state === "closed"
+              ? input.stateReason === "not-planned"
+                ? "not_planned"
+                : "completed"
+              : undefined,
+          labels: input.labels,
+          assignees: input.assignees,
+        },
+        decode: decodeIssue,
+      });
+      return summaryOf(updated);
+    },
+  );
+
+  const commentOnIssue: IssueProviderApi["commentOnIssue"] = Effect.fn(
+    "GitHubIssueProvider.commentOnIssue",
+  )(function* (input) {
+    const path = yield* repositoryPath("commentOnIssue", input.repository);
+    yield* read({
+      host: input.host,
+      operation: "commentOnIssue",
+      method: "POST",
+      path: `repos/${path}/issues/${input.number}/comments`,
+      body: { body: input.body },
+      decode: () => Result.succeed(undefined),
+    });
+  });
+
   const listReleases: IssueProviderApi["listReleases"] = Effect.fn(
     "GitHubIssueProvider.listReleases",
   )(function* (input) {
@@ -364,6 +449,9 @@ export const make = Effect.gen(function* () {
     kind: definition.kind,
     listIssues,
     getIssue,
+    createIssue,
+    updateIssue,
+    commentOnIssue,
     listReleases,
     getRelease,
   } satisfies IssueProviderApi;

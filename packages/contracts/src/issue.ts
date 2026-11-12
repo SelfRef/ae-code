@@ -88,6 +88,36 @@ export const IssueDetail = Schema.Struct({
 });
 export type IssueDetail = typeof IssueDetail.Type;
 
+const IssueText = Schema.String.check(Schema.isMaxLength(65_536));
+const IssueNames = Schema.Array(TrimmedNonEmptyString).check(Schema.isMaxLength(25));
+
+export const IssueCreateInput = Schema.Struct({
+  projectId: ProjectId,
+  title: TrimmedNonEmptyString.check(Schema.isMaxLength(256)),
+  body: Schema.optional(IssueText),
+  labels: Schema.optional(IssueNames),
+  assignees: Schema.optional(IssueNames),
+});
+export type IssueCreateInput = typeof IssueCreateInput.Type;
+
+/** Every field but `projectId` and `number` is optional; an omitted one stays as it is. */
+export const IssueUpdateInput = Schema.Struct({
+  projectId: ProjectId,
+  number: PositiveInt,
+  title: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(256))),
+  body: Schema.optional(IssueText),
+  state: Schema.optional(IssueState),
+  /** Why a closed issue closed; only sent with `state: "closed"`. */
+  stateReason: Schema.optional(Schema.Literals(["completed", "not-planned"])),
+  /** The whole set: it replaces the issue's labels. */
+  labels: Schema.optional(IssueNames),
+  /** The whole set: it replaces the issue's assignees. */
+  assignees: Schema.optional(IssueNames),
+  /** Posted after the other changes, so a refused change leaves no comment. */
+  comment: Schema.optional(IssueText.check(Schema.isNonEmpty())),
+});
+export type IssueUpdateInput = typeof IssueUpdateInput.Type;
+
 export const IssueErrorReason = Schema.Literals([
   /** The project has no repository on a host whose issues this build can read. */
   "unsupported",

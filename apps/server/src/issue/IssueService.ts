@@ -2,10 +2,13 @@ import {
   IssueError,
   ISSUE_LIST_PAGE_SIZE,
   RELEASE_LIST_PAGE_SIZE,
+  type IssueCreateInput,
   type IssueDetail,
   type IssueListInput,
   type IssueListResult,
   type IssueReadInput,
+  type IssueSummary,
+  type IssueUpdateInput,
   type ReleaseDetail,
   type ReleaseListInput,
   type ReleaseListResult,
@@ -28,6 +31,9 @@ export class IssueService extends Context.Service<
   {
     readonly list: (input: IssueListInput) => Effect.Effect<IssueListResult, IssueError>;
     readonly read: (input: IssueReadInput) => Effect.Effect<IssueDetail, IssueError>;
+    readonly create: (input: IssueCreateInput) => Effect.Effect<IssueSummary, IssueError>;
+    /** Applies the changes, then posts `comment` when given, so a refused change leaves no comment. */
+    readonly update: (input: IssueUpdateInput) => Effect.Effect<IssueSummary, IssueError>;
     readonly listReleases: (
       input: ReleaseListInput,
     ) => Effect.Effect<ReleaseListResult, IssueError>;
@@ -106,6 +112,40 @@ const make = Effect.gen(function* () {
       return yield* api
         .getIssue({ host, repository, number: input.number })
         .pipe(Effect.mapError(toIssueError));
+    }),
+    create: Effect.fn("IssueService.create")(function* (input) {
+      const { api, repository, host } = yield* resolve(input.projectId);
+      return yield* api
+        .createIssue({
+          host,
+          repository,
+          title: input.title,
+          body: input.body,
+          labels: input.labels,
+          assignees: input.assignees,
+        })
+        .pipe(Effect.mapError(toIssueError));
+    }),
+    update: Effect.fn("IssueService.update")(function* (input) {
+      const { api, repository, host } = yield* resolve(input.projectId);
+      const target = { host, repository, number: input.number };
+      const updated = yield* api
+        .updateIssue({
+          ...target,
+          title: input.title,
+          body: input.body,
+          state: input.state,
+          stateReason: input.stateReason,
+          labels: input.labels,
+          assignees: input.assignees,
+        })
+        .pipe(Effect.mapError(toIssueError));
+      if (input.comment !== undefined) {
+        yield* api
+          .commentOnIssue({ ...target, body: input.comment })
+          .pipe(Effect.mapError(toIssueError));
+      }
+      return updated;
     }),
     listReleases: Effect.fn("IssueService.listReleases")(function* (input) {
       const { api, repository, host } = yield* resolve(input.projectId);
