@@ -115,7 +115,7 @@ Icons: one icon for every platform and build, since the fork has no release chan
 
 Caveats:
 
-- Only the Linux x64 and Windows x64 server archives, the unpacked Linux x64 desktop app and the Windows x64 installer are released (`ae-release.yml`, see "Releases (changes 7 and 9)"); no other desktop installer (AppImage, deb, dmg) is built or tested, and no updater feed is published, so the desktop app's in-app updater finds nothing. The install scripts and `t3 update` read `SelfRef/ae-code` releases for upstream's `t3-<version>-<platform>` archives, which the fork does not publish; the release's `ae-code-linux-x64.tar.gz` is unpacked by hand. A server image does not need them: build the CLI archive from source (see the stack's Dockerfile, which follows `release-desktop.yml`'s "Build CLI archive" steps).
+- Only the Linux x64 and Windows x64 server archives, the unpacked Linux x64 desktop app and the Windows x64 installer are released (`ae-release.yml`, see "Releases (changes 7 and 9)"); no other desktop installer (AppImage, deb, dmg) is built or tested, and only the Windows installer has an updater feed, so the Linux desktop app's in-app updater finds nothing. The install scripts and `t3 update` read `SelfRef/ae-code` releases for upstream's `t3-<version>-<platform>` archives, which the fork does not publish; the release's `ae-code-linux-x64.tar.gz` is unpacked by hand. A server image does not need them: build the CLI archive from source (see the stack's Dockerfile, which follows `release-desktop.yml`'s "Build CLI archive" steps).
 - Data written by upstream's T3 Code is not read: see the next section.
 
 ### Moving to the AperteDev org
@@ -379,10 +379,15 @@ disabled.
 - **Windows x64:** the `windows` job cross-builds on Linux, as upstream's `release-desktop.yml` does (resource monitor through
   `cargo-xwin`, the NSIS installer without wine through `patches/app-builder-lib`), and attaches `ae-code-windows-x64.zip`
   (the server: `ae-code.exe`, the web client and the resource monitor, renamed from upstream's `t3.exe` like the Linux one)
-  and `ae-code-desktop-windows-x64.exe` (the installer). Unsigned (SmartScreen warns), no relay or Clerk configuration, and
+  and the installer `AE-Code-<version>-x64.exe`. Unsigned (SmartScreen warns), no relay or Clerk configuration, and
   the desktop has no WSL runtime. The binaries cannot run on the build host, so `windows-check` runs `ae-code.exe --version`
   on a Windows runner and the release waits for it; nothing starts the installer or the desktop app, so the first run on
-  Windows is the real test. The installer's `latest.yml` and blockmap are not attached.
+  Windows is the real test.
+  - **Updates:** the installer is an NSIS per-user install, and the desktop app updates itself with `electron-updater`.
+    The build bakes a GitHub feed for `GITHUB_REPOSITORY` into `app-update.yml`, and the release attaches `latest.yml` and the
+    `.blockmap` beside the installer, so the installer keeps electron-builder's versioned name, which `latest.yml` and the
+    differential download look up. The job fails when `latest.yml` or `app-update.yml` is missing. Updates stay manual
+    (check, download, then restart), as upstream's updater does; Linux and the server are unchanged.
 - **Android (change 9):** the `android` job runs after the release exists and attaches `ae-code-<tag>-arm64-v8a.apk` (phones) and
   `ae-code-<tag>-x86_64.apk` (emulators) to it, so an Android failure never withholds the rest. The two are matrix
   jobs, built independently and in parallel (a cold build of both together took about 40 minutes), and one failing
