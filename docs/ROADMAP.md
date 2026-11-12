@@ -1203,7 +1203,7 @@ default for server threads at full card density; **Thread actions** in the card'
 ## Branches (change 38)
 
 A page that answers "was this merged yet?": a project's branches and worktrees with how far each is from the default
-branch and from its own upstream. Read-only; nothing here switches, pulls, pushes or deletes.
+branch and from its own upstream. Nothing here switches, pulls or pushes; the only change is deleting merged branches (change 46).
 
 - **Server**: one RPC, `vcs.branchOverview` (read scope; contract `packages/contracts/src/branchOverview.ts`), a method on
   `GitVcsDriver` (`branchOverview`, parsing in `apps/server/src/vcs/branchOverview.ts`). It reuses the ref snapshot behind
@@ -1476,4 +1476,11 @@ merged into the default branch.
   the stacked action `rebase_default`: `mergeIntoDefault` with `rebaseOnly`, under the same repository lock, refusing a
   checkout with uncommitted changes and aborting a conflicting rebase. A pushed branch's upstream is re-synced as in a
   merge. A conflict is not handed to the agent (only a merge is).
+- **Delete merged branches.** Merged branches are never deleted by cleanup, so they pile up. The Branches page, the
+  right-panel tab and the Android tab show **Delete merged (n)** for the plain local branches the default branch already
+  contains (not the default branch, a checked-out branch, a branch in a worktree or a remote-only one), after a confirmation
+  that lists them. One RPC, `vcs.deleteMergedBranches` (`AuthSourceControlWriteScope`, also in
+  `CLIENT_GUARDED_RPC_SCOPES`; `deleteMergedBranches.ts`): the server re-checks each name (exists, is an ancestor of the
+  local default branch, is not checked out anywhere) and answers with what it deleted and what it kept and why. Remote
+  copies stay. A thread whose branch is gone recreates it from the project's checkout on its next message.
 - No data migration.

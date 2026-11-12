@@ -9,6 +9,11 @@ import {
   type BranchSort,
 } from "@t3tools/client-runtime/branch-overview";
 import { projectKey } from "@t3tools/client-runtime/issue-projects";
+import {
+  isAtomCommandInterrupted,
+  squashAtomCommandFailure,
+} from "@t3tools/client-runtime/state/runtime";
+import { useAtomValue } from "@effect/atom-react";
 import { ALL_VCS_REMOTES, type VcsBranchOverviewEntry } from "@t3tools/contracts";
 import { useRef, useState } from "react";
 import { Pressable, ScrollView as RowScrollView, View } from "react-native";
@@ -17,6 +22,7 @@ import { AppText as Text } from "../../components/ui/AppText";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { AppActivityIndicator } from "../../components/ui/AppActivityIndicator";
+import * as Dialog from "../../components/ui/Dialog";
 import { ScreenScrollView as ScrollView } from "../../components/ui/ScreenScrollView";
 import { SearchField } from "../../components/ui/SearchField";
 import { cn } from "../../lib/cn";
@@ -24,6 +30,7 @@ import { relativeTime } from "../../lib/time";
 import { useProjects, useThreadShells } from "../../state/entities";
 import { usePageProject } from "../../state/page-project";
 import { useEnvironmentQuery } from "../../state/query";
+import { useAtomCommand } from "../../state/use-atom-command";
 import { vcsEnvironment } from "../../state/vcs";
 import { useOpenWorkspaceDetail } from "../layout/useOpenWorkspaceDetail";
 import { ChoiceChip } from "../layout/workspace/ChoiceChip";
@@ -141,6 +148,53 @@ export function BranchesScreen() {
         }),
   );
   const data = overview.data;
+  const deleteMergedBranches = useAtomCommand(vcsEnvironment.deleteMergedBranches, {
+    reportFailure: false,
+  });
+  const canDelete = useAtomValue(
+    vcsEnvironment.deleteMergedBranches.permissionAtom(project?.environmentId ?? null),
+  );
+  // Plain local branches the default branch already contains: nothing is lost by deleting them.
+  const mergedBranches = (data?.branches ?? []).filter(
+    (branch) =>
+      !branch.isRemoteOnly &&
+      !branch.isDefault &&
+      !branch.current &&
+      branch.worktreePath === null &&
+      branchMergeState(branch) === "merged",
+  );
+  const deleteMerged = () => {
+    if (project === null || mergedBranches.length === 0) return;
+    const names = mergedBranches.map((branch) => branch.name);
+    Dialog.confirm({
+      title: `Delete ${names.length} merged ${names.length === 1 ? "branch" : "branches"}?`,
+      message: `${names.slice(0, 8).join(", ")}${names.length > 8 ? ` and ${names.length - 8} more` : ""} already in ${data?.defaultRef ?? "the default branch"}. Remote copies stay.`,
+      confirmText: "Delete",
+      destructive: true,
+      onConfirm: () => {
+        void (async () => {
+          const result = await deleteMergedBranches({
+            environmentId: project.environmentId,
+            input: { cwd: project.workspaceRoot, refNames: names },
+          });
+          if (result._tag === "Failure") {
+            if (isAtomCommandInterrupted(result)) return;
+            const cause = squashAtomCommandFailure(result);
+            Dialog.alert(
+              "Could not delete branches",
+              cause instanceof Error ? cause.message : "Try again.",
+            );
+          } else if (result.value.skipped.length > 0) {
+            Dialog.alert(
+              `Deleted ${result.value.deleted.length}`,
+              `Kept ${result.value.skipped.map((entry) => `${entry.name} (${entry.reason})`).join("; ")}`,
+            );
+          }
+          overview.refresh();
+        })();
+      },
+    });
+  };
   const unmerged = data?.branches.filter((branch) => branchMergeState(branch) === "unmerged") ?? [];
   const branches = sortBranches(
     filterBranches(data?.branches ?? [], {
@@ -266,6 +320,14 @@ export function BranchesScreen() {
                     ? `${unmerged.length} not merged into ${data.defaultRef}`
                     : "All merged"}
                 </Text>
+                {mergedBranches.length > 0 && canDelete ? (
+                  <View className="flex-row pb-2">
+                    <Button
+                      label={`Delete merged (${mergedBranches.length})`}
+                      onPress={deleteMerged}
+                    />
+                  </View>
+                ) : null}
                 {branches.length === 0 ? (
                   <EmptyState
                     variant="plain"

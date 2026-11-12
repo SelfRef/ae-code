@@ -221,6 +221,11 @@ request) and its Merge button reads **Merged** until the branch gets new commits
 Ask the agent to "merge this into main" and it does the same through its own tool, then
 gets the result (or the reason it failed) in its turn.
 
+On the Branches page (and its right-panel tab and the Android tab), **Delete merged** removes the
+local branches the default branch already contains once you confirm the list. It leaves the default
+branch, checked-out branches, branches in a worktree and remote copies alone. Worktree cleanup
+never deletes branches itself.
+
 To check the work before it lands, turn on **Run before the thread merges into the default
 branch (a failure stops it)** for one of the project's actions (Settings → Projects → Actions), or
 set `"runBeforeMerge": true` on a `t3.json` action, for example a test or lint command. The merge

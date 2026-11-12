@@ -41,6 +41,19 @@ export const VcsBranchOverviewEntry = Schema.Struct({
 });
 export type VcsBranchOverviewEntry = typeof VcsBranchOverviewEntry.Type;
 
+export const VcsDeleteMergedBranchesInput = Schema.Struct({
+  cwd: TrimmedNonEmptyString,
+  /** Local branch names; each is deleted only if the default branch already contains it. */
+  refNames: Schema.Array(TrimmedNonEmptyString).check(Schema.isMaxLength(500)),
+});
+export type VcsDeleteMergedBranchesInput = typeof VcsDeleteMergedBranchesInput.Type;
+
+export const VcsDeleteMergedBranchesResult = Schema.Struct({
+  deleted: Schema.Array(TrimmedNonEmptyString),
+  skipped: Schema.Array(Schema.Struct({ name: TrimmedNonEmptyString, reason: Schema.String })),
+});
+export type VcsDeleteMergedBranchesResult = typeof VcsDeleteMergedBranchesResult.Type;
+
 export const VcsBranchOverviewResult = Schema.Struct({
   isRepo: Schema.Boolean,
   /** The branch the others are compared with: the local default branch when it exists, else its `origin/` ref. */

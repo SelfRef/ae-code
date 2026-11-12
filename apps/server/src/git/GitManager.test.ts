@@ -68,6 +68,7 @@ import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import * as ProjectSetupScriptRunner from "../project/ProjectSetupScriptRunner.ts";
 import * as ProviderRegistry from "../provider/ProviderRegistry.ts";
 import * as ServerSettings from "../serverSettings.ts";
+import { deleteMergedBranches } from "./deleteMergedBranches.ts";
 import * as GitManager from "./GitManager.ts";
 
 /** A change request the fake host reports. Omitted fields read as an open, undated request. */
@@ -6913,6 +6914,38 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
           "uncommitted changes",
         );
       }),
+    );
+
+    it.effect(
+      "deletes only branches the default branch contains and nothing is checked out on",
+      () =>
+        Effect.gen(function* () {
+          const { repoDir, worktreeDir } = yield* setupMerge;
+          const { manager } = yield* makeManager();
+          yield* runStackedAction(manager, { cwd: worktreeDir, action: "merge" });
+          yield* runGit(repoDir, ["branch", "stale-merged"]);
+          yield* runGit(repoDir, ["branch", "wip", "feature/merge-me"]);
+          yield* runGit(repoDir, ["checkout", "-q", "wip"]);
+          yield* runGit(repoDir, ["commit", "--allow-empty", "-m", "Unmerged work"]);
+          yield* runGit(repoDir, ["checkout", "-q", "main"]);
+
+          const git = yield* GitVcsDriver.GitVcsDriver;
+          const result = yield* deleteMergedBranches(git, {
+            cwd: repoDir,
+            refNames: ["stale-merged", "wip", "main", "feature/merge-me", "missing"],
+          });
+
+          expect(result.deleted).toEqual(["stale-merged"]);
+          expect(result.skipped.map((entry) => entry.name)).toEqual([
+            "wip",
+            "main",
+            "feature/merge-me",
+            "missing",
+          ]);
+          const branches = (yield* runGit(repoDir, ["branch", "--format=%(refname:short)"])).stdout;
+          expect(branches).not.toContain("stale-merged");
+          expect(branches).toContain("wip");
+        }),
     );
 
     it.effect("queues merges from several worktrees of one repository", () =>
