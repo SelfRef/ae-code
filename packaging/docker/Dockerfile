@@ -58,7 +58,7 @@ WORKDIR /home/ae
 # The server's state (database, settings, secrets) lives here.
 VOLUME /home/ae/.ae
 EXPOSE 3773
-# Off by default. T3CODE_SELF_UPDATE=true lets Settings -> About install newer releases from
+# Off by default. AECODE_SELF_UPDATE=true lets Settings -> About install newer releases from
 # GitHub in place: the entrypoint then restarts the server from <state>/updates (entrypoint.sh).
 ENTRYPOINT ["ae-code-entrypoint"]
 CMD ["ae-code", "serve", "--host", "0.0.0.0", "--port", "3773", "--no-browser"]

@@ -27,10 +27,10 @@ before exposing it beyond a trusted network.
 
 ## Updating
 
-The unit sets `T3CODE_SELF_UPDATE=true`, so a client (Settings -> About, or the update dialog)
+The unit sets `AECODE_SELF_UPDATE=true`, so a client (Settings -> About, or the update dialog)
 can install newer releases from GitHub: the server downloads one into `~/.ae/updates`, checks it
 against GitHub's checksum and restarts from it. To update by hand, run `./install.sh` from a newer
-archive. To turn in-app updates off, delete the `Environment=T3CODE_SELF_UPDATE=true` line in
+archive. To turn in-app updates off, delete the `Environment=AECODE_SELF_UPDATE=true` line in
 `~/.config/systemd/user/ae-code.service`, then `systemctl --user daemon-reload` and restart.
 
 To roll back an in-app update: `rm -r ~/.ae/updates && systemctl --user restart ae-code`.
@@ -38,5 +38,5 @@ To roll back an in-app update: `rm -r ~/.ae/updates && systemctl --user restart 
 ## Configuration
 
 Add `KEY=value` lines to `~/.config/ae-code/env` (read by the unit, no quotes) for extra `PATH`
-entries, `T3CODE_HOME` or provider keys. Change the port or interface by editing `ExecStart` in the
-unit. Run the server without systemd with `T3CODE_SELF_UPDATE=true ae-code serve`.
+entries, `AECODE_HOME` or provider keys. Change the port or interface by editing `ExecStart` in the
+unit. Run the server without systemd with `AECODE_SELF_UPDATE=true ae-code serve`.

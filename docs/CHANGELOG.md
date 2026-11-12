@@ -23,6 +23,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Changed
 
+- The executable and command are now `ae-code` (was `t3`): `ae-code serve`, `ae-code up`, the `ae-code` link the desktop app creates, and every hint in the app and the CLI. The npm package stays `t3`.
+- Environment variables can use the `AECODE_` prefix (`AECODE_HOME`, `AECODE_PORT`, `AECODE_SELF_UPDATE`, ...). `T3CODE_` names keep working as the fallback, and `AECODE_` wins when both are set, so nothing needs changing. Build-time variables still use `T3CODE_`.
 - Settings → Environments: each environment checks its own server for a newer GitHub release instead of comparing with this app's version, so a local build here no longer offers or hides updates. The update icon is larger.
 - Chat breadcrumb: picking a project in the project switcher starts a new thread in it instead of opening its newest thread.
 - The small preview player no longer shows the browser control switch (view only, take control, share control); it stays in the full preview.

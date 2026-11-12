@@ -1,3 +1,4 @@
+import "@t3tools/shared/aecodeEnv";
 import * as MacPermissions from "./permissions/MacPermissions.ts";
 import { handleStdioError } from "./app/stdioErrors.ts";
 

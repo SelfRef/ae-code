@@ -59,6 +59,8 @@ network. `t3 status` says so, and `t3 up --no-lan` turns it off. Any
 
 ## Configure the service environment
 
+In AE Code every variable below can use the `AECODE_` prefix instead of `T3CODE_` (`AECODE_PORT` for `T3CODE_PORT`). Both work, and `AECODE_` wins when both are set.
+
 Put custom environment variables in `service.env` under the service's T3 home
 directory, normally `~/.t3/service.env`. This file survives service installation
 and updates. For example:

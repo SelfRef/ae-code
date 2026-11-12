@@ -84,14 +84,14 @@ export function classifyReachability(
     fix: string,
     hint: string | null = null,
   ): Unreachable => ({ status: "unreachable", checkedAt, cause, reason, hint, fix });
-  const restart = "Restart T3 Code. If it stays, run `t3 connect` again.";
+  const restart = "Restart T3 Code. If it stays, run `ae-code connect` again.";
 
   if (!facts.managedTunnelConfigured) {
-    // A running server reads the link `t3 connect` stores only at startup.
+    // A running server reads the link `ae-code connect` stores only at startup.
     return fail(
       "not_linked",
       "The server has not set up a T3 Connect tunnel.",
-      "Run `t3 connect`, then restart T3 Code so it applies the link.",
+      "Run `ae-code connect`, then restart T3 Code so it applies the link.",
     );
   }
   if (connector === null) {

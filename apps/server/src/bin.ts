@@ -1,4 +1,5 @@
 // @effect-diagnostics nodeBuiltinImport:off -- The service launcher starts before the CLI runtime.
+import "@t3tools/shared/aecodeEnv";
 import * as NodeModule from "node:module";
 import * as NodeOS from "node:os";
 import * as NodeSea from "node:sea";

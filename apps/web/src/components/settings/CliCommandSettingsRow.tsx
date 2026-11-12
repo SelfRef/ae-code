@@ -55,12 +55,12 @@ export function CliCommandSettingsRow() {
   const description = state.shadowedBy
     ? `Another t3 at ${state.shadowedBy} runs first in a new terminal. Remove it to use Æ Code's.`
     : !installed
-      ? "Run Æ Code's CLI as `t3` from any terminal."
+      ? "Run AE Code's CLI as `ae-code` from any terminal."
       : state.onPath
         ? `Installed at ${state.installedPath}. Open a new terminal to use it.`
         : state.pathSetup?.added
           ? `Installed at ${state.installedPath} and added to PATH in ${state.pathSetup.file}. Open a new terminal to use it.`
-          : `Installed at ${state.installedPath}, which is not on your PATH yet.${state.pathSetup ? "" : " Add its folder to your PATH to run `t3`."}`;
+          : `Installed at ${state.installedPath}, which is not on your PATH yet.${state.pathSetup ? "" : " Add its folder to your PATH to run `ae-code`."}`;
 
   return (
     <SettingsRow

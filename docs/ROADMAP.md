@@ -10,6 +10,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [45] | The executable and command are `ae-code` (was `t3`); `AECODE_*` env vars work everywhere `T3CODE_*` did, which stays as the fallback                                   | done    |
 | 44   | Device panel controls in a row above the screen, like the browser's, instead of a column at the right edge (web)                                                       | done    |
 | 43   | Browser control modes: View only, Take control, and Share control, where you and the agent both act and the agent is not interrupted (web and Android)                 | done    |
 | 42   | Current branch action: a project setting (Push by default) that picks whether the Git button also creates a pull request                                               | done    |
@@ -88,6 +89,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 [35]: #android-catch-up-change-35
 [26]: #pull-requests-from-the-fork-change-26
 [25]: #in-place-updates-of-the-docker-image-and-a-bare-host-change-25
+[45]: #executable-and-environment-names-change-45
 
 `done` means it is a commit on `main`; the commit is found by subject (`git log --grep`), not by hash, because every
 rebase onto upstream changes the hashes. The history rules and the sync procedure are in the last section.
@@ -108,7 +110,7 @@ The fork can run beside upstream's T3 Code on one machine, so it has its own nam
 
 The app id follows the Aperte apps (`dev.aperte.Todav`, `dev.aperte.Notav`). The text name is ASCII ("AE Code"): a non-ASCII name would end up in the Electron User-Agent and in installer and file names.
 
-Not renamed, to keep rebases small: `T3CODE_*` env vars, `@t3tools/*` packages, the `t3` command, the `t3code` URL scheme, `T3Wordmark`, file names such as `com.t3tools.t3code.metainfo.xml` (only its contents changed), the model manifest URL (still read from upstream), and the user docs under `docs/user`, which still say `~/.t3`. The worktree dev state dir stays `.t3`.
+Not renamed, to keep rebases small: the `T3CODE_*` names the code reads (`AECODE_*` is an alias, see change 45), `@t3tools/*` packages, the npm package `t3`, the `t3code` URL scheme, `T3Wordmark`, file names such as `com.t3tools.t3code.metainfo.xml` (only its contents changed), the model manifest URL (still read from upstream), and the user docs under `docs/user`, which still say `~/.t3`. The worktree dev state dir stays `.t3`.
 
 Icons: one icon for every platform and build, since the fork has no release channels: the Aperte glyph on the blueprint tile (`assets/dev`, also the Android launcher and splash). The upstream `prod` and `nightly` icon sets are removed. All rasters (`assets/dev/*.png`, `.ico`, `apps/web/public`) are rendered from the layer SVGs by `vp run icons:export:blueprint` (the Android ones by `icons:export:android`, with a smaller glyph; it also writes `assets/dev/blueprint-linux.svg`, which the desktop build stages as `icon.svg` and the app installs into the icon theme), because Icon Composer (macOS only) is not available here, so they approximate its glass effect and `icons:check` will not pass until they are re-exported there. The Icon Composer project only had its `text.svg` glyph swapped, so a later export keeps the blueprint background.
 
@@ -1379,7 +1381,7 @@ current means rebasing that stack onto the newest upstream `main`, never merging
 
 - **Additive over edited:** new code in new files with tests next to them. Edits to existing files stay at the touch
   points described in each change, a few lines each: no reformatting, no renames, no drive-by fixes.
-- **Upstream identifiers stay** (env vars, package and file names); only values change (see the Identity section).
+- **Upstream identifiers stay** (the `T3CODE_*` names the code reads, package and file names); only values change (see the Identity section).
 - **Off by default:** a feature nothing enables fails soft when a rebase drops a piece of it.
 - **Upstream stays an option:** if the maintainers ever ask for it, the additive layout makes a branch a clean PR;
   until then nothing is offered.
@@ -1395,3 +1397,26 @@ control, above the default branch action) picks the main action.
   pushes, and a pushed one with no pull request has no main action (Create PR stays in the menu).
 - Web, desktop and Android follow it (Android: Settings → Source control → "Current branch action").
 - No data migration: a new setting with a default. Servers without it ignore the key; older clients show their old button.
+
+## Executable and environment names (change 45)
+
+The fork's executable was `t3`, renamed to `ae-code` only by the release workflow, and its variables were `T3CODE_*`.
+
+- **Executable:** the single executable is built as `ae-code` / `ae-code.exe` (`apps/server/vite.config.ts`, `scripts/build-cli-archive.ts`,
+  `scripts/smoke-cli-archive.ts`), so the workflow renames only the archive and its folder. Everything that looks for the executable
+  or the command follows: the pinned runtime and service launcher (`runtime/versions/<version>/ae-code`), `ae-code install` and the
+  desktop's `ae-code` link in `~/.local/bin`, the update shim lookups, and the program name in `--help`. User-facing hints
+  (`ae-code up`, `ae-code service install`, ...) say `ae-code`. A runtime unpacked from an upstream archive holds `t3` and is not
+  found any more: the install scripts and `t3 update` read upstream's releases, which the fork does not publish, so nothing of the
+  fork's own is affected. The npm package stays `t3`.
+- **After a rebase**, the hints are one regex over `apps/{server,desktop,web}/src` and `packages` (backticked or quoted `t3 <subcommand>`
+  to `ae-code <subcommand>`): resolve a conflict in favour of upstream's line, then re-run it.
+- **Variables:** `packages/shared/src/aecodeEnv.ts` copies each non-empty `AECODE_X` onto `T3CODE_X` (it wins; an empty value is
+  ignored), and the server (`bin.ts`) and desktop (`main.ts`) import it first. The code keeps reading `T3CODE_*`, so no upstream
+  file changed and `T3CODE_*` keeps working with no configuration change. Shell scripts that read a variable themselves
+  (`packaging/docker/entrypoint.sh`) accept both. `AECODE_HOME` is protected in `service.env` like `T3CODE_HOME`. The unit and the
+  image docs use `AECODE_SELF_UPDATE`.
+- **Not covered:** build-time and CI variables (`T3CODE_DESKTOP_*`, `T3CODE_MOBILE_*`), upstream's install scripts, and `service.env`
+  settings that `ae-code up` and `ae-code status` read themselves (`AECODE_HOST`, `AECODE_LAN` there are applied by the server but
+  not shown by those commands; use `T3CODE_*` for them).
+- No data migration: no persisted name changed.
