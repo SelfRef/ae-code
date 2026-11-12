@@ -580,7 +580,8 @@ function runStackedAction(
       | "commit_push_pr"
       | "merge"
       | "merge_push"
-      | "push_default";
+      | "push_default"
+      | "rebase_default";
     actionId?: string;
     threadId?: ThreadId;
     commitMessage?: string;
@@ -6385,6 +6386,59 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
         yield* runGit(worktreeDir, ["commit", "--allow-empty", "-m", "More thread work"]);
         yield* manager.invalidateStatus(worktreeDir);
         expect(yield* merged()).toBeFalsy();
+      }),
+    );
+
+    it.effect(
+      "rebases a thread onto a default branch that moved, and counts how far behind it is",
+      () =>
+        Effect.gen(function* () {
+          const { repoDir, worktreeDir, subjects } = yield* setupMerge;
+          NodeFS.writeFileSync(NodePath.join(repoDir, "elsewhere.txt"), "moved on\n");
+          yield* runGit(repoDir, ["add", "elsewhere.txt"]);
+          yield* runGit(repoDir, ["commit", "-m", "Main moved"]);
+          const { manager } = yield* makeManager();
+          expect((yield* manager.status({ cwd: worktreeDir })).behindDefaultCount).toBe(1);
+
+          const result = yield* runStackedAction(manager, {
+            cwd: worktreeDir,
+            action: "rebase_default",
+          });
+          expect(result.toast.title).toBe("Rebased onto main");
+          expect(yield* subjects(worktreeDir, "HEAD")).toEqual([
+            "Thread work",
+            "Main moved",
+            "Initial commit",
+          ]);
+          expect(yield* subjects(repoDir, "main")).toEqual(["Main moved", "Initial commit"]);
+          yield* manager.invalidateStatus(worktreeDir);
+          expect((yield* manager.status({ cwd: worktreeDir })).behindDefaultCount).toBe(0);
+
+          const again = yield* runStackedAction(manager, {
+            cwd: worktreeDir,
+            action: "rebase_default",
+          });
+          expect(again.toast.title).toBe("Already up to date with main");
+        }),
+    );
+
+    it.effect("refuses to rebase a thread with uncommitted changes", () =>
+      Effect.gen(function* () {
+        const { repoDir, worktreeDir } = yield* setupMerge;
+        NodeFS.writeFileSync(NodePath.join(repoDir, "elsewhere.txt"), "moved on\n");
+        yield* runGit(repoDir, ["add", "elsewhere.txt"]);
+        yield* runGit(repoDir, ["commit", "-m", "Main moved"]);
+        NodeFS.writeFileSync(NodePath.join(worktreeDir, "thread.txt"), "edited\n");
+        const { manager } = yield* makeManager();
+        const failed = yield* runStackedAction(manager, {
+          cwd: worktreeDir,
+          action: "rebase_default",
+        }).pipe(Effect.result);
+
+        expect(Result.isFailure(failed)).toBe(true);
+        expect(Result.isFailure(failed) ? String(failed.failure.message) : "").toContain(
+          "uncommitted changes",
+        );
       }),
     );
 

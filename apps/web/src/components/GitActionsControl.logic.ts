@@ -22,7 +22,15 @@ export {
 } from "@t3tools/client-runtime/state/vcs";
 
 export interface GitActionMenuItem {
-  id: "commit" | "push" | "force_push" | "pr" | "merge" | "merge_push" | "push_default";
+  id:
+    | "commit"
+    | "push"
+    | "force_push"
+    | "pr"
+    | "merge"
+    | "merge_push"
+    | "push_default"
+    | "rebase_default";
   label: string;
   disabled: boolean;
   icon: GitActionIconName;

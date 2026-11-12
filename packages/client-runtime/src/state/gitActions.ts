@@ -15,10 +15,19 @@ export type GitDialogAction =
   | "create_pr"
   | "merge"
   | "merge_push"
-  | "push_default";
+  | "push_default"
+  | "rebase_default";
 
 export interface GitActionMenuItem {
-  id: "commit" | "push" | "force_push" | "pr" | "merge" | "merge_push" | "push_default";
+  id:
+    | "commit"
+    | "push"
+    | "force_push"
+    | "pr"
+    | "merge"
+    | "merge_push"
+    | "push_default"
+    | "rebase_default";
   label: string;
   disabled: boolean;
   icon: GitActionIconName;
@@ -318,6 +327,12 @@ export function getGitActionDisabledReason(input: {
 
   if (item.id === "push_default") return "No commits on the default branch to push.";
 
+  if (item.id === "rebase_default") {
+    return hasChanges
+      ? "Commit or stash local changes before rebasing."
+      : "Already up to date with the default branch.";
+  }
+
   if (item.id === "push") {
     if (!hasBranch) {
       return "Detached HEAD: checkout a branch before pushing.";
@@ -426,7 +441,7 @@ export function formatQuickActionLabel(
 }
 
 export type DefaultBranchActionItem = GitActionMenuItem & {
-  id: "merge" | "merge_push" | "push_default";
+  id: "merge" | "merge_push" | "push_default" | "rebase_default";
 };
 
 export interface DefaultBranchActions {
@@ -472,6 +487,17 @@ export function resolveDefaultBranchActions(
     dialogAction: id,
   });
 
+  const behind = gitStatus.behindDefaultCount ?? 0;
+  const rebase =
+    behind > 0
+      ? [
+          item(
+            "rebase_default",
+            `Rebase onto the default branch (${plural(behind, "new commit")})`,
+            isBusy || hasChanges,
+          ),
+        ]
+      : [];
   const merge = item("merge", mergeLabel(false), mergeDisabled);
   const mergePush = item("merge_push", mergeLabel(true), mergeDisabled);
   const push = item(
@@ -486,10 +512,13 @@ export function resolveDefaultBranchActions(
         : quickMergeAction === "merge_push" && hasOriginRemote
           ? mergePush
           : merge,
-    items: hasOriginRemote
-      ? canPushDefault
-        ? [merge, mergePush, push]
-        : [merge, mergePush]
-      : [merge],
+    items: [
+      ...(hasOriginRemote
+        ? canPushDefault
+          ? [merge, mergePush, push]
+          : [merge, mergePush]
+        : [merge]),
+      ...rebase,
+    ],
   };
 }

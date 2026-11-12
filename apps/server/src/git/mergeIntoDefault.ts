@@ -13,6 +13,8 @@ export interface MergeIntoDefaultResult {
   readonly push:
     | { readonly status: "pushed" | "skipped_up_to_date"; readonly upstreamBranch: string }
     | undefined;
+  /** The branch was rebased onto the default branch because that had moved. */
+  readonly rebased: boolean;
   /** The rebase rewrote a branch that was fully pushed, so its upstream was replaced to match. */
   readonly branchUpstream?:
     | { readonly status: "pushed" | "failed"; readonly name: string }
@@ -44,12 +46,14 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
     readonly push: boolean;
     /** Push the default branch as it is: no rebase, no fast-forward. */
     readonly pushOnly?: boolean;
+    /** Rebase the branch onto the default branch if it moved, and stop there. */
+    readonly rebaseOnly?: boolean;
+    /** Runs after the rebase, with the default branch locked, and stops the merge by failing. */
+    readonly beforeLand?: Effect.Effect<void, GitManagerError>;
     /**
      * Turns a branch of several commits into one before it lands; given the default branch's ref,
      * it writes the commit message. The branch is reset to the new commit, so its own history is gone.
      */
-    /** Runs after the rebase, with the default branch locked, and stops the merge by failing. */
-    readonly beforeLand?: Effect.Effect<void, GitManagerError>;
     readonly squashMessage?: (baseRef: string) => Effect.Effect<string, GitManagerError>;
   },
 ): Effect.fn.Return<MergeIntoDefaultResult, GitManagerError | GitCommandError> {
@@ -188,18 +192,29 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
   // The rebase and the fast-forward are not one step: if the default branch moved in between
   // (a commit in its own checkout), rebase once more before giving up.
   let merged = input.pushOnly === true;
+  let rebased = false;
+  if (input.rebaseOnly) {
+    const dirty = yield* run("dirty", cwd, ["status", "--porcelain", "--untracked-files=no"]);
+    if (dirty.stdout.trim().length > 0) {
+      return yield* fail(
+        "This checkout has uncommitted changes. Commit or stash them, then run the action again.",
+      );
+    }
+  }
   for (let attempt = 0; !merged; attempt++) {
     if (!(yield* baseInHead())) {
-      const rebased = yield* run("rebase", cwd, ["rebase", `refs/heads/${base}`], {
+      const rebase = yield* run("rebase", cwd, ["rebase", `refs/heads/${base}`], {
         allowNonZeroExit: true,
       });
-      if (rebased.exitCode !== 0) {
+      if (rebase.exitCode !== 0) {
         yield* run("rebase-abort", cwd, ["rebase", "--abort"], { allowNonZeroExit: true });
         return yield* fail(
-          `Rebasing ${branch} onto ${base} hit conflicts, so nothing was merged. Resolve them with \`git rebase ${base}\` in this checkout, then run the action again.`,
+          `Rebasing ${branch} onto ${base} hit conflicts, so nothing was ${input.rebaseOnly ? "changed" : "merged"}. Resolve them with \`git rebase ${base}\` in this checkout, then run the action again.`,
         );
       }
+      rebased = true;
     }
+    if (input.rebaseOnly) break;
     merged = yield* succeeds("head-in-base", [
       "merge-base",
       "--is-ancestor",
@@ -220,6 +235,16 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
       : undefined;
 
   const commitSha = yield* baseSha();
+  if (input.rebaseOnly) {
+    return {
+      status: "already_merged",
+      baseBranch: base,
+      commitSha,
+      push: undefined,
+      rebased,
+      branchUpstream,
+    };
+  }
   // Marks the branch as merged for the status; the key is read in `GitVcsDriverCore`.
   if (!input.pushOnly) {
     yield* git.writeConfigValue({ cwd, key: `branch.${branch}.t3-merged-sha`, value: commitSha });
@@ -230,6 +255,7 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
       baseBranch: base,
       commitSha,
       push: undefined,
+      rebased,
       branchUpstream,
     };
   }
@@ -254,6 +280,7 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
       baseBranch: base,
       commitSha,
       push: { status: "skipped_up_to_date", upstreamBranch },
+      rebased,
       branchUpstream,
     };
   }
@@ -269,6 +296,7 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
     baseBranch: base,
     commitSha,
     push: { status: "pushed", upstreamBranch },
+    rebased,
     branchUpstream,
   };
 });

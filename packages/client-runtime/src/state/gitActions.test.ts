@@ -77,6 +77,20 @@ describe("default branch actions", () => {
     expect(resolve({ ...ahead, hasWorkingTreeChanges: true }).primary.label).toBe("Commit & merge");
   });
 
+  it("offers a rebase while the default branch has commits the branch lacks", () => {
+    const behind = resolve(status({ behindDefaultCount: 2 })).items.at(-1);
+    expect(behind).toMatchObject({
+      id: "rebase_default",
+      label: "Rebase onto the default branch (2 new commits)",
+      disabled: false,
+    });
+    expect(
+      resolve(status({ behindDefaultCount: 1, hasWorkingTreeChanges: true })).items.at(-1)
+        ?.disabled,
+    ).toBe(true);
+    expect(resolve(status()).items.some((item) => item.id === "rebase_default")).toBe(false);
+  });
+
   it("says a merged branch is merged", () => {
     expect(resolve(status({ mergedIntoDefault: true })).items[0]).toMatchObject({
       label: "Merged",
