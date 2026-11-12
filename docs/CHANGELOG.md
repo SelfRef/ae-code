@@ -10,6 +10,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Added
 
+- Commit history: every branch row in Branches has a history button that opens the branch's commits as a list or a graph (lanes for merges, like VS Code), with a branch picker (or all branches) and, per commit, its message and changed files. On the web it is a **Commits** page (sidebar, command palette) and right-panel tab; on Android it opens from the Branches row.
+- Branches: the **Open thread** button on a row shrinks to its icon when the list is narrow.
 - The hover popup of a sidebar thread now starts with its status (Working, Waiting, Approval, Done, Settled, Idle, ...).
 - Settings → Environments on the web now lists the server the page is served from as its first row, as the desktop app already did, so it no longer looks like there is only one environment.
 - Branches (page, right-panel tab and Android): **Delete merged (n)** removes the local branches the default branch already contains, after listing them for confirmation. Checked-out branches, worktree branches and remote copies are left alone.

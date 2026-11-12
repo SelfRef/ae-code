@@ -31,6 +31,7 @@ import {
   CloudIcon,
   FolderGit2Icon,
   GitBranchIcon,
+  GitCommitHorizontalIcon,
   LayersIcon,
   MessageSquareIcon,
   SearchIcon,
@@ -90,11 +91,13 @@ function BranchRow({
   defaultRef,
   threadTitle,
   onOpenThread,
+  onOpenCommits,
 }: {
   branch: VcsBranchOverviewEntry;
   defaultRef: string | null;
   threadTitle: string | null;
   onOpenThread: () => void;
+  onOpenCommits: () => void;
 }) {
   const state = branchMergeState(branch);
   const Icon = branch.worktreePath !== null ? FolderGit2Icon : GitBranchIcon;
@@ -156,18 +159,30 @@ function BranchRow({
           </span>
         ) : null}
       </div>
-      {threadTitle !== null ? (
+      <div className="flex shrink-0 items-center gap-1.5">
         <Button
-          size="compact"
+          size="icon-xs"
           variant="outline"
-          className="max-w-48 shrink-0"
-          aria-label={`Open thread ${threadTitle}`}
-          onClick={onOpenThread}
+          aria-label={`Commit history of ${branch.name}`}
+          title="Commit history"
+          onClick={onOpenCommits}
         >
-          <MessageSquareIcon />
-          <span className="truncate">{threadTitle}</span>
+          <GitCommitHorizontalIcon />
         </Button>
-      ) : null}
+        {threadTitle !== null ? (
+          <Button
+            size="compact"
+            variant="outline"
+            className="max-w-48"
+            aria-label={`Open thread ${threadTitle}`}
+            title={threadTitle}
+            onClick={onOpenThread}
+          >
+            <MessageSquareIcon />
+            <span className="hidden truncate @2xl/branches:inline">{threadTitle}</span>
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -214,11 +229,14 @@ export function BranchList({
   overview,
   filters,
   onFilters,
+  onOpenCommits,
 }: {
   project: Pick<EnvironmentProject, "environmentId" | "id" | "title" | "workspaceRoot"> | null;
   overview: ReturnType<typeof useBranchOverview>;
   filters: BranchFilters;
   onFilters: (patch: BranchFilters) => void;
+  /** Opens the commit history of a branch, named as in the branch list. */
+  onOpenCommits: (branchName: string) => void;
 }) {
   const navigate = useNavigate();
   const threads = useQuietThreadShells();
@@ -362,7 +380,7 @@ export function BranchList({
           onRefresh={overview.refresh}
         />
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="@container/branches min-h-0 flex-1 overflow-y-auto">
         {project === null ? (
           <Empty size="compact">
             <EmptyHeader>
@@ -414,6 +432,7 @@ export function BranchList({
                   branch={branch}
                   defaultRef={data.defaultRef}
                   threadTitle={thread?.title ?? null}
+                  onOpenCommits={() => onOpenCommits(branch.name)}
                   onOpenThread={() => {
                     if (thread)
                       void navigate({
@@ -462,7 +481,19 @@ export function BranchesPage() {
       >
         <BranchSummary data={overview.data} />
       </ProjectPageHeader>
-      <BranchList project={project} overview={overview} filters={search} onFilters={update} />
+      <BranchList
+        project={project}
+        overview={overview}
+        filters={search}
+        onFilters={update}
+        onOpenCommits={(ref) => {
+          if (project)
+            void navigate({
+              to: "/commits",
+              search: { environmentId: project.environmentId, projectId: project.id, ref },
+            });
+        }}
+      />
     </SidebarInset>
   );
 }

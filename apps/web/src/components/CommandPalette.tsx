@@ -67,6 +67,7 @@ import {
   FolderIcon,
   FolderPlusIcon,
   GitBranchIcon,
+  GitCommitHorizontalIcon,
   MessageSquareDashedIcon,
   LinkIcon,
   MessageSquareIcon,
@@ -1653,6 +1654,19 @@ function OpenCommandPaletteDialog(props: {
       icon: <GitBranchIcon className={ITEM_ICON_CLASS} />,
       run: async () => {
         await navigate({ to: "/branches", search: {} });
+      },
+    });
+  }
+
+  if (branchProjects(projects).length > 0) {
+    actionItems.push({
+      kind: "action",
+      value: "action:commits",
+      searchTerms: ["commits", "history", "log", "graph"],
+      title: "Open commit history",
+      icon: <GitCommitHorizontalIcon className={ITEM_ICON_CLASS} />,
+      run: async () => {
+        await navigate({ to: "/commits", search: {} });
       },
     });
   }

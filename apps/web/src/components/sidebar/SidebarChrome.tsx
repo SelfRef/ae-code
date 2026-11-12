@@ -4,6 +4,7 @@ import {
   ChartNoAxesColumnIcon,
   CircleDotIcon,
   GitBranchIcon,
+  GitCommitHorizontalIcon,
   SettingsIcon,
   TagIcon,
 } from "lucide-react";
@@ -271,6 +272,10 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     closeMobileSidebar();
     void navigate({ to: "/branches" });
   };
+  const handleCommitsClick = () => {
+    closeMobileSidebar();
+    void navigate({ to: "/commits" });
+  };
   const handleIssuesClick = () => {
     closeMobileSidebar();
     void navigate({ to: "/issues", search: { state: "open" } });
@@ -324,6 +329,13 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
               icon={<GitBranchIcon />}
               label="Branches"
               onClick={handleBranchesClick}
+            />
+          ) : null}
+          {branchesSupported ? (
+            <SidebarUtilityItem
+              icon={<GitCommitHorizontalIcon />}
+              label="Commits"
+              onClick={handleCommitsClick}
             />
           ) : null}
           {issuesSupported ? (

@@ -24,6 +24,7 @@ import { Route as ChatReleasesRouteImport } from './routes/_chat.releases'
 import { Route as ChatPullRequestsRouteImport } from './routes/_chat.pull-requests'
 import { Route as ChatNewRouteImport } from './routes/_chat.new'
 import { Route as ChatIssuesRouteImport } from './routes/_chat.issues'
+import { Route as ChatCommitsRouteImport } from './routes/_chat.commits'
 import { Route as ChatBranchesRouteImport } from './routes/_chat.branches'
 import { Route as ThreadsEnvironmentIdThreadIdRouteImport } from './routes/threads.$environmentId.$threadId'
 import { Route as ChatSettingsWorktreesRouteImport } from './routes/_chat.settings.worktrees'
@@ -131,6 +132,11 @@ const ChatNewRoute = ChatNewRouteImport.update({
 const ChatIssuesRoute = ChatIssuesRouteImport.update({
   id: '/issues',
   path: '/issues',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ChatCommitsRoute = ChatCommitsRouteImport.update({
+  id: '/commits',
+  path: '/commits',
   getParentRoute: () => ChatRoute,
 } as any)
 const ChatBranchesRoute = ChatBranchesRouteImport.update({
@@ -319,6 +325,7 @@ export interface FileRoutesByFullPath {
   '/pair': typeof PairRoute
   '/welcome': typeof WelcomeRoute
   '/branches': typeof ChatBranchesRoute
+  '/commits': typeof ChatCommitsRoute
   '/issues': typeof ChatIssuesRoute
   '/new': typeof ChatNewRoute
   '/pull-requests': typeof ChatPullRequestsRoute
@@ -368,6 +375,7 @@ export interface FileRoutesByTo {
   '/pair': typeof PairRoute
   '/welcome': typeof WelcomeRoute
   '/branches': typeof ChatBranchesRoute
+  '/commits': typeof ChatCommitsRoute
   '/issues': typeof ChatIssuesRoute
   '/new': typeof ChatNewRoute
   '/pull-requests': typeof ChatPullRequestsRoute
@@ -420,6 +428,7 @@ export interface FileRoutesById {
   '/pair': typeof PairRoute
   '/welcome': typeof WelcomeRoute
   '/_chat/branches': typeof ChatBranchesRoute
+  '/_chat/commits': typeof ChatCommitsRoute
   '/_chat/issues': typeof ChatIssuesRoute
   '/_chat/new': typeof ChatNewRoute
   '/_chat/pull-requests': typeof ChatPullRequestsRoute
@@ -473,6 +482,7 @@ export interface FileRouteTypes {
     | '/pair'
     | '/welcome'
     | '/branches'
+    | '/commits'
     | '/issues'
     | '/new'
     | '/pull-requests'
@@ -522,6 +532,7 @@ export interface FileRouteTypes {
     | '/pair'
     | '/welcome'
     | '/branches'
+    | '/commits'
     | '/issues'
     | '/new'
     | '/pull-requests'
@@ -573,6 +584,7 @@ export interface FileRouteTypes {
     | '/pair'
     | '/welcome'
     | '/_chat/branches'
+    | '/_chat/commits'
     | '/_chat/issues'
     | '/_chat/new'
     | '/_chat/pull-requests'
@@ -733,6 +745,13 @@ declare module '@tanstack/react-router' {
       path: '/issues'
       fullPath: '/issues'
       preLoaderRoute: typeof ChatIssuesRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/_chat/commits': {
+      id: '/_chat/commits'
+      path: '/commits'
+      fullPath: '/commits'
+      preLoaderRoute: typeof ChatCommitsRouteImport
       parentRoute: typeof ChatRoute
     }
     '/_chat/branches': {
@@ -1048,6 +1067,7 @@ const ChatSettingsRouteWithChildren = ChatSettingsRoute._addFileChildren(
 
 interface ChatRouteChildren {
   ChatBranchesRoute: typeof ChatBranchesRoute
+  ChatCommitsRoute: typeof ChatCommitsRoute
   ChatIssuesRoute: typeof ChatIssuesRoute
   ChatNewRoute: typeof ChatNewRoute
   ChatPullRequestsRoute: typeof ChatPullRequestsRoute
@@ -1061,6 +1081,7 @@ interface ChatRouteChildren {
 
 const ChatRouteChildren: ChatRouteChildren = {
   ChatBranchesRoute: ChatBranchesRoute,
+  ChatCommitsRoute: ChatCommitsRoute,
   ChatIssuesRoute: ChatIssuesRoute,
   ChatNewRoute: ChatNewRoute,
   ChatPullRequestsRoute: ChatPullRequestsRoute,

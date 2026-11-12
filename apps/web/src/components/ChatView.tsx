@@ -2327,6 +2327,7 @@ export default function ChatView(props: ChatViewProps) {
     addIssuesSurfaceStable,
     addReleasesSurfaceStable,
     addBranchesSurfaceStable,
+    addCommitsSurfaceStable,
     closePreviewPanelStable,
     copyRightPanelFilePathStable,
     createBrowserSurface,
@@ -3969,6 +3970,7 @@ export default function ChatView(props: ChatViewProps) {
           onAddIssues={addIssuesSurfaceStable}
           onAddReleases={addReleasesSurfaceStable}
           onAddBranches={addBranchesSurfaceStable}
+          onAddCommits={addCommitsSurfaceStable}
           onAddDevice={addDeviceSurfaceStable}
           onAddSideChat={sideChatsOffered ? openSideChatStable : undefined}
           browserAvailable={canOperatePreview && browserAvailable}

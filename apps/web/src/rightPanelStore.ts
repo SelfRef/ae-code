@@ -30,6 +30,7 @@ const RIGHT_PANEL_KINDS = [
   "issues",
   "releases",
   "branches",
+  "commits",
   "side-chat",
 ] as const;
 export type RightPanelKind = (typeof RIGHT_PANEL_KINDS)[number];
@@ -90,6 +91,7 @@ export type RightPanelSurface =
   | { id: "issues"; kind: "issues" }
   | { id: "releases"; kind: "releases" }
   | { id: "branches"; kind: "branches" }
+  | { id: "commits"; kind: "commits" }
   | { id: `side-chat:${string}`; kind: "side-chat"; threadId: ThreadId };
 
 const RIGHT_PANEL_STORAGE_KEY = "t3code:right-panel-state:v2";
@@ -241,6 +243,8 @@ const singletonSurface = (
       return { id: "releases", kind };
     case "branches":
       return { id: "branches", kind };
+    case "commits":
+      return { id: "commits", kind };
     case "device":
       return { id: "device", kind };
   }
