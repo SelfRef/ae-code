@@ -1510,7 +1510,16 @@ const make = Effect.gen(function* () {
             args: ["merge-base", "--is-ancestor", head.commitSha, base.commitSha],
             allowNonZeroExit: true,
           });
-          const integrated = ancestor.exitCode === 0;
+          // A merge that was not pushed yet only moved the local default branch; its commits are safe there.
+          const integrated =
+            ancestor.exitCode === 0 ||
+            (remote !== null &&
+              (yield* git.execute({
+                operation: "StorageCleanup.integratedLocalBranch",
+                cwd: worktreePath,
+                args: ["merge-base", "--is-ancestor", head.commitSha, `refs/heads/${branch}`],
+                allowNonZeroExit: true,
+              })).exitCode === 0);
           eligible = integrated && unchangedApplies;
           if (eligible)
             removalReason =

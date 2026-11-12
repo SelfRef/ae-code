@@ -3342,6 +3342,31 @@ describe("storage cleanup reports and local file policies", () => {
         }),
       ),
   );
+  it.live("removes a worktree merged into the local default branch that was not pushed yet", () =>
+    runCleanupTest(
+      Effect.gen(function* () {
+        const { service, fs, repo, worktree, command, setThreads } = yield* cleanupFixture({
+          ...CLEANUP_OFF,
+          worktreeUnchanged: true,
+        });
+        setThreads([shell({ branch: "feature", worktreePath: worktree, archivedAt: at(-DAY_MS) })]);
+        const remote = yield* fs.makeTempDirectoryScoped({ prefix: "cleanup-remote-" });
+        yield* command(remote, ["init", "--bare", "-b", "main"]);
+        yield* command(repo, ["remote", "add", "origin", remote]);
+        yield* command(repo, ["push", "-u", "origin", "main"]);
+        yield* fs.writeFileString(`${worktree}/tracked.txt`, "merged work\n");
+        yield* command(worktree, ["commit", "-am", "merged work"]);
+        yield* command(repo, ["merge", "--ff-only", "feature"]);
+
+        const report = yield* service.runNow;
+        expect(report.entries[0]).toMatchObject({
+          outcome: "removed",
+          reason: "No commits beyond the default branch",
+        });
+        expect(yield* fs.exists(worktree)).toBe(false);
+      }),
+    ),
+  );
   it.live("keeps the worktree when the remote default is unavailable even if main exists", () =>
     runCleanupTest(
       Effect.gen(function* () {
