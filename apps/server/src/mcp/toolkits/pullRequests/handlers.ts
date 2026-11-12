@@ -109,7 +109,7 @@ export function listThreadPullRequests(
   };
 }
 
-function projectForPullRequest(
+export function projectForPullRequest(
   projects: ReadonlyArray<OrchestrationProjectShell>,
   target: { readonly host: string; readonly repository: string },
   preferred: OrchestrationProjectShell | undefined,

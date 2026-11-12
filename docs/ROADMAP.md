@@ -54,7 +54,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 | [6]  | Daily sync: a workflow rebased the patch stack onto upstream and force-pushed `main` (removed: conflicts almost every run, the rebase is done by hand)                 | dropped |
 | [5]  | Claude usage limits for a setup-token session: let `rate_limit_event` stream updates fill the bars when `get_usage` is unsupported                                     | done    |
 | [4]  | Project and thread switchers in the chat breadcrumb (ported from a community branch, below)                                                                            | done    |
-| [2]  | GitHub Issues: read-only list and detail per project on the web (`/issues`) and in the Android app; comment, edit, label, close/reopen still planned                   | partly  |
+| [2]  | GitHub Issues: read-only list and detail (web, Android), agent tools; UI comment, edit and close still planned                                                         | partly  |
 | [1]  | Linux desktop as a Device-panel device (headless Mutter/GNOME Shell + capture + input)                                                                                 | done    |
 | [0]  | Rebrand as AE Code: own app id and state dir, Aperte icon                                                                                                              | done    |
 
@@ -193,7 +193,15 @@ Built differently from the plan below, to stay small:
 - **Android**: an Issues tab next to Threads, Pulls and Usage. `SplitPage` shows the open issue (or release) beside the list
   once the page is 640 dp wide, such as unfolded, and replaces the list below that. Sort, state and "mine" chips match the web. Settings → Navigation chooses which tabs show; Pulls is
   hidden by default (the choice is saved once changed).
-- Not built: everything that writes (phase B), MCP tools (C), threads from issues (D), iOS.
+- **Agent tools (phase C, landed ahead of the UI writes)**: `IssueProviderApi` gained `createIssue`, `updateIssue` and
+  `commentOnIssue` (REST `POST/PATCH repos/o/r/issues`; an update first reads the issue and refuses a pull request, which the
+  endpoint would otherwise edit), `IssueService` gained `create` and `update` (the optional `comment` goes after the change, so a
+  refused change leaves none). The MCP toolkit `apps/server/src/mcp/toolkits/sourceControl/` exposes `list_issues`, `read_issue`,
+  `create_issue` and `update_issue`, and, over the existing `PullRequestService`, `list_pull_requests`, `read_pull_request`,
+  `comment_on_pull_request`, `review_pull_request`, `update_pull_request` and `act_on_pull_request`. They default to the calling
+  thread's project; labels and assignees on an issue replace the whole set. Not exposed: pull request diffs (git has them),
+  creating a pull request (`gh pr create`, which the thread links), reactions and editing comments, releases.
+- Not built: the UI writes (phase B), threads from issues (D), iOS.
 
 ### Findings in the source (`f26623febe`)
 

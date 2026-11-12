@@ -75,6 +75,7 @@ export type T3McpToolSummaryAction =
   | "unwatch-pr"
   | "write-pr-guides"
   | "read-pr-guide"
+  | "source-control"
   | "browser"
   | "device"
   | "html-preview"
@@ -150,6 +151,48 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
   read_pull_request_guide: tool(
     ["Read", "Reading", "Read", "a review guide"],
     "read-pr-guide",
+    "pull-request",
+  ),
+  list_pull_requests: tool(
+    ["List", "Listing", "Listed", "pull requests"],
+    "source-control",
+    "pull-request",
+  ),
+  read_pull_request: tool(
+    ["Read", "Reading", "Read", "a pull request"],
+    "source-control",
+    "pull-request",
+  ),
+  comment_on_pull_request: tool(
+    ["Comment on", "Commenting on", "Commented on", "a pull request"],
+    "source-control",
+    "pull-request",
+  ),
+  review_pull_request: tool(
+    ["Review", "Reviewing", "Reviewed", "a pull request"],
+    "source-control",
+    "pull-request",
+  ),
+  update_pull_request: tool(
+    ["Update", "Updating", "Updated", "a pull request"],
+    "source-control",
+    "pull-request",
+  ),
+  act_on_pull_request: tool(
+    ["Act on", "Acting on", "Acted on", "a pull request"],
+    "source-control",
+    "pull-request",
+  ),
+  list_issues: tool(["List", "Listing", "Listed", "issues"], "source-control", "pull-request"),
+  read_issue: tool(["Read", "Reading", "Read", "an issue"], "source-control", "pull-request"),
+  create_issue: tool(
+    ["Create", "Creating", "Created", "an issue"],
+    "source-control",
+    "pull-request",
+  ),
+  update_issue: tool(
+    ["Update", "Updating", "Updated", "an issue"],
+    "source-control",
     "pull-request",
   ),
   orchestrator_capabilities: tool(
