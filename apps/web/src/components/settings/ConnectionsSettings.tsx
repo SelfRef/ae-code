@@ -40,6 +40,7 @@ import { useAccessEnvironment } from "./useAccessEnvironment";
 import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsLayout";
 import { ManagedByOrganization } from "../ManagedPolicy";
 import { LocalEnvironmentSetting } from "./LocalEnvironmentSetting";
+import { PrimaryEnvironmentRow } from "./PrimaryEnvironmentRow";
 import { searchableSetting } from "./settingsSearch";
 import { ConnectDeviceApprovalSettings } from "./ConnectDeviceApprovalSettings";
 import { EnvironmentIconMenu } from "./EnvironmentIconPicker";
@@ -1707,6 +1708,9 @@ function ConnectionsSettingsContent({
           </div>
         }
       >
+        {!desktopBridge && primaryEnvironment ? (
+          <PrimaryEnvironmentRow environment={primaryEnvironment} />
+        ) : null}
         {listedEnvironments.map((environment) => (
           <SavedBackendListRow
             key={environment.environmentId}
