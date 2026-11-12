@@ -124,6 +124,57 @@ describe("GitHubIssueProvider", () => {
     }).pipe(Effect.provide(api));
   });
 
+  it.effect("creates, updates and comments on an issue, and never edits a pull request", () => {
+    const calls: Array<{ method: string | undefined; path: string; body: unknown }> = [];
+    const api = Layer.mock(GitHubRest.GitHubRest)({
+      rest: (input) => {
+        calls.push({ method: input.method, path: input.path, body: input.body });
+        return respond(
+          input.path.endsWith("/issues/9")
+            ? issue(9, { pull_request: {} })
+            : issue(8, { state: input.method === "PATCH" ? "closed" : "open" }),
+        );
+      },
+    });
+    return Effect.gen(function* () {
+      const provider = yield* GitHubIssueProvider.make;
+      const target = { host: "github.com", repository: "o/r" };
+      const created = yield* provider.createIssue({ ...target, title: "Crash", labels: ["bug"] });
+      const closed = yield* provider.updateIssue({
+        ...target,
+        number: 8,
+        state: "closed",
+        stateReason: "not-planned",
+      });
+      yield* provider.commentOnIssue({ ...target, number: 8, body: "done" });
+      const refused = yield* provider
+        .updateIssue({ ...target, number: 9, title: "x" })
+        .pipe(Effect.flip);
+      assert.strictEqual(created.number, 8);
+      assert.strictEqual(closed.state, "closed");
+      assert.strictEqual(refused.reason, "not-found");
+      assert.deepStrictEqual(
+        calls.map((call) => [call.method ?? "GET", call.path]),
+        [
+          ["POST", "repos/o/r/issues"],
+          ["GET", "repos/o/r/issues/8"],
+          ["PATCH", "repos/o/r/issues/8"],
+          ["POST", "repos/o/r/issues/8/comments"],
+          ["GET", "repos/o/r/issues/9"],
+        ],
+      );
+      assert.deepStrictEqual(calls[2]?.body, {
+        title: undefined,
+        body: undefined,
+        state: "closed",
+        state_reason: "not_planned",
+        labels: undefined,
+        assignees: undefined,
+      });
+      assert.deepStrictEqual(calls[3]?.body, { body: "done" });
+    }).pipe(Effect.provide(api));
+  });
+
   it.effect("maps a refused credential and rejects a malformed repository", () => {
     const api = Layer.mock(GitHubRest.GitHubRest)({
       rest: (input) =>
