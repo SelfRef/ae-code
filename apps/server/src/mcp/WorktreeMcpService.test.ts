@@ -4,6 +4,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
   CommandId,
   EnvironmentId,
+  GitManagerError,
   type OrchestrationV2ThreadProjection,
   type Project,
   ProjectId,
@@ -122,6 +123,7 @@ interface HarnessOptions {
   readonly existsFails?: boolean;
   readonly runStatuses?: ReadonlyArray<string>;
   readonly flatBranchExists?: boolean;
+  readonly settleAfterMerge?: boolean;
 }
 
 const makeHarness = (options: HarnessOptions = {}) => {
@@ -256,6 +258,19 @@ const makeHarness = (options: HarnessOptions = {}) => {
     }),
   );
   const refreshStatus = vi.fn((_: string) => Effect.die("refreshStatus stub"));
+  const settleThread = vi.fn((_: unknown) => Effect.succeed({ sequence: 1 }));
+  const getThreadShell = vi.fn((_: ThreadId) => Effect.succeed({ projectId } as never));
+  const runStackedAction = vi.fn((_: unknown) =>
+    Effect.succeed({
+      action: "merge",
+      branch: { status: "skipped_not_requested" },
+      commit: { status: "skipped_not_requested" },
+      push: { status: "skipped_not_requested" },
+      pr: { status: "skipped_not_requested" },
+      merge: { status: "merged", baseBranch: "main", commitSha: "abc123" },
+      toast: { title: "Merged into main", description: "Committed first.", cta: { kind: "none" } },
+    } as never),
+  );
   const runForThread = vi.fn((input: { readonly worktreePath: string }) => {
     switch (options.setupScript ?? "started") {
       case "no-script":
@@ -288,12 +303,15 @@ const makeHarness = (options: HarnessOptions = {}) => {
         Layer.mock(ThreadManagementService.ThreadManagementService)({
           dispatch,
           getThreadRecords,
+          settleThread,
+          getThreadShell,
         } satisfies Partial<ThreadManagementService.ThreadManagementService["Service"]>),
         Layer.mock(ProjectService.ProjectService)({
           getById,
         } satisfies Partial<ProjectService.ProjectService["Service"]>),
         ServerSettings.layerTest({
           newWorktreesStartFromOrigin: options.newWorktreesStartFromOrigin ?? false,
+          settleAfterMerge: options.settleAfterMerge ?? false,
           ...(options.projectNewWorktreesStartFromOrigin === undefined
             ? {}
             : {
@@ -313,6 +331,7 @@ const makeHarness = (options: HarnessOptions = {}) => {
           createWorktree,
           removeWorktree,
           deleteLocalBranch,
+          runStackedAction,
           ...options.git,
         } satisfies Partial<GitWorkflowService.GitWorkflowService["Service"]>),
         Layer.mock(ProjectSetupScriptRunner.ProjectSetupScriptRunner)({
@@ -351,6 +370,8 @@ const makeHarness = (options: HarnessOptions = {}) => {
     deleteLocalBranch,
     localStatus,
     runForThread,
+    runStackedAction,
+    settleThread,
   };
 };
 
@@ -382,6 +403,15 @@ const runStatus = (harness: ReturnType<typeof makeHarness>) =>
   Effect.gen(function* () {
     const service = yield* WorktreeMcpService.WorktreeMcpService;
     return yield* service.status(harness.scope);
+  }).pipe(Effect.provide(harness.layer));
+
+const runMerge = (
+  harness: ReturnType<typeof makeHarness>,
+  input: Parameters<WorktreeMcpService.WorktreeMcpService["Service"]["merge"]>[1] = {},
+) =>
+  Effect.gen(function* () {
+    const service = yield* WorktreeMcpService.WorktreeMcpService;
+    return yield* service.merge(harness.scope, input);
   }).pipe(Effect.provide(harness.layer));
 
 const runMove = (harness: ReturnType<typeof makeHarness>) =>
@@ -711,6 +741,60 @@ describe("t3_worktree_status", () => {
         branch: "feature/existing",
         defaultStartFromOrigin: true,
       });
+    });
+  });
+});
+
+describe("t3_worktree_merge", () => {
+  it.effect("merges the thread's branch from the project root once its worktree is gone", () => {
+    const harness = makeHarness({ thread: { worktreePath: "/worktrees/project/removed" } });
+    return Effect.gen(function* () {
+      const result = yield* runMerge(harness, { action: "merge_push" });
+      expect(harness.runStackedAction).toHaveBeenCalledWith(
+        expect.objectContaining({ cwd: workspaceRoot, action: "merge_push", threadId }),
+      );
+      expect(result).toMatchObject({
+        summary: "Merged into main. Committed first.",
+        baseBranch: "main",
+        merged: true,
+        pushed: false,
+      });
+      expect(harness.settleThread).not.toHaveBeenCalled();
+    });
+  });
+
+  it.effect("returns the failure to the agent and settles only after a merge when asked to", () => {
+    const failing = makeHarness({
+      git: {
+        runStackedAction: () =>
+          Effect.fail(
+            new GitManagerError({
+              operation: "runStackedAction",
+              cwd: workspaceRoot,
+              detail: "Rebasing hit conflicts",
+            }),
+          ),
+      },
+      settleAfterMerge: true,
+    });
+    const settling = makeHarness({ settleAfterMerge: true });
+    return Effect.gen(function* () {
+      const exit = yield* Effect.exit(runMerge(failing));
+      expectTypedFailure(exit, { _tag: "WorktreeMcpFailure", code: "operation_failed" });
+      expect(failing.settleThread).not.toHaveBeenCalled();
+
+      yield* runMerge(settling);
+      expect(settling.settleThread).toHaveBeenCalledWith(
+        expect.objectContaining({ threadId, byOwnAgent: true }),
+      );
+    });
+  });
+
+  it.effect("needs the worktree capability", () => {
+    const harness = makeHarness({ capabilities: new Set(["preview"]) });
+    return Effect.gen(function* () {
+      expectTypedFailure(yield* Effect.exit(runMerge(harness)), { code: "capability_denied" });
+      expect(harness.runStackedAction).not.toHaveBeenCalled();
     });
   });
 });

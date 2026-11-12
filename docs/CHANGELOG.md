@@ -12,6 +12,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 - The hover popup of a sidebar thread now starts with its status (Working, Waiting, Approval, Done, Settled, Idle, ...).
 - Settings → Environments on the web now lists the server the page is served from as its first row, as the desktop app already did, so it no longer looks like there is only one environment.
+- Agents get a `t3_worktree_merge` tool that lands their thread's branch on the default branch (optionally pushing it), the same as the Default branch button, so they can finish their own work when you ask them to merge.
 - Settings → Source control → **Settle thread after merge** (off by default, web and Android): a merge from a thread's Default branch button settles the thread.
 - A thread whose branch was merged into the default branch shows the merged icon in the sidebar when it has no pull request, and its Merge button reads **Merged** until the branch gets new commits.
 - Actions: a **Run before the thread merges into the default branch** switch (and `"runBeforeMerge"` in `t3.json`) runs an action, such as your tests, after the merge's rebase and before it lands; a failure stops the merge and hands it to the agent.

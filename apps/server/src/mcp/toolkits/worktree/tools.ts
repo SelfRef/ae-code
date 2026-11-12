@@ -6,6 +6,8 @@ import {
   VcsListRefsResult,
   WorktreeMcpHandoffInput,
   WorktreeMcpHandoffResult,
+  WorktreeMcpMergeInput,
+  WorktreeMcpMergeResult,
   WorktreeMcpStatusResult,
   ThreadId,
 } from "@t3tools/contracts";
@@ -58,6 +60,21 @@ const WorktreeStatusTool = Tool.make("t3_worktree_status", {
   .annotate(Tool.Idempotent, true)
   .annotate(Tool.OpenWorld, false);
 
+const WorktreeMergeTool = Tool.make("t3_worktree_merge", {
+  description:
+    "Land THIS thread's branch on the project's default branch (commits pending changes, rebases, fast-forwards or squashes per project settings, runs the project's before-merge action) and optionally push it. Fails with the reason instead of leaving anything half-done: fix it and call again. Only when the user wants the work merged.",
+  parameters: WorktreeMcpMergeInput,
+  success: WorktreeMcpMergeResult,
+  failure: WorktreeToolFailure,
+  failureMode: "return",
+  dependencies,
+})
+  .annotate(Tool.Title, "Merge thread into the default branch")
+  .annotate(Tool.Readonly, false)
+  .annotate(Tool.Destructive, true)
+  .annotate(Tool.Idempotent, true)
+  .annotate(Tool.OpenWorld, true);
+
 const WorktreeListTool = Tool.make("t3_worktree_list", {
   description:
     "List branch refs and checkout paths for a thread's workspace. Omit `threadId` for this thread. Detached worktrees with no branch are left out.",
@@ -85,5 +102,6 @@ const WorktreeListTool = Tool.make("t3_worktree_list", {
 export const WorktreeToolkit = Toolkit.make(
   WorktreeHandoffTool,
   WorktreeStatusTool,
+  WorktreeMergeTool,
   WorktreeListTool,
 );
