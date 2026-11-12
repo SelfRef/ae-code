@@ -107,6 +107,7 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
   const mixedCurrentBranch = useScopedSettingsMixed(["currentBranchAction"]);
   const mixedQuickMerge = useScopedSettingsMixed(["quickMergeAction"]);
   const mixedMergeStrategy = useScopedSettingsMixed(["mergeStrategy"]);
+  const mixedSettleAfterMerge = useScopedSettingsMixed(["settleAfterMerge"]);
   const modelSource = useScopedSettingSource(["defaultModelSelection"]);
   const isProjectScope = scope.kind === "project" || scope.kind === "checkout";
   const unavailable = connectedEnvironments.length === 0;
@@ -642,6 +643,30 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
                   <SelectItem value="squash">Squash into one commit</SelectItem>
                 </SelectPopup>
               </Select>
+            }
+          />
+          <SettingsRow
+            serverScoped
+            settingKeys={["settleAfterMerge"]}
+            mixed={mixedSettleAfterMerge}
+            {...searchableSetting("settle-after-merge")}
+            description="Settle a thread once its branch is merged into the default branch from its Default branch button."
+            resetAction={
+              settings.settleAfterMerge ? (
+                <SettingResetButton
+                  label="settle after merge"
+                  tooltip="Keep threads active after a merge"
+                  onClick={() => updateSettings({ settleAfterMerge: false })}
+                />
+              ) : null
+            }
+            control={
+              <Switch
+                aria-label="Settle thread after merge"
+                mixed={mixedSettleAfterMerge}
+                checked={mixedSettleAfterMerge ? false : settings.settleAfterMerge}
+                onCheckedChange={(enabled) => updateSettings({ settleAfterMerge: enabled })}
+              />
             }
           />
         </>

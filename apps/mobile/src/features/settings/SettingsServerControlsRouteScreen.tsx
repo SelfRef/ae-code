@@ -74,6 +74,7 @@ const PAGE_PROJECT_KEYS: Record<SettingsPage, readonly ProjectScopedServerSettin
     "currentBranchAction",
     "quickMergeAction",
     "mergeStrategy",
+    "settleAfterMerge",
   ],
   worktrees: [
     "newWorktreesStartFromOrigin",
@@ -577,6 +578,19 @@ function ServerSettingsDetail(props: { readonly page: SettingsPage }) {
                       onPress={() => write({ mergeStrategy: choice.mode })}
                     />
                   ))}
+                </SettingsSection>
+                <SettingsSection title="After a merge">
+                  <SettingsSwitchRow
+                    icon={PullRequestGlyph.merged}
+                    label="Settle thread after merge"
+                    subtitle={managedSubtitle(
+                      "settleAfterMerge",
+                      "Settle a thread once its branch is merged into the default branch from its Default branch button.",
+                    )}
+                    value={uniform("settleAfterMerge")}
+                    disabled={disabledFor("settleAfterMerge")}
+                    onValueChange={(value) => write({ settleAfterMerge: value })}
+                  />
                 </SettingsSection>
                 <SettingsSection title="Default branch">
                   <SettingsSwitchRow
