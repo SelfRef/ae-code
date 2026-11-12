@@ -1460,4 +1460,7 @@ merged into the default branch.
   `mergedIntoDefault` (the contract `VcsStatusLocalResult`, so the sidebar's local-only status poll sees it): the key
   exists and the branch tip is within that commit, so a new commit on the branch clears it. The web sidebar row shows
   the merged glyph when no pull request is shown, and the Default branch section's disabled Merge reads "Merged".
+- **Settle after merge.** A project setting `settleAfterMerge` (off by default; Settings → Source control, web and
+  Android) settles the thread after a successful merge from its Default branch button (`ws.ts`, after the action, for a
+  session that may operate threads). It reuses the manual settle command, so the settle script and cleanup rules apply.
 - No data migration.

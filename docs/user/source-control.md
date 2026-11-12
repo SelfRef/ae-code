@@ -209,7 +209,8 @@ unpushed), the merge also updates the branch's remote copy to match, so it does 
 removes them.
 
 A thread whose branch was merged shows a merged icon in the sidebar (when it has no pull
-request) and its Merge button reads **Merged** until the branch gets new commits.
+request) and its Merge button reads **Merged** until the branch gets new commits. Turn on
+**Settings → Source control → Settle thread after merge** to settle the thread right after a merge.
 
 To check the work before it lands, turn on **Run before the thread merges into the default
 branch (a failure stops it)** for one of the project's actions (Settings → Projects → Actions), or

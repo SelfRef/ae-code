@@ -1178,6 +1178,7 @@ export const PROJECT_SCOPED_SERVER_SETTING_KEYS = [
   "currentBranchAction",
   "quickMergeAction",
   "mergeStrategy",
+  "settleAfterMerge",
   "worktreeSubmodules",
   "defaultAutoPull",
   "defaultProjectScripts",
@@ -1221,6 +1222,7 @@ export const ProjectSettingsOverrides = Schema.Struct({
   currentBranchAction: ForwardCompatibleOptional(CurrentBranchAction),
   quickMergeAction: ForwardCompatibleOptional(QuickMergeAction),
   mergeStrategy: ForwardCompatibleOptional(MergeStrategy),
+  settleAfterMerge: Schema.optionalKey(Schema.Boolean),
   worktreeSubmodules: ForwardCompatibleOptional(WorktreeSubmodules),
   defaultAutoPull: Schema.optionalKey(Schema.Boolean),
   defaultProjectScripts: Schema.optionalKey(Schema.Array(ProjectScript)),
@@ -1526,6 +1528,7 @@ export const ServerSettings = Schema.Struct({
   mergeStrategy: MergeStrategy.pipe(
     Schema.withDecodingDefault(Effect.succeed("fast-forward" as const)),
   ),
+  settleAfterMerge: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   /** Null inherits t3.json, then recursive; unknown values decode to null for older clients. */
   worktreeSubmodules: ForwardCompatibleNullable(WorktreeSubmodules).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
@@ -1936,6 +1939,7 @@ export const ServerSettingsPatch = Schema.Struct({
   currentBranchAction: Schema.optionalKey(CurrentBranchAction),
   quickMergeAction: Schema.optionalKey(QuickMergeAction),
   mergeStrategy: Schema.optionalKey(MergeStrategy),
+  settleAfterMerge: Schema.optionalKey(Schema.Boolean),
   worktreeSubmodules: Schema.optionalKey(Schema.NullOr(WorktreeSubmodules)),
   addProjectBaseDirectory: Schema.optionalKey(TrimmedString),
   ghqCloneLayout: Schema.optionalKey(Schema.Boolean),

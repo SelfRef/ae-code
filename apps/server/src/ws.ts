@@ -41,6 +41,7 @@ import {
   type OrchestrationV2Command,
   type GitActionProgressEvent,
   type GitRunStackedActionInput,
+  type GitRunStackedActionResult,
   type ModelSelection,
   type GitManagerServiceError,
   type MessageId,
@@ -171,6 +172,7 @@ import {
   threadStreamEventItem,
 } from "./orchestration-v2/WireProjection.ts";
 import { dedupeSnapshotBodies } from "@t3tools/shared/orchestrationV2DedupedBodies";
+import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import * as ProjectStore from "./orchestration-v2/ProjectStore.ts";
 import * as ThreadSearch from "./orchestration-v2/ThreadSearch.ts";
 import * as OrchestrationEventStore from "./persistence/OrchestrationEventStore.ts";
@@ -1520,6 +1522,29 @@ export const layerWsRpc = (
                   ),
                 ),
             };
+      // A merge from a thread's Default branch button can settle the thread, if the project says so.
+      const settleAfterMerge = (
+        { threadId }: GitRunStackedActionInput,
+        result: GitRunStackedActionResult,
+      ) =>
+        threadId === undefined ||
+        result.merge === undefined ||
+        !currentSession.scopes.includes(AuthOrchestrationOperateScope)
+          ? Effect.void
+          : Effect.gen(function* () {
+              const shell = yield* threadManagement.getThreadShell(threadId);
+              if (shell === null) return;
+              const { settings } = resolveProjectSettings(
+                yield* serverSettings.getSettings,
+                shell.projectId,
+              );
+              if (!settings.settleAfterMerge) return;
+              yield* threadManagement.settleThread({
+                threadId,
+                commandId: yield* serverCommandId("settle-after-merge"),
+                byOwnAgent: false,
+              });
+            }).pipe(Effect.ignore({ log: true }));
       const resolvePullRequestSyncKey = (reference: PullRequestRef) =>
         reference.host !== undefined && reference.repository.includes("/")
           ? Effect.succeed(pullRequestSyncKey(reference))
@@ -3186,6 +3211,7 @@ export const layerWsRpc = (
                           ),
                         ),
                       ),
+                      Effect.andThen(settleAfterMerge(input, result)),
                       Effect.andThen(refreshGitStatus(input.cwd)),
                       Effect.andThen(Queue.end(queue).pipe(Effect.asVoid)),
                     ),
