@@ -1136,10 +1136,10 @@ and `merge_push` (both commit pending changes first), plus a project-scoped sett
 
 - Logic is `apps/server/src/git/mergeIntoDefault.ts`, run from `GitManager.runStackedAction` as a `merge` phase.
 - Fast-forward only: rebase the branch onto the default branch if it moved, then `merge --ff-only` in the default
-  branch's own checkout, which must have no tracked changes. A default branch checked out nowhere is advanced with
+  branch's own checkout (its uncommitted edits stay unless they are in the merge's way, see change 46). A default branch checked out nowhere is advanced with
   `git fetch . branch:default`. A rebase conflict is aborted and reported; nothing is left half-done.
 - The push goes to the default branch's configured remote branch, or the primary remote's same-named branch.
-- When a merge fails (a rebase conflict, a dirty default checkout) and the session may operate threads, the server hands it
+- When a merge fails (a rebase conflict, edits in the default checkout that are in the merge's way) and the session may operate threads, the server hands it
   to the thread's agent (`apps/server/src/git/handOffMerge.ts`, wired in `ws.ts` through `GitManager`'s `handOffMerge`
   option). It dispatches a server-created `system` notice carrying the error and the steps (rebase, resolve conflicts,
   fast-forward the default branch, push if the action pushed), like compaction runs as its own turn, and holds the action
@@ -1431,4 +1431,7 @@ merged into the default branch.
 - **Cleanup follows the local default branch.** A worktree whose branch was merged into the local default branch is
   "unchanged" for cleanup even before that branch is pushed (it used to need `origin/<default>` to contain the head).
   The commits are safe in the local default branch, and the branch itself is never deleted.
+- **Edits in the default checkout stay.** The merge no longer demands a clean default checkout: `git merge --ff-only`
+  runs there and refuses, changing nothing, only when uncommitted or untracked files are in the way of what it
+  changes, so merging while you work on the default branch no longer hands the merge to the agent.
 - No data migration.

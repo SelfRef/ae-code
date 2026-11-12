@@ -6728,10 +6728,26 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       }),
     );
 
-    it.effect("refuses, changing nothing, when the default branch's checkout has edits", () =>
+    it.effect("keeps edits in the default branch's checkout that the merge does not touch", () =>
       Effect.gen(function* () {
         const { repoDir, worktreeDir, subjects } = yield* setupMerge;
         NodeFS.writeFileSync(NodePath.join(repoDir, "README.md"), "edited\n");
+        const { manager } = yield* makeManager();
+        yield* runStackedAction(manager, { cwd: worktreeDir, action: "merge" });
+
+        expect(yield* subjects(repoDir, "main")).toEqual(["Thread work", "Initial commit"]);
+        expect(NodeFS.readFileSync(NodePath.join(repoDir, "README.md"), "utf8")).toBe("edited\n");
+        expect(NodeFS.existsSync(NodePath.join(repoDir, "thread.txt"))).toBe(true);
+      }),
+    );
+
+    it.effect("refuses, changing nothing, when edits there are in the way of the merge", () =>
+      Effect.gen(function* () {
+        const { repoDir, worktreeDir, subjects } = yield* setupMerge;
+        NodeFS.writeFileSync(NodePath.join(repoDir, "README.md"), "edited\n");
+        NodeFS.writeFileSync(NodePath.join(worktreeDir, "README.md"), "thread edit\n");
+        yield* runGit(worktreeDir, ["add", "README.md"]);
+        yield* runGit(worktreeDir, ["commit", "-q", "-m", "Touch README"]);
         const { manager } = yield* makeManager();
         const failed = yield* runStackedAction(manager, { cwd: worktreeDir, action: "merge" }).pipe(
           Effect.result,
@@ -6742,6 +6758,7 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
           "uncommitted changes",
         );
         expect(yield* subjects(repoDir, "main")).toEqual(["Initial commit"]);
+        expect(NodeFS.readFileSync(NodePath.join(repoDir, "README.md"), "utf8")).toBe("edited\n");
       }),
     );
 
