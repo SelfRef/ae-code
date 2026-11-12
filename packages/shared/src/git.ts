@@ -380,6 +380,7 @@ function toLocalStatusPart(status: VcsStatusResult): VcsStatusLocalResult {
     hasWorkingTreeChanges: status.hasWorkingTreeChanges,
     workingTree: status.workingTree,
     ...(status.branchChanges ? { branchChanges: status.branchChanges } : {}),
+    ...(status.mergedIntoDefault ? { mergedIntoDefault: true } : {}),
   };
 }
 

@@ -92,6 +92,7 @@ export interface GitStatusDetails {
   aheadCount: number;
   behindCount: number;
   aheadOfDefaultCount: number;
+  mergedIntoDefault?: boolean;
 }
 
 export interface GitLocalStatusOptions {

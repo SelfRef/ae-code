@@ -6842,6 +6842,25 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       }),
     );
 
+    it.effect("reports a merged branch until it gets new commits", () =>
+      Effect.gen(function* () {
+        const { worktreeDir } = yield* setupMerge;
+        const { manager } = yield* makeManager();
+        const merged = () =>
+          manager
+            .status({ cwd: worktreeDir })
+            .pipe(Effect.map((status) => status.mergedIntoDefault));
+        expect(yield* merged()).toBeFalsy();
+
+        yield* runStackedAction(manager, { cwd: worktreeDir, action: "merge" });
+        expect(yield* merged()).toBe(true);
+
+        yield* runGit(worktreeDir, ["commit", "--allow-empty", "-m", "More thread work"]);
+        yield* manager.invalidateStatus(worktreeDir);
+        expect(yield* merged()).toBeFalsy();
+      }),
+    );
+
     it.effect("queues merges from several worktrees of one repository", () =>
       Effect.gen(function* () {
         const { repoDir, worktreeDir, subjects } = yield* setupMerge;

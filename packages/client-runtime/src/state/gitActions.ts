@@ -454,9 +454,11 @@ export function resolveDefaultBranchActions(
   const mergeDisabled = isBusy || (!hasChanges && mergeCommits <= 0);
   const pushDisabled = isBusy || pushCommits <= 0;
   const mergeLabel = (andPush: boolean) =>
-    hasChanges
-      ? `${files > 0 ? `Commit ${plural(files, "file")}` : "Commit"}${andPush ? ", merge & push" : " & merge"}`
-      : `Merge${mergeCommits > 0 ? ` ${plural(mergeCommits, "commit")}` : ""}${andPush ? " & push" : ""}`;
+    !andPush && !hasChanges && mergeCommits <= 0 && gitStatus.mergedIntoDefault === true
+      ? "Merged"
+      : hasChanges
+        ? `${files > 0 ? `Commit ${plural(files, "file")}` : "Commit"}${andPush ? ", merge & push" : " & merge"}`
+        : `Merge${mergeCommits > 0 ? ` ${plural(mergeCommits, "commit")}` : ""}${andPush ? " & push" : ""}`;
   const item = (
     id: DefaultBranchActionItem["id"],
     label: string,

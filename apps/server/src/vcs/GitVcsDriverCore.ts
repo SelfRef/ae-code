@@ -73,6 +73,8 @@ import * as ServerConfig from "../config.ts";
 import { sourceControlDefinitions } from "../sourceControl/sourceControlDefinitions.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
+/** Written by the merge into the default branch: the commit the branch landed as. */
+const MERGED_INTO_DEFAULT_CONFIG_KEY = "t3-merged-sha";
 /** T3's record of the branch, named as on the host, that a branch was cut from. */
 const branchBaseConfigKey = (branch: string) => `branch.${branch}.t3-merge-base`;
 /**
@@ -2609,19 +2611,37 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
             excludeLocalBase,
           }).pipe(Effect.orElseSucceed(() => 0))
         : Effect.succeed(0);
-    const [baseAheadCount, baseAheadOfDefaultCount, branchChanges] = yield* Effect.all(
-      [
-        needsFallbackAhead ? countAhead(false) : Effect.succeed(0),
-        needsAheadOfDefault ? countAhead(true) : Effect.succeed(0),
-        options?.includeBranchChanges
-          ? readBranchChangeTotals(repositoryPaths?.worktreeRoot ?? cwd, refName, {
-              knownOriginDefaultBranch: defaultBranch,
-              untrackedRoots,
-            }).pipe(Effect.orElseSucceed(() => undefined))
-          : Effect.undefined,
-      ],
-      { concurrency: "unbounded" },
-    );
+    // A branch counts as merged while its tip is within what the merge landed, so new commits clear it.
+    const readMerged = Effect.gen(function* () {
+      if (refName === null || isDefaultBranch) return false;
+      const landed = yield* readConfigValue(
+        cwd,
+        `branch.${refName}.${MERGED_INTO_DEFAULT_CONFIG_KEY}`,
+      );
+      if (landed === null) return false;
+      const ancestor = yield* executeGit(
+        "GitVcsDriver.statusDetails.mergedIntoDefault",
+        cwd,
+        ["merge-base", "--is-ancestor", "HEAD", landed],
+        { allowNonZeroExit: true },
+      );
+      return ancestor.exitCode === 0;
+    }).pipe(Effect.orElseSucceed(() => false));
+    const [baseAheadCount, baseAheadOfDefaultCount, branchChanges, mergedIntoDefault] =
+      yield* Effect.all(
+        [
+          needsFallbackAhead ? countAhead(false) : Effect.succeed(0),
+          needsAheadOfDefault ? countAhead(true) : Effect.succeed(0),
+          options?.includeBranchChanges
+            ? readBranchChangeTotals(repositoryPaths?.worktreeRoot ?? cwd, refName, {
+                knownOriginDefaultBranch: defaultBranch,
+                untrackedRoots,
+              }).pipe(Effect.orElseSucceed(() => undefined))
+            : Effect.undefined,
+          readMerged,
+        ],
+        { concurrency: "unbounded" },
+      );
 
     if (needsFallbackAhead) {
       aheadCount = baseAheadCount;
@@ -2671,6 +2691,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
       aheadCount,
       behindCount,
       aheadOfDefaultCount,
+      mergedIntoDefault,
     };
   });
 

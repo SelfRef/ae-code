@@ -1457,4 +1457,9 @@ merged into the default branch.
   `beforeLand` effect that runs after the rebase, inside the repository lock, so the checked commit is what lands; a
   non-zero exit (or the terminal closing) fails the merge, which then goes to the agent like a conflict. Threads
   without a thread id (no terminal to open) skip it. Android has no action editor and runs nothing itself.
+- **A merged thread says so.** A merge into the default branch records the commit it landed as in the branch's git
+  config (`branch.<name>.t3-merged-sha`, next to the existing `t3-merge-base*` keys). The local status part carries
+  `mergedIntoDefault` (the contract `VcsStatusLocalResult`, so the sidebar's local-only status poll sees it): the key
+  exists and the branch tip is within that commit, so a new commit on the branch clears it. The web sidebar row shows
+  the merged glyph when no pull request is shown, and the Default branch section's disabled Merge reads "Merged".
 - No data migration.
