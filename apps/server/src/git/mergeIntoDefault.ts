@@ -48,6 +48,8 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
      * Turns a branch of several commits into one before it lands; given the default branch's ref,
      * it writes the commit message. The branch is reset to the new commit, so its own history is gone.
      */
+    /** Runs after the rebase, with the default branch locked, and stops the merge by failing. */
+    readonly beforeLand?: Effect.Effect<void, GitManagerError>;
     readonly squashMessage?: (baseRef: string) => Effect.Effect<string, GitManagerError>;
   },
 ): Effect.fn.Return<MergeIntoDefaultResult, GitManagerError | GitCommandError> {
@@ -205,6 +207,7 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
       `refs/heads/${base}`,
     ]);
     if (merged) break;
+    if (input.beforeLand !== undefined) yield* input.beforeLand;
     if (input.squashMessage !== undefined) yield* squash(input.squashMessage);
     const failure = yield* fastForward();
     if (failure === null) break;

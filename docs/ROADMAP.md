@@ -1448,4 +1448,11 @@ merged into the default branch.
   generator (given the branch's diff against the default branch), then `reset --soft` of the thread's branch to it, so
   the branch is "merged" like any other and a pushed upstream is re-synced. The commit is made without hooks, and the
   branch's own commits are only left in the reflog. A single commit is kept as it is.
+- **Check before merging.** An action can hold a third role next to "run on worktree creation" and "run when the thread
+  settles": `runBeforeMerge` (one action per project, like the others; also `"runBeforeMerge"` in `t3.json`; web editor
+  switch, "before merge" badge). `ProjectSetupScriptRunner.runForThread` takes `trigger: "merge"`, which opens a
+  `merge-<action>-<id>` terminal in the thread's checkout and waits for its exit code. `mergeIntoDefault` takes a
+  `beforeLand` effect that runs after the rebase, inside the repository lock, so the checked commit is what lands; a
+  non-zero exit (or the terminal closing) fails the merge, which then goes to the agent like a conflict. Threads
+  without a thread id (no terminal to open) skip it. Android has no action editor and runs nothing itself.
 - No data migration.

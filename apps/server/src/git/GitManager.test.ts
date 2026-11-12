@@ -582,6 +582,7 @@ function runStackedAction(
       | "merge_push"
       | "push_default";
     actionId?: string;
+    threadId?: ThreadId;
     commitMessage?: string;
     featureBranch?: boolean;
     filePaths?: readonly string[];
@@ -6323,6 +6324,48 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
         yield* runStackedAction(manager, { cwd: worktreeDir, action: "merge" });
 
         expect(yield* subjects(repoDir, "main")).toEqual(["Thread work", "Initial commit"]);
+      }),
+    );
+
+    it.effect.each([
+      [0, true],
+      [1, false],
+    ] as const)("runs the before-merge action first (exit %i)", ([exitCode, merges]) =>
+      Effect.gen(function* () {
+        const { repoDir, worktreeDir, subjects } = yield* setupMerge;
+        const triggers: Array<string | undefined> = [];
+        const { manager } = yield* makeManager({
+          setupScriptRunner: {
+            runForThread: (runInput) =>
+              Effect.sync(() => {
+                triggers.push(runInput.trigger);
+                return {
+                  status: "started" as const,
+                  scriptId: "check",
+                  scriptName: "Check",
+                  scriptCommand: "true",
+                  terminalId: "merge-check-1",
+                  cwd: runInput.worktreePath,
+                  async: true,
+                  completion: Effect.succeed({ exitCode, durationMs: 1 }),
+                };
+              }),
+          },
+        });
+        const result = yield* runStackedAction(manager, {
+          cwd: worktreeDir,
+          action: "merge",
+          threadId: asThreadId("thread-check"),
+        }).pipe(Effect.result);
+
+        expect(triggers).toEqual(["merge"]);
+        expect(Result.isSuccess(result)).toBe(merges);
+        expect(yield* subjects(repoDir, "main")).toEqual(
+          merges ? ["Thread work", "Initial commit"] : ["Initial commit"],
+        );
+        if (Result.isFailure(result)) {
+          expect(String(result.failure.message)).toContain('The "Check" action failed');
+        }
       }),
     );
 

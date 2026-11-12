@@ -12,6 +12,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 - The hover popup of a sidebar thread now starts with its status (Working, Waiting, Approval, Done, Settled, Idle, ...).
 - Settings → Environments on the web now lists the server the page is served from as its first row, as the desktop app already did, so it no longer looks like there is only one environment.
+- Actions: a **Run before the thread merges into the default branch** switch (and `"runBeforeMerge"` in `t3.json`) runs an action, such as your tests, after the merge's rebase and before it lands; a failure stops the merge and hands it to the agent.
 - Settings → Source control → Merge strategy: **Squash into one commit** makes a merge into the default branch land a branch of several commits as one commit with a generated message (web, desktop and Android). The default keeps the commits.
 - Settings → Voice → Input: a switch hides the microphone button in the message box. The dictation shortcut still works.
 - Releases now include a Windows x64 server (`ae-code-windows-x64.zip`) and desktop installer (`AE-Code-<version>-x64.exe`). The Windows desktop app updates itself from the releases (Settings → About, or the update button). Both are unsigned and not yet tested on a real Windows machine.
