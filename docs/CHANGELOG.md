@@ -31,6 +31,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Fixed
 
+- Merging several threads of one project into the default branch at the same time no longer fails for the slower ones: the merges now run one after another, and a merge rebases once more if the default branch moved meanwhile.
 - Merging into the default branch no longer fails because you have uncommitted edits in that branch's checkout: only edits to files the merge changes, or untracked files in its way, stop it.
 - Worktree cleanup now removes a worktree whose branch was merged into the local default branch even before that branch is pushed, like the Branches page already counted it.
 - Expanding a system row such as "Merging by the agent" at the bottom of a chat now scrolls its details into view instead of opening them behind the composer.

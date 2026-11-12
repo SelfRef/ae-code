@@ -6255,6 +6255,28 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       }),
     );
 
+    it.effect("queues merges from several worktrees of one repository", () =>
+      Effect.gen(function* () {
+        const { repoDir, worktreeDir, subjects } = yield* setupMerge;
+        const second = NodePath.join(yield* makeTempDir("t3code-git-worktrees-"), "second");
+        yield* runGit(repoDir, ["worktree", "add", "-b", "feature/second", second, "main"]);
+        NodeFS.writeFileSync(NodePath.join(second, "second.txt"), "second work\n");
+        yield* runGit(second, ["add", "second.txt"]);
+        yield* runGit(second, ["commit", "-m", "Second work"]);
+        const { manager } = yield* makeManager();
+        yield* Effect.forEach(
+          [worktreeDir, second],
+          (cwd) => runStackedAction(manager, { cwd, action: "merge" }),
+          { concurrency: "unbounded" },
+        );
+
+        expect(new Set(yield* subjects(repoDir, "main"))).toEqual(
+          new Set(["Thread work", "Second work", "Initial commit"]),
+        );
+        expect((yield* runGit(repoDir, ["rev-list", "--merges", "main"])).stdout.trim()).toBe("");
+      }),
+    );
+
     it.effect("keeps edits in the default branch's checkout that the merge does not touch", () =>
       Effect.gen(function* () {
         const { repoDir, worktreeDir, subjects } = yield* setupMerge;
