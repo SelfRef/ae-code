@@ -59,7 +59,7 @@ export function pinnedRuntimePaths(
   const versionDir = path.join(pinnedRuntimeVersionsDir(path, baseDir), version);
   return {
     versionDir,
-    entryPath: path.join(versionDir, platform === "win32" ? "t3.exe" : "t3"),
+    entryPath: path.join(versionDir, platform === "win32" ? "ae-code.exe" : "ae-code"),
     sentinelPath: path.join(versionDir, ".install-complete"),
   };
 }
@@ -220,7 +220,7 @@ const installFromArchive = Effect.fn("cloud.pinned_runtime.install_archive")(fun
     );
   input.onProgress?.({ stage: "extract" });
   const extractStep = "extracting the t3 release archive";
-  // Strip the archive's stem directory so the executable lands at <versionDir>/t3.
+  // Strip the archive's stem directory so the executable lands at <versionDir>/ae-code.
   yield* input.runner
     .run({
       command: cliArchiveTarCommand(input.platform, process.env),
@@ -432,7 +432,7 @@ export function launcherOwnsVersionsDir(
 }
 
 /**
- * `t3 update` repoints the launcher it was started through, which may be on neither PATH nor the
+ * `ae-code update` repoints the launcher it was started through, which may be on neither PATH nor the
  * default bin dir. Unrecorded, the next prune would remove the runtime it now points at.
  */
 export const recordPinnedRuntimeLauncher = Effect.fn("cloud.pinned_runtime.record_launcher")(
@@ -452,25 +452,25 @@ export const recordPinnedRuntimeLauncher = Effect.fn("cloud.pinned_runtime.recor
   },
 );
 
-/** Whether `candidate` is a version's own executable, `<versionsDir>/<version>/t3[.exe]`. */
+/** Whether `candidate` is a version's own executable, `<versionsDir>/<version>/ae-code[.exe]`. */
 export function isVersionExecutable(
   path: Path.Path,
   versionsDir: string,
   candidate: string,
 ): boolean {
   const relative = path.relative(versionsDir, path.resolve(candidate));
-  // On another Windows drive, relative() returns the absolute path, like `D:\t3.exe`.
-  return !path.isAbsolute(relative) && /^(?!\.\.)[^\\/]+[\\/]t3(?:\.exe)?$/i.test(relative);
+  // On another Windows drive, relative() returns the absolute path, like `D:\ae-code.exe`.
+  return !path.isAbsolute(relative) && /^(?!\.\.)[^\\/]+[\\/]ae-code(?:\.exe)?$/i.test(relative);
 }
 
-/** The executable a `t3.cmd` shim written by the install script or `t3 update` runs. */
+/** The executable a `t3.cmd` shim written by the install script or `ae-code update` runs. */
 export const windowsShimTarget = (contents: string) => /^"([^"]+)"/m.exec(contents)?.[1];
 
 /** Like {@link windowsShimTarget}, but only for a shim exactly as written; never a user's wrapper. */
 export const generatedWindowsShimTarget = (contents: string) =>
   /^@echo off\r?\n"([^"]+)" %\*\s*$/.exec(contents)?.[1];
 
-/** Where the `t3` launchers written by the install scripts and `t3 update` point. */
+/** Where the `t3` launchers written by the install scripts and `ae-code update` point. */
 const shellLauncherTargets = Effect.fn("cloud.pinned_runtime.shell_launcher_targets")(function* (
   baseDir: string,
 ) {
@@ -479,7 +479,7 @@ const shellLauncherTargets = Effect.fn("cloud.pinned_runtime.shell_launcher_targ
   const platform = yield* HostProcess.Platform;
   const environment = yield* HostProcess.Environment;
   const home = yield* HostProcess.HomeDirectory;
-  const launcherName = platform === "win32" ? "t3.cmd" : "t3";
+  const launcherName = platform === "win32" ? "ae-code.cmd" : "ae-code";
   const launchersFile = path.join(baseDir, PINNED_RUNTIME_DIR, PINNED_RUNTIME_LAUNCHERS_FILE);
   const recorded = (yield* fs.readFileString(launchersFile).pipe(Effect.orElseSucceed(() => "")))
     .split(/\r?\n/)
@@ -526,7 +526,7 @@ const shellLauncherTargets = Effect.fn("cloud.pinned_runtime.shell_launcher_targ
 
 /**
  * Resolved executables rather than command lines: a server started through the `t3` symlink
- * shows up as `t3 serve`, possibly from another T3 home that runs this home's runtimes. Windows
+ * shows up as `ae-code serve`, possibly from another T3 home that runs this home's runtimes. Windows
  * has no symlink launcher, and its `t3.cmd` shim runs the absolute path, so command lines do there.
  */
 const runningExecutables = Effect.fn("cloud.pinned_runtime.running_executables")(function* () {

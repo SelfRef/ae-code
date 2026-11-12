@@ -25,7 +25,7 @@ The fork is kept as a linear stack of patch commits on top of upstream's `main`,
 
 ### Privacy
 
-- **No product analytics.** The server sends no usage events unless `T3CODE_TELEMETRY_ENABLED=true`.
+- **No product analytics.** The server sends no usage events unless `AECODE_TELEMETRY_ENABLED=true`.
 
 ### Running and releasing
 
@@ -56,7 +56,7 @@ For the Browser panel and HTML renders, which download a headless Chrome on firs
 sudo pacman -S --needed nss at-spi2-core libx11 libxcomposite libxdamage libxext libxfixes libxrandr mesa libxkbcommon alsa-lib fontconfig ttf-liberation
 ```
 
-Without them the browser tab reports missing libraries, and without fonts pages render with no text. Chrome's sandbox needs unprivileged user namespaces (on by default in the `linux` and `linux-lts` kernels, off in `linux-hardened`) and cannot start as root. Set `T3CODE_SERVER_BROWSER_SANDBOX=0` in the server's environment to run without it.
+Without them the browser tab reports missing libraries, and without fonts pages render with no text. Chrome's sandbox needs unprivileged user namespaces (on by default in the `linux` and `linux-lts` kernels, off in `linux-hardened`) and cannot start as root. Set `AECODE_SERVER_BROWSER_SANDBOX=0` in the server's environment to run without it.
 
 Optional:
 
@@ -83,7 +83,7 @@ cd ae-code-linux-x64
 ./install.sh
 ```
 
-`install.sh` runs as your user (not root). It installs a systemd user service on port 3773 that starts at boot and restarts after a crash, and links `~/.local/bin/ae-code`. `ae-code pair` prints a QR code to pair a client. State is in `~/.ae`; [INSTALL.md](./packaging/systemd/README.md) in the archive covers configuration and rollback. The service sets `T3CODE_SELF_UPDATE=true`, so Settings → About (or the update dialog of another client) installs newer releases from GitHub and restarts the server; delete that line from the unit to turn it off. Without the switch, a plain `ae-code serve` has to be updated by replacing the executable. The executable still calls itself `t3` in its help text. For access from a phone or another machine, see [Remote access](./docs/user/remote-access.md).
+`install.sh` runs as your user (not root). It installs a systemd user service on port 3773 that starts at boot and restarts after a crash, and links `~/.local/bin/ae-code`. `ae-code pair` prints a QR code to pair a client. State is in `~/.ae`; [INSTALL.md](./packaging/systemd/README.md) in the archive covers configuration and rollback. The service sets `AECODE_SELF_UPDATE=true`, so Settings → About (or the update dialog of another client) installs newer releases from GitHub and restarts the server; delete that line from the unit to turn it off. Without the switch, a plain `ae-code serve` has to be updated by replacing the executable. For access from a phone or another machine, see [Remote access](./docs/user/remote-access.md).
 
 ### Docker
 
@@ -105,7 +105,7 @@ RUN npm install -g @anthropic-ai/claude-code @openai/codex opencode-ai
 USER ae
 ```
 
-Other things worth adding the same way: an Android SDK (with `/dev/kvm` passed to the container for an emulator), the [GNOME desktop packages](./docs/user/devices.md#gnome-desktops) (pass a `/dev/dri/renderD*` node for GPU encoding), a Docker CLI, Playwright's browsers, a CLI for another forge such as `az` for Azure DevOps, and your own SSH keys or git config. Add `-e T3CODE_SELF_UPDATE=true` to let Settings → About install newer releases in place (the server restarts, the container does not); otherwise pull a newer image.
+Other things worth adding the same way: an Android SDK (with `/dev/kvm` passed to the container for an emulator), the [GNOME desktop packages](./docs/user/devices.md#gnome-desktops) (pass a `/dev/dri/renderD*` node for GPU encoding), a Docker CLI, Playwright's browsers, a CLI for another forge such as `az` for Azure DevOps, and your own SSH keys or git config. Add `-e AECODE_SELF_UPDATE=true` to let Settings → About install newer releases in place (the server restarts, the container does not); otherwise pull a newer image.
 
 ### Desktop app (Arch Linux)
 

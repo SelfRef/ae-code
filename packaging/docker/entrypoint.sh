@@ -1,16 +1,16 @@
 #!/bin/sh
-# The image's entrypoint. `ae-code serve ...` runs as it is, unless T3CODE_SELF_UPDATE is on:
+# The image's entrypoint. `ae-code serve ...` runs as it is, unless AECODE_SELF_UPDATE (or T3CODE_SELF_UPDATE) is on:
 # then the server may update itself from Settings -> About. It unpacks the new release into
 # <home>/updates/<version> and points <home>/updates/current at it, stops, and this script starts
 # it again from the newest release: the image's own (/opt/ae-code) or the downloaded one.
 # SIGHUP (`docker kill -s HUP <container>`) restarts the server without recreating the container,
 # which also picks up a release placed in <home>/updates by hand.
 [ "$1" = ae-code ] || exec "$@"
-case "$T3CODE_SELF_UPDATE" in 1 | true | TRUE | True | yes | on) ;; *) exec "$@" ;; esac
+case "${AECODE_SELF_UPDATE:-$T3CODE_SELF_UPDATE}" in 1 | true | TRUE | True | yes | on) ;; *) exec "$@" ;; esac
 shift
 
 baked=/opt/ae-code
-updates=${T3CODE_HOME:-$HOME/.ae}/updates
+updates=${AECODE_HOME:-${T3CODE_HOME:-$HOME/.ae}}/updates
 export T3CODE_UPDATE_SUPERVISED=1
 
 current() { cat "$updates/current" 2>/dev/null; }

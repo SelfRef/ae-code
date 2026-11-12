@@ -73,7 +73,9 @@ const makeHarness = Effect.fn("test.make_self_update_harness")(function* (
           order.push("extract");
           const stagingDir = input.args[input.args.indexOf("-C") + 1];
           if (stagingDir === undefined) return yield* Effect.die("missing tar target");
-          yield* fs.writeFileString(path.join(stagingDir, "t3"), "#!/bin/sh\n").pipe(Effect.orDie);
+          yield* fs
+            .writeFileString(path.join(stagingDir, "ae-code"), "#!/bin/sh\n")
+            .pipe(Effect.orDie);
           return {
             stdout: "",
             stderr: "",
@@ -407,7 +409,7 @@ it.layer(NodeServices.layer)("pruning runtimes on start", (it) => {
     for (const version of [staleVersion, packageJson.version]) {
       const directory = path.join(realHome, "runtime", "versions", version);
       yield* fs.makeDirectory(directory, { recursive: true });
-      yield* fs.writeFileString(path.join(directory, "t3"), "");
+      yield* fs.writeFileString(path.join(directory, "ae-code"), "");
       const sentinel = path.join(directory, ".install-complete");
       yield* fs.writeFileString(sentinel, `${version}\n`);
       yield* fs.utimes(sentinel, 0, 0);
@@ -416,7 +418,7 @@ it.layer(NodeServices.layer)("pruning runtimes on start", (it) => {
     // Like `process.execPath`, the running runtime is reported by its real path.
     const executablePath =
       input.executable === "own runtime"
-        ? yield* fs.realPath(path.join(versionsDir, packageJson.version, "t3"))
+        ? yield* fs.realPath(path.join(versionsDir, packageJson.version, "ae-code"))
         : "/usr/local/bin/node";
     const removed = yield* ServerSelfUpdate.pruneRuntimesOnStart({
       baseDir,

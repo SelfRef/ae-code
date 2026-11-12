@@ -54,7 +54,7 @@ interface ManagedChild {
 const runtimePaths = (baseDir: string, version: string) => {
   const versionDir = NodePath.join(baseDir, "runtime", "versions", version);
   // oxlint-disable-next-line t3code/no-global-process-runtime -- Standalone launcher has no Effect runtime.
-  const executableName = process.platform === "win32" ? "t3.exe" : "t3";
+  const executableName = process.platform === "win32" ? "ae-code.exe" : "ae-code";
   return {
     versionDir,
     entryPath: NodePath.join(versionDir, executableName),
@@ -68,7 +68,7 @@ const runtimeSpawnArguments = (paths: ReturnType<typeof runtimePaths>) => ({
 });
 
 /**
- * The unit or launch agent that `t3 service install` wrote. Its program names
+ * The unit or launch agent that `ae-code service install` wrote. Its program names
  * the runtime that ran the install, and a remote update never replaces it, so
  * after a commit the launcher points it at the committed runtime. Otherwise the
  * next start lands on a runtime that nothing in the service state records.
@@ -117,13 +117,13 @@ function serviceUnitFromEnvironment(env: NodeJS.ProcessEnv = process.env): Servi
 // Only the version segment changes, so quoted or escaped paths stay as rendered.
 // The launch agent's PATH names a versions directory without the executable; leave it.
 const SERVICE_UNIT_PROGRAMS = [
-  /^(ExecStart=.*?[\\/]runtime[\\/]versions[\\/])([^\\/\s"]+)([\\/]t3)(?=["\s])/m,
-  /(<string>[^<]*?[\\/]runtime[\\/]versions[\\/])([^\\/<]+)([\\/]t3<\/string>\s*<string>__service-launcher<\/string>)/,
+  /^(ExecStart=.*?[\\/]runtime[\\/]versions[\\/])([^\\/\s"]+)([\\/]ae-code)(?=["\s])/m,
+  /(<string>[^<]*?[\\/]runtime[\\/]versions[\\/])([^\\/<]+)([\\/]ae-code<\/string>\s*<string>__service-launcher<\/string>)/,
 ] as const;
 
 /**
  * The unit contents with their program pointed at `version`'s runtime. A unit
- * already at that version or a newer one is returned unchanged: `t3 update`
+ * already at that version or a newer one is returned unchanged: `ae-code update`
  * may have repointed it to a later version while this commit was in flight.
  */
 function repointServiceUnit(contents: string, version: string): string {
@@ -161,6 +161,7 @@ async function pathExists(target: string): Promise<boolean> {
 const MANAGED_SERVICE_ENV_NAMES = new Set([
   "PATH",
   "T3CODE_HOME",
+  "AECODE_HOME",
   "T3_BOOT_SERVICE_UNIT",
   SERVICE_LAUNCHER_CONTEXT_ENV,
 ]);

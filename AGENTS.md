@@ -4,7 +4,7 @@ T3 Code is a minimal GUI for coding agents. A Node WebSocket server wraps provid
 
 ## This fork
 
-This checkout is a personal fork (`origin` = SelfRef/ae-code, `upstream` = pingdotgg/t3code). It ships as AE Code: app id `dev.aperte.AECode`, state in `~/.ae`, Electron profile `ae-code`, releases and updates from `SelfRef/ae-code`; env vars (`T3CODE_*`), package names and the `t3` command keep upstream's names. See `docs/ROADMAP.md`. Its changes are not offered upstream: never open a PR, issue or discussion against `upstream`.
+This checkout is a personal fork (`origin` = SelfRef/ae-code, `upstream` = pingdotgg/t3code). It ships as AE Code: app id `dev.aperte.AECode`, state in `~/.ae`, Electron profile `ae-code`, releases and updates from `SelfRef/ae-code`; the executable and command are `ae-code`, and users set `AECODE_*` env vars (an alias that `packages/shared/src/aecodeEnv.ts` copies onto the `T3CODE_*` names the code reads, so new code reads `T3CODE_*` too); package names keep upstream's names. See `docs/ROADMAP.md`. Its changes are not offered upstream: never open a PR, issue or discussion against `upstream`.
 
 - Supported platforms: web, desktop and Android only. iOS is out of scope for this fork: it is not released, tested or maintained here, so every change should consider web, desktop and Android, and need not consider iOS.
 - Commit straight to `main`; no feature branches unless asked. Push only when history was rewritten and the push needs a force (a rebase onto upstream, an autosquash): then push yourself with `git push --force-with-lease=main:<the origin/main you started from> origin main`, once the result is verified. A regular fast-forward push is the owner's: leave it unless asked.

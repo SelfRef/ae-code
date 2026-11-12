@@ -152,16 +152,14 @@ jobs:
       - name: Smoke-test the archive
         run: node scripts/smoke-cli-archive.ts --archive release-cli/* --expect-version "$VERSION"
 
-      # The server's own update and install code expects upstream's names (`t3`
-      # in t3-<version>-linux-x64.tar.gz), so the archive is renamed only here:
-      # ae-code-linux-x64.tar.gz holding an `ae-code` executable.
-      - name: Rename to ae-code
+      # The executable inside is already `ae-code`; only the archive and its folder are renamed
+      # (upstream's t3-<version>-linux-x64.tar.gz becomes ae-code-linux-x64.tar.gz).
+      - name: Rename the archive to ae-code
         run: |
           set -euo pipefail
           mkdir stage
           tar -xzf release-cli/t3-*.tar.gz -C stage
           mv stage/t3-* stage/ae-code-linux-x64
-          mv stage/ae-code-linux-x64/t3 stage/ae-code-linux-x64/ae-code
           stage/ae-code-linux-x64/ae-code --version
           # What a bare host needs to run the server as a systemd user service.
           cp packaging/systemd/install.sh packaging/systemd/ae-code.service stage/ae-code-linux-x64/
@@ -298,7 +296,7 @@ jobs:
       - name: Build the single executable
         run: node apps/server/scripts/cli.ts build-exe --verbose --target win-x64
 
-      # As on Linux, ae-code-windows-x64.zip holds an `ae-code.exe`, not upstream's `t3.exe`.
+      # As on Linux, only the archive and its folder are renamed; the executable is `ae-code.exe`.
       - name: Build the server archive
         run: |
           set -euo pipefail
@@ -309,7 +307,6 @@ jobs:
             --resource-monitor-dir "$RUNNER_TEMP/resource-monitor" --output-dir release-cli
           unzip -q release-cli/t3-*.zip -d stage
           mv stage/t3-* stage/ae-code-windows-x64
-          mv stage/ae-code-windows-x64/t3.exe stage/ae-code-windows-x64/ae-code.exe
           (cd stage && zip -q -r -X "$GITHUB_WORKSPACE/release-assets/ae-code-windows-x64.zip" ae-code-windows-x64)
 
       - name: Build the desktop installer
