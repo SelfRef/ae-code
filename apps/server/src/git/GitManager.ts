@@ -603,6 +603,14 @@ function isMergeAction(action: GitStackedAction): action is "merge" | "merge_pus
   return action === "merge" || action === "merge_push";
 }
 
+function branchUpstreamNote(branchUpstream: MergeIntoDefaultResult["branchUpstream"]) {
+  return branchUpstream?.status === "pushed"
+    ? `Updated ${branchUpstream.name} to match the rebased branch.`
+    : branchUpstream?.status === "failed"
+      ? `Could not update ${branchUpstream.name} to match the rebased branch; force push it from the menu if you want them to match.`
+      : null;
+}
+
 function mergeCompletionToast(merge: MergeIntoDefaultResult, committed: boolean) {
   const pushed = merge.push?.status === "pushed";
   return {
@@ -614,11 +622,7 @@ function mergeCompletionToast(merge: MergeIntoDefaultResult, committed: boolean)
       [
         committed ? "Committed first." : null,
         pushed ? `Pushed ${merge.push?.upstreamBranch}.` : null,
-        merge.branchUpstream?.status === "pushed"
-          ? `Updated ${merge.branchUpstream.name} to match the rebased branch.`
-          : merge.branchUpstream?.status === "failed"
-            ? `Could not update ${merge.branchUpstream.name} to match the rebased branch; force push it from the menu if you want them to match.`
-            : null,
+        branchUpstreamNote(merge.branchUpstream),
       ]
         .filter((part) => part !== null)
         .join(" ") || undefined,
@@ -1676,6 +1680,7 @@ export const make = Effect.gen(function* () {
       behindCount: details.behindCount,
       aheadOfDefaultCount: shippedByMergedPr ? 0 : details.aheadOfDefaultCount,
       defaultAheadCount: details.defaultAheadCount,
+      behindDefaultCount: details.behindDefaultCount,
       pr,
     } satisfies VcsStatusRemoteResult;
   });
@@ -3632,7 +3637,7 @@ export const make = Effect.gen(function* () {
         const phases: GitActionProgressPhase[] = [
           ...(input.featureBranch ? (["branch"] as const) : []),
           ...(wantsCommit ? (["commit"] as const) : []),
-          ...(wantsMerge ? (["merge"] as const) : []),
+          ...(wantsMerge || input.action === "rebase_default" ? (["merge"] as const) : []),
           ...(wantsPush || input.action === "merge_push" || input.action === "push_default"
             ? (["push"] as const)
             : []),
@@ -3674,6 +3679,41 @@ export const make = Effect.gen(function* () {
                   ? `Pushed ${pushed.baseBranch}`
                   : `${pushed.baseBranch} is already up to date`,
               ...(pushed.push ? { description: pushed.push.upstreamBranch } : {}),
+              cta: { kind: "none" as const },
+            },
+          };
+          yield* progress.emit({ kind: "action_finished", result });
+          return result;
+        }
+
+        if (input.action === "rebase_default") {
+          if (!initialStatus.branch) {
+            return yield* new GitManagerError({
+              operation: "runStackedAction",
+              cwd: input.cwd,
+              detail: "Cannot rebase from detached HEAD.",
+            });
+          }
+          yield* Ref.set(currentPhase, Option.some("merge"));
+          yield* progress.emit({ kind: "phase_started", phase: "merge", label: "Rebasing..." });
+          const rebased = yield* mergeIntoDefault(gitCore, {
+            cwd: input.cwd,
+            branch: initialStatus.branch,
+            push: false,
+            rebaseOnly: true,
+          });
+          const upstreamNote = branchUpstreamNote(rebased.branchUpstream);
+          const result = {
+            action: input.action,
+            branch: { status: "skipped_not_requested" as const },
+            commit: { status: "skipped_not_requested" as const },
+            push: { status: "skipped_not_requested" as const },
+            pr: { status: "skipped_not_requested" as const },
+            toast: {
+              title: rebased.rebased
+                ? `Rebased onto ${rebased.baseBranch}`
+                : `Already up to date with ${rebased.baseBranch}`,
+              ...(upstreamNote === null ? {} : { description: upstreamNote }),
               cta: { kind: "none" as const },
             },
           };

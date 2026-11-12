@@ -26,6 +26,8 @@ export const GitStackedAction = Schema.Literals([
   "merge_push",
   // Push the default branch as it is, without touching the current one.
   "push_default",
+  // Rebase this branch onto the default branch if that moved; needs a clean checkout.
+  "rebase_default",
 ]);
 export type GitStackedAction = typeof GitStackedAction.Type;
 export const GitActionProgressPhase = Schema.Literals(["branch", "commit", "merge", "push", "pr"]);
@@ -277,6 +279,8 @@ const VcsStatusRemoteShape = {
   aheadOfDefaultCount: Schema.optional(NonNegativeInt),
   // Commits on the local default branch its remote does not have yet; absent from older servers.
   defaultAheadCount: Schema.optional(NonNegativeInt),
+  // Commits on the local default branch this branch does not have yet; absent from older servers.
+  behindDefaultCount: Schema.optional(NonNegativeInt),
   pr: Schema.NullOr(VcsStatusChangeRequest),
 };
 

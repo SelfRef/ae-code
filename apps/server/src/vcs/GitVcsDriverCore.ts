@@ -180,6 +180,7 @@ const NON_REPOSITORY_REMOTE_STATUS_DETAILS = Object.freeze<GitVcsDriver.GitRemot
   behindCount: 0,
   aheadOfDefaultCount: 0,
   defaultAheadCount: 0,
+  behindDefaultCount: 0,
 });
 
 type TraceTailState = {
@@ -2381,6 +2382,28 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
           Effect.orElseSucceed(() => 0),
         );
 
+    // Commits the local default branch has that this branch lacks (merges land there first).
+    const behindDefaultCount =
+      isDefaultBranch || branch === null
+        ? 0
+        : yield* Effect.firstSuccessOf(
+            (defaultBranch ? [defaultBranch] : ["main", "master"]).map((name) =>
+              executeGit(
+                "GitVcsDriver.statusDetailsRemote.behindDefault",
+                cwd,
+                ["rev-list", "--count", `HEAD..refs/heads/${name}`],
+                { allowNonZeroExit: true },
+              ).pipe(
+                Effect.flatMap((result) =>
+                  result.exitCode === 0 ? Effect.succeed(result.stdout) : Effect.fail(null),
+                ),
+              ),
+            ),
+          ).pipe(
+            Effect.map((stdout) => Math.max(0, Number.parseInt(stdout.trim(), 10) || 0)),
+            Effect.orElseSucceed(() => 0),
+          );
+
     return {
       isRepo: true,
       defaultBranch,
@@ -2392,6 +2415,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
       behindCount,
       aheadOfDefaultCount,
       defaultAheadCount,
+      behindDefaultCount,
     };
   });
 

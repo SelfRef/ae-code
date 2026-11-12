@@ -1180,7 +1180,8 @@ export default function GitActionsControl({
   const runsInDefaultBranchSection =
     vcsActionState.action === "merge" ||
     vcsActionState.action === "merge_push" ||
-    vcsActionState.action === "push_default";
+    vcsActionState.action === "push_default" ||
+    vcsActionState.action === "rebase_default";
   const gitActionProgress =
     runsInDefaultBranchSection === (scope === "defaultBranch")
       ? resolveGitActionProgressPresentation(vcsActionState)
@@ -1478,7 +1479,8 @@ export default function GitActionsControl({
     if (
       item.dialogAction === "merge" ||
       item.dialogAction === "merge_push" ||
-      item.dialogAction === "push_default"
+      item.dialogAction === "push_default" ||
+      item.dialogAction === "rebase_default"
     ) {
       void runGitActionWithToast({ action: item.dialogAction });
       return;

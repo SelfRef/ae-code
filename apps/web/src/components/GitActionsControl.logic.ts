@@ -22,7 +22,15 @@ export {
 } from "@t3tools/client-runtime/state/vcs";
 
 export interface GitActionMenuItem {
-  id: "commit" | "push" | "force_push" | "pr" | "merge" | "merge_push" | "push_default";
+  id:
+    | "commit"
+    | "push"
+    | "force_push"
+    | "pr"
+    | "merge"
+    | "merge_push"
+    | "push_default"
+    | "rebase_default";
   label: string;
   disabled: boolean;
   icon: GitActionIconName;
@@ -228,6 +236,11 @@ export function getMenuActionDisabledReason({
   }
 
   if (item.id === "push_default") return "No commits on the default branch to push.";
+  if (item.id === "rebase_default") {
+    return hasChanges
+      ? "Commit or stash local changes before rebasing."
+      : "Already up to date with the default branch.";
+  }
 
   if (item.id === "push") {
     if (!hasBranch) {

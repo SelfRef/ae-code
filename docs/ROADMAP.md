@@ -1470,4 +1470,10 @@ merged into the default branch.
   the thread's checkout (the project root once its worktree is gone). A failure comes back as the tool result instead of
   a hand-off turn, since the caller is the agent. `settleAfterMerge` applies (the thread settles when its turn ends).
   Its text adds about 650 bytes to the MCP tool list budget; the model-facing eval (`evals/mcp-tool-use`) was not run.
+- **Rebase onto the default branch.** The remote status part carries `behindDefaultCount` (commits on the local default
+  branch the branch lacks; one `rev-list` next to `defaultAheadCount`, absent from older servers). While it is above
+  0, the Default branch section lists **Rebase onto the default branch (n new commits)** (web, desktop and Android),
+  the stacked action `rebase_default`: `mergeIntoDefault` with `rebaseOnly`, under the same repository lock, refusing a
+  checkout with uncommitted changes and aborting a conflicting rebase. A pushed branch's upstream is re-synced as in a
+  merge. A conflict is not handed to the agent (only a merge is).
 - No data migration.
