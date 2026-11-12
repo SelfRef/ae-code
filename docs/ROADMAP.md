@@ -1437,4 +1437,9 @@ merged into the default branch.
   other's rebase and fast-forward. If the default branch still moves between this merge's rebase and its fast-forward
   (a commit in its own checkout), it rebases once more before giving up. A failed fast-forward no longer says "a file
   may be in the way": it names edits that are in the way, or says it could not fast-forward.
+- **A pushed branch stays in step.** The merge's rebase rewrites the thread's branch, which would leave one that was
+  already pushed diverged from its upstream ("Sync ref", only Force push left). When the branch equalled its upstream
+  before the rebase, the merge replaces the upstream with `--force-with-lease` pinned to that commit, and says so in the
+  toast; a branch with unpushed commits, or an upstream someone else moved, is left alone (the toast says the
+  upstream could not be updated).
 - No data migration.

@@ -559,6 +559,11 @@ function mergeCompletionToast(merge: MergeIntoDefaultResult, committed: boolean)
       [
         committed ? "Committed first." : null,
         pushed ? `Pushed ${merge.push?.upstreamBranch}.` : null,
+        merge.branchUpstream?.status === "pushed"
+          ? `Updated ${merge.branchUpstream.name} to match the rebased branch.`
+          : merge.branchUpstream?.status === "failed"
+            ? `Could not update ${merge.branchUpstream.name} to match the rebased branch; force push it from the menu if you want them to match.`
+            : null,
       ]
         .filter((part) => part !== null)
         .join(" ") || undefined,

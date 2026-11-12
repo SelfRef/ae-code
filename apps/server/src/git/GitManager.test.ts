@@ -6255,6 +6255,45 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       }),
     );
 
+    it.effect("puts a fully pushed branch's upstream back in step after rebasing it", () =>
+      Effect.gen(function* () {
+        const { repoDir, remoteDir, worktreeDir, subjects } = yield* setupMerge;
+        yield* runGit(worktreeDir, ["push", "-u", "origin", "feature/merge-me"]);
+        NodeFS.writeFileSync(NodePath.join(repoDir, "elsewhere.txt"), "moved on\n");
+        yield* runGit(repoDir, ["add", "elsewhere.txt"]);
+        yield* runGit(repoDir, ["commit", "-m", "Main moved"]);
+        const { manager } = yield* makeManager();
+        const result = yield* runStackedAction(manager, { cwd: worktreeDir, action: "merge" });
+
+        expect(result.toast.description).toContain("Updated origin/feature/merge-me");
+        expect(yield* subjects(remoteDir, "feature/merge-me", true)).toEqual([
+          "Thread work",
+          "Main moved",
+          "Initial commit",
+        ]);
+        const status = yield* manager.status({ cwd: worktreeDir });
+        expect(status.aheadCount + status.behindCount).toBe(0);
+      }),
+    );
+
+    it.effect("leaves a branch with unpushed commits and its upstream alone", () =>
+      Effect.gen(function* () {
+        const { repoDir, remoteDir, worktreeDir, subjects } = yield* setupMerge;
+        yield* runGit(worktreeDir, ["push", "-u", "origin", "feature/merge-me"]);
+        yield* runGit(worktreeDir, ["commit", "--allow-empty", "-m", "Unpushed"]);
+        NodeFS.writeFileSync(NodePath.join(repoDir, "elsewhere.txt"), "moved on\n");
+        yield* runGit(repoDir, ["add", "elsewhere.txt"]);
+        yield* runGit(repoDir, ["commit", "-m", "Main moved"]);
+        const { manager } = yield* makeManager();
+        yield* runStackedAction(manager, { cwd: worktreeDir, action: "merge" });
+
+        expect(yield* subjects(remoteDir, "feature/merge-me", true)).toEqual([
+          "Thread work",
+          "Initial commit",
+        ]);
+      }),
+    );
+
     it.effect("queues merges from several worktrees of one repository", () =>
       Effect.gen(function* () {
         const { repoDir, worktreeDir, subjects } = yield* setupMerge;

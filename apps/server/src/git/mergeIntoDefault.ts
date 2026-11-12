@@ -13,6 +13,10 @@ export interface MergeIntoDefaultResult {
   readonly push:
     | { readonly status: "pushed" | "skipped_up_to_date"; readonly upstreamBranch: string }
     | undefined;
+  /** The rebase rewrote a branch that was fully pushed, so its upstream was replaced to match. */
+  readonly branchUpstream?:
+    | { readonly status: "pushed" | "failed"; readonly name: string }
+    | undefined;
 }
 
 /** Path of the worktree that has `refs/heads/<branch>` checked out, if any. */
@@ -117,6 +121,45 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
     };
   });
 
+  // Replaces the branch's upstream with the rebased branch, only if nobody pushed to it meanwhile.
+  const resyncUpstream = Effect.fn("GitManager.mergeIntoDefault.resyncUpstream")(function* (
+    expected: string,
+  ) {
+    const head = (yield* run("head-sha-after", cwd, ["rev-parse", "HEAD"])).stdout.trim();
+    if (head === expected) return undefined;
+    const upstreamRemote = yield* git.readConfigValue(cwd, `branch.${branch}.remote`);
+    const upstreamRef = yield* git.readConfigValue(cwd, `branch.${branch}.merge`);
+    if (!upstreamRemote || upstreamRemote === "." || !upstreamRef) return undefined;
+    const pushed = yield* run(
+      "resync-upstream",
+      cwd,
+      [
+        "push",
+        `--force-with-lease=${upstreamRef}:${expected}`,
+        "--",
+        upstreamRemote,
+        `HEAD:${upstreamRef}`,
+      ],
+      { allowNonZeroExit: true },
+    );
+    return {
+      status: pushed.exitCode === 0 ? ("pushed" as const) : ("failed" as const),
+      name: `${upstreamRemote}/${upstreamRef.replace(/^refs\/heads\//, "")}`,
+    };
+  });
+
+  // A branch that was fully pushed would show as diverged from its upstream once the rebase
+  // rewrites it, so the merge puts the upstream back in step (see `resyncUpstream`).
+  const upstreamBefore = input.pushOnly
+    ? null
+    : yield* run(
+        "upstream-sha",
+        cwd,
+        ["rev-parse", "--verify", "--quiet", `${branch}@{upstream}`],
+        { allowNonZeroExit: true },
+      ).pipe(Effect.map((result) => (result.exitCode === 0 ? result.stdout.trim() : null)));
+  const headBefore = (yield* run("head-sha", cwd, ["rev-parse", "HEAD"])).stdout.trim();
+
   // The rebase and the fast-forward are not one step: if the default branch moved in between
   // (a commit in its own checkout), rebase once more before giving up.
   let merged = input.pushOnly === true;
@@ -144,6 +187,11 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
     if (!failure.moved || attempt > 0) return yield* fail(failure.message);
   }
 
+  const branchUpstream =
+    upstreamBefore !== null && upstreamBefore === headBefore
+      ? yield* resyncUpstream(upstreamBefore)
+      : undefined;
+
   const commitSha = yield* baseSha();
   if (!input.push) {
     return {
@@ -151,6 +199,7 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
       baseBranch: base,
       commitSha,
       push: undefined,
+      branchUpstream,
     };
   }
 
@@ -174,6 +223,7 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
       baseBranch: base,
       commitSha,
       push: { status: "skipped_up_to_date", upstreamBranch },
+      branchUpstream,
     };
   }
   // A failed push throws git's classified error, which keeps credentials out of the message.
@@ -188,6 +238,7 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
     baseBranch: base,
     commitSha,
     push: { status: "pushed", upstreamBranch },
+    branchUpstream,
   };
 });
 
