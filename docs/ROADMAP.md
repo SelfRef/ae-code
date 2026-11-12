@@ -11,6 +11,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
 | [45] | The executable and command are `ae-code` (was `t3`); `AECODE_*` env vars work everywhere `T3CODE_*` did, which stays as the fallback                                   | done    |
+| [46] | Default branch workflow: cleanup follows the local default branch, merges queue per repository and keep your edits there, and more (see the section)                   | done    |
 | 44   | Device panel controls in a row above the screen, like the browser's, instead of a column at the right edge (web)                                                       | done    |
 | 43   | Browser control modes: View only, Take control, and Share control, where you and the agent both act and the agent is not interrupted (web and Android)                 | done    |
 | 42   | Current branch action: a project setting (Push by default) that picks whether the Git button also creates a pull request                                               | done    |
@@ -83,6 +84,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 [27]: #skills-manager-change-27
 [30]: #synced-drafts-change-30
 [33]: #saved-environments-shared-through-the-server-change-33
+[46]: #default-branch-workflow-change-46
 [40]: #other-ways-to-run-the-android-emulator-change-40
 [38]: #branches-change-38
 [39]: #file-operations-change-39
@@ -1418,3 +1420,13 @@ The fork's executable was `t3`, renamed to `ae-code` only by the release workflo
   settings that `ae-code up` and `ae-code status` read themselves (`AECODE_HOST`, `AECODE_LAN` there are applied by the server but
   not shown by those commands; use `T3CODE_*` for them).
 - No data migration: no persisted name changed.
+
+## Default branch workflow (change 46)
+
+Follow-ups to "Merge into the default branch" (change 32) for a workflow without pull requests: one worktree per thread,
+merged into the default branch.
+
+- **Cleanup follows the local default branch.** A worktree whose branch was merged into the local default branch is
+  "unchanged" for cleanup even before that branch is pushed (it used to need `origin/<default>` to contain the head).
+  The commits are safe in the local default branch, and the branch itself is never deleted.
+- No data migration.
