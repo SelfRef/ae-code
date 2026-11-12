@@ -13,6 +13,10 @@ import {
   type VcsCreateWorktreeInput,
   type VcsCreateWorktreeResult,
   type VcsBranchOverviewInput,
+  type VcsCommitDetailInput,
+  type VcsCommitDetailResult,
+  type VcsCommitLogInput,
+  type VcsCommitLogResult,
   type VcsBranchOverviewResult,
   type VcsListRefsInput,
   type VcsListRefsResult,
@@ -35,6 +39,7 @@ import {
   type VcsStatusResult,
 } from "@t3tools/contracts";
 
+import { commitDetail, commitLog } from "./commitHistory.ts";
 import { deleteMergedBranches } from "./deleteMergedBranches.ts";
 import * as GitManager from "./GitManager.ts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
@@ -128,6 +133,12 @@ export class GitWorkflowService extends Context.Service<
     readonly removeWorktree: (
       input: VcsRemoveWorktreeInput,
     ) => Effect.Effect<void, GitCommandError>;
+    readonly commitLog: (
+      input: VcsCommitLogInput,
+    ) => Effect.Effect<VcsCommitLogResult, GitCommandError>;
+    readonly commitDetail: (
+      input: VcsCommitDetailInput,
+    ) => Effect.Effect<VcsCommitDetailResult, GitCommandError>;
     readonly deleteMergedBranches: (
       input: VcsDeleteMergedBranchesInput,
     ) => Effect.Effect<VcsDeleteMergedBranchesResult, GitCommandError>;
@@ -518,6 +529,26 @@ export const make = Effect.gen(function* () {
     removeWorktree: Effect.fn("GitWorkflowService.removeWorktree")(function (input) {
       return ensureGitCommand("GitWorkflowService.removeWorktree", input.cwd).pipe(
         Effect.andThen(git.removeWorktree(input)),
+      );
+    }),
+    commitLog: Effect.fn("GitWorkflowService.commitLog")(function (input) {
+      return detectGitRepositoryForCommand("GitWorkflowService.commitLog", input.cwd).pipe(
+        Effect.flatMap((isGitRepository) =>
+          isGitRepository
+            ? commitLog(git, input)
+            : Effect.succeed({
+                isRepo: false,
+                ref: null,
+                currentBranch: null,
+                commits: [],
+                hasMore: false,
+              } satisfies VcsCommitLogResult),
+        ),
+      );
+    }),
+    commitDetail: Effect.fn("GitWorkflowService.commitDetail")(function (input) {
+      return ensureGitCommand("GitWorkflowService.commitDetail", input.cwd).pipe(
+        Effect.andThen(commitDetail(git, input)),
       );
     }),
     deleteMergedBranches: Effect.fn("GitWorkflowService.deleteMergedBranches")(function (input) {

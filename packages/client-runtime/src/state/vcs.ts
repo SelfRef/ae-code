@@ -306,6 +306,17 @@ export function createVcsEnvironmentAtoms<R, E>(
       tag: WS_METHODS.vcsBranchOverview,
       staleTimeMs: 15_000,
     }),
+    commitLog: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:vcs:commit-log",
+      tag: WS_METHODS.vcsCommitLog,
+      staleTimeMs: 15_000,
+    }),
+    // A commit never changes, so its detail stays cached.
+    commitDetail: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:vcs:commit-detail",
+      tag: WS_METHODS.vcsCommitDetail,
+      staleTimeMs: 10 * 60_000,
+    }),
     branch: createEnvironmentSubscriptionAtomFamily(runtime, {
       label: "environment-data:vcs:branch",
       idleTtlMs: VCS_STATUS_IDLE_TTL_MS,

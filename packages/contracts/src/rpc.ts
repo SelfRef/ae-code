@@ -478,6 +478,12 @@ import {
   VcsDeleteMergedBranchesInput,
   VcsDeleteMergedBranchesResult,
 } from "./branchOverview.ts";
+import {
+  VcsCommitDetailInput,
+  VcsCommitDetailResult,
+  VcsCommitLogInput,
+  VcsCommitLogResult,
+} from "./commitHistory.ts";
 import { VcsError } from "./vcs.ts";
 import { Project, ProjectMutation, ProjectMutationError } from "./project.ts";
 
@@ -534,6 +540,8 @@ export const WS_METHODS = {
   vcsRefreshStatus: "vcs.refreshStatus",
   vcsListRefs: "vcs.listRefs",
   vcsBranchOverview: "vcs.branchOverview",
+  vcsCommitLog: "vcs.commitLog",
+  vcsCommitDetail: "vcs.commitDetail",
   vcsDeleteMergedBranches: "vcs.deleteMergedBranches",
   vcsCreateWorktree: "vcs.createWorktree",
   vcsRemoveWorktree: "vcs.removeWorktree",
@@ -1707,6 +1715,18 @@ const WsVcsBranchOverviewRpc = Rpc.make(WS_METHODS.vcsBranchOverview, {
   error: Schema.Union([GitCommandError, EnvironmentAuthorizationError]),
 });
 
+const WsVcsCommitLogRpc = Rpc.make(WS_METHODS.vcsCommitLog, {
+  payload: VcsCommitLogInput,
+  success: VcsCommitLogResult,
+  error: Schema.Union([GitCommandError, EnvironmentAuthorizationError]),
+});
+
+const WsVcsCommitDetailRpc = Rpc.make(WS_METHODS.vcsCommitDetail, {
+  payload: VcsCommitDetailInput,
+  success: VcsCommitDetailResult,
+  error: Schema.Union([GitCommandError, EnvironmentAuthorizationError]),
+});
+
 const WsVcsDeleteMergedBranchesRpc = Rpc.make(WS_METHODS.vcsDeleteMergedBranches, {
   payload: VcsDeleteMergedBranchesInput,
   success: VcsDeleteMergedBranchesResult,
@@ -2528,6 +2548,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsGitPreparePullRequestThreadRpc,
   WsVcsListRefsRpc,
   WsVcsBranchOverviewRpc,
+  WsVcsCommitLogRpc,
+  WsVcsCommitDetailRpc,
   WsVcsDeleteMergedBranchesRpc,
   WsVcsCreateWorktreeRpc,
   WsVcsRemoveWorktreeRpc,

@@ -271,6 +271,10 @@
       "types": "./src/branchOverview.ts",
       "default": "./src/branchOverview.ts"
     },
+    "./commit-graph": {
+      "types": "./src/commitGraph.ts",
+      "default": "./src/commitGraph.ts"
+    },
     "./issue-projects": {
       "types": "./src/issueProjects.ts",
       "default": "./src/issueProjects.ts"

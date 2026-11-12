@@ -36,6 +36,7 @@ export * from "./projectClone.ts";
 export * from "./speech.ts";
 export * from "./issue.ts";
 export * from "./branchOverview.ts";
+export * from "./commitHistory.ts";
 export * from "./release.ts";
 export * from "./pullRequest.ts";
 export * from "./pullRequestReviewGuide.ts";
