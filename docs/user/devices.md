@@ -78,7 +78,7 @@ the [README](../../README.md#dependencies-on-arch-linux)): `gnome-shell`,
 `pipewire`, `wireplumber`, `dbus-daemon`, `libglib2.0-bin`, `python3-gi`,
 `python3-gst-1.0`, `gir1.2-gstreamer-1.0`, `gir1.2-atspi-2.0`, `at-spi2-core`,
 `gstreamer1.0-pipewire`, `gstreamer1.0-plugins-base`, `gstreamer1.0-plugins-good`,
-and for the live H.264 stream `gstreamer1.0-plugins-bad` with a VA-API driver
+`gnome-keyring` (optional: gives apps a secrets store to save logins in), and for the live H.264 stream `gstreamer1.0-plugins-bad` with a VA-API driver
 (`mesa-va-drivers` for AMD) or `gstreamer1.0-plugins-ugly` for software encoding.
 With no H.264 encoder the panel shows a still-image stream instead. The setup
 step lists what is missing.
