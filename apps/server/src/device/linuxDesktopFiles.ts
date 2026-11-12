@@ -123,9 +123,9 @@ class Session:
         self.input_lock = threading.Lock()
 
     # -- processes -------------------------------------------------------------------------------
-    def spawn(self, argv, log):
+    def spawn(self, argv, log, stdin=subprocess.DEVNULL):
         out = open(os.path.join(self.rt, log), "ab")
-        child = subprocess.Popen(argv, env=self.env, stdin=subprocess.DEVNULL, stdout=out,
+        child = subprocess.Popen(argv, env=self.env, stdin=stdin, stdout=out,
                                  stderr=subprocess.STDOUT, preexec_fn=die_with_parent)
         self.children.append(child)
         return child
@@ -154,6 +154,7 @@ class Session:
                                    ("org.gnome.desktop.interface", "toolkit-accessibility", "true")):
             self.gsettings("set", schema, key, value)
         self.install_extension()
+        self.start_keyring()
         self.spawn(["pipewire"], "pipewire.log")
         self.wait_for(lambda: os.path.exists(os.path.join(self.rt, "pipewire-0")), 10, "PipeWire")
         self.spawn(["wireplumber"], "wireplumber.log")
@@ -165,6 +166,17 @@ class Session:
             None, None)
         self.wait_for(self.shell_ready, 60, "GNOME Shell")
         self.input_session()
+
+    def start_keyring(self):
+        # Apps that store credentials (libsecret) need org.freedesktop.secrets on the session bus.
+        # An empty password does not create the login keyring, so a fixed one unlocks it; the
+        # keyring file lives in this session's own data dir, so it protects nothing else.
+        if not shutil.which("gnome-keyring-daemon"):
+            return
+        keyring = self.spawn(["gnome-keyring-daemon", "--foreground", "--components=secrets", "--unlock"],
+                             "keyring.log", stdin=subprocess.PIPE)
+        keyring.stdin.write(b"t3-desktop")
+        keyring.stdin.close()
 
     def gsettings(self, *args):
         return subprocess.run(["gsettings", *args], env=self.env, capture_output=True, text=True,

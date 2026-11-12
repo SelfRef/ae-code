@@ -71,7 +71,9 @@ A [Linux desktop](../../apps/server/src/device/LinuxDesktop.ts) is not run by
 expo-device-hub. Booting it spawns a Python helper
 ([linuxDesktopFiles.ts](../../apps/server/src/device/linuxDesktopFiles.ts), written
 under the T3 home because the server ships as one executable) that starts its
-own session and system D-Bus, PipeWire, WirePlumber and
+own session and system D-Bus, `gnome-keyring-daemon` (the secrets service; it is
+unlocked with a fixed password because an empty one creates no login keyring, and
+skipped when not installed), PipeWire, WirePlumber and
 `gnome-shell --headless --virtual-monitor`, with XDG config and data dirs of its
 own. Mutter's ScreenCast and RemoteDesktop D-Bus APIs give frames and input
 without a seat, logind, `/dev/uinput` or any capability, which is what lets it run

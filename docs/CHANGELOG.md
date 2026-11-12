@@ -10,6 +10,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Added
 
+- Device panel: the GNOME desktop starts `gnome-keyring-daemon` (when installed) so apps on it have a secrets provider to save logins in.
 - Android: the git button in a thread's header shows a worktree (fork) icon instead of the branch icon when the thread runs in a worktree.
 - Commit history: every branch row in Branches has a history button that opens the branch's commits as a list or a graph (lanes for merges, like VS Code), with a branch picker (or all branches) and, per commit, its message and changed files. On the web it is a **Commits** page (sidebar, command palette) and right-panel tab; on Android it opens from the Branches row.
 - Branches: the **Open thread** button on a row shrinks to its icon when the list is narrow.
