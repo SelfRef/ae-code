@@ -11,6 +11,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 ### Added
 
 - The hover popup of a sidebar thread now starts with its status (Working, Waiting, Approval, Done, Settled, Idle, ...).
+- Settings → Environments on the web now lists the server the page is served from as its first row, as the desktop app already did, so it no longer looks like there is only one environment.
 - Settings → Voice → Input: a switch hides the microphone button in the message box. The dictation shortcut still works.
 - Releases now include a Windows x64 server (`ae-code-windows-x64.zip`) and desktop installer (`AE-Code-<version>-x64.exe`). The Windows desktop app updates itself from the releases (Settings → About, or the update button). Both are unsigned and not yet tested on a real Windows machine.
 - Android: on a phone-sized screen, swipe right anywhere in a chat to return to the list, and right anywhere in the list to reopen the last chat (no longer only from the screen edge).
