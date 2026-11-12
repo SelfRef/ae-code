@@ -206,7 +206,8 @@ default branch if it moved, and fast-forwards the default branch to it, so histo
 The merge runs in the checkout that has the default branch checked out, usually the project folder.
 Your uncommitted edits there stay. It stops without changing anything if they are to files the merge
 changes (or untracked files are in its way), or if the rebase hits conflicts; fix those and run it
-again. The thread's worktree and branch stay until worktree cleanup
+again. If the rebase rewrote a branch that was already pushed (and had nothing
+unpushed), the merge also updates the branch's remote copy to match, so it does not show as diverged. The thread's worktree and branch stay until worktree cleanup
 removes them.
 
 To make **Merge & push** the main action, set **Settings → Source control → Default branch action**
