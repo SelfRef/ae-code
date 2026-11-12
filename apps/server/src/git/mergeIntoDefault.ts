@@ -27,8 +27,9 @@ function checkoutPathOf(porcelain: string, branch: string): string | null {
 
 /**
  * Fast-forwards the default branch to `branch` (rebasing `branch` onto it first when it moved),
- * and optionally pushes the default branch. Runs in the default branch's own checkout, which must
- * have no tracked changes; the thread's checkout is `cwd` and is never switched.
+ * and optionally pushes the default branch. Runs in the default branch's own checkout, whose
+ * uncommitted edits stay unless the merge changes the same files; the thread's checkout is `cwd`
+ * and is never switched.
  */
 export const mergeIntoDefault = Effect.fn("GitManager.mergeIntoDefault")(function* (
   git: Git,
@@ -124,16 +125,7 @@ export const mergeIntoDefault = Effect.fn("GitManager.mergeIntoDefault")(functio
       // Not checked out anywhere, so no working tree can go stale; Git refuses a non-fast-forward.
       yield* run("advance", cwd, ["fetch", ".", `refs/heads/${branch}:refs/heads/${base}`]);
     } else {
-      const dirty = yield* run("base-status", baseCheckout, [
-        "status",
-        "--porcelain",
-        "--untracked-files=no",
-      ]);
-      if (dirty.stdout.trim().length > 0) {
-        return yield* fail(
-          `${baseCheckout} has uncommitted changes on ${base}. Commit or stash them there, then run the action again.`,
-        );
-      }
+      // Git itself refuses only when the files it would change have local edits, so other edits stay.
       const forwarded = yield* run(
         "fast-forward",
         baseCheckout,
@@ -142,7 +134,9 @@ export const mergeIntoDefault = Effect.fn("GitManager.mergeIntoDefault")(functio
       );
       if (forwarded.exitCode !== 0) {
         return yield* fail(
-          `Could not fast-forward ${base} in ${baseCheckout}; a file there may be in the way. Nothing was merged.`,
+          /would be overwritten/i.test(`${forwarded.stderr}${forwarded.stdout}`)
+            ? `${baseCheckout} has uncommitted changes or untracked files in the way of this merge. Commit or stash them there, then run the action again.`
+            : `Could not fast-forward ${base} in ${baseCheckout}. Nothing was merged.`,
         );
       }
     }

@@ -202,8 +202,9 @@ merge, the push is the button. Merging commits pending changes first, rebases th
 default branch if it moved, and fast-forwards the default branch to it, so history stays linear.
 
 The merge runs in the checkout that has the default branch checked out, usually the project folder.
-It stops without changing anything if that folder has uncommitted changes, or if the rebase hits
-conflicts; fix those and run it again. The thread's worktree and branch stay until worktree cleanup
+Your uncommitted edits there stay. It stops without changing anything if they are to files the merge
+changes (or untracked files are in its way), or if the rebase hits conflicts; fix those and run it
+again. The thread's worktree and branch stay until worktree cleanup
 removes them.
 
 To make **Merge & push** the main action, set **Settings → Source control → Default branch action**

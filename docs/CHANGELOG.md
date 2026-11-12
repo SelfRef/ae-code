@@ -31,6 +31,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Fixed
 
+- Merging into the default branch no longer fails because you have uncommitted edits in that branch's checkout: only edits to files the merge changes, or untracked files in its way, stop it.
 - Worktree cleanup now removes a worktree whose branch was merged into the local default branch even before that branch is pushed, like the Branches page already counted it.
 - Expanding a system row such as "Merging by the agent" at the bottom of a chat now scrolls its details into view instead of opening them behind the composer.
 - A thread that is open in the web app when its snooze ends no longer shows as Woke on your other devices (mobile already did this).
