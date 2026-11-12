@@ -1434,4 +1434,9 @@ merged into the default branch.
 - **Edits in the default checkout stay.** The merge no longer demands a clean default checkout: `git merge --ff-only`
   runs there and refuses, changing nothing, only when uncommitted or untracked files are in the way of what it
   changes, so merging while you work on the default branch no longer hands the merge to the agent.
+- **Merges queue per repository.** `mergeIntoDefault` holds a lock keyed by the repository's common git directory, so
+  threads merging at once (their worktrees share one repository) run one after the other instead of racing each
+  other's rebase and fast-forward. If the default branch still moves between this merge's rebase and its fast-forward
+  (a commit in its own checkout), it rebases once more before giving up. A failed fast-forward no longer says "a file
+  may be in the way": it names edits that are in the way, or says it could not fast-forward.
 - No data migration.

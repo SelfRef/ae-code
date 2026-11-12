@@ -1,5 +1,6 @@
 import { GitManagerError, type GitCommandError } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
+import * as Semaphore from "effect/Semaphore";
 
 import type * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
 
@@ -31,7 +32,7 @@ function checkoutPathOf(porcelain: string, branch: string): string | null {
  * uncommitted edits stay unless the merge changes the same files; the thread's checkout is `cwd`
  * and is never switched.
  */
-export const mergeIntoDefault = Effect.fn("GitManager.mergeIntoDefault")(function* (
+const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(function* (
   git: Git,
   input: {
     readonly cwd: string;
@@ -86,60 +87,61 @@ export const mergeIntoDefault = Effect.fn("GitManager.mergeIntoDefault")(functio
     );
   }
 
-  if (
-    !input.pushOnly &&
-    !(yield* succeeds("base-in-head", [
-      "merge-base",
-      "--is-ancestor",
-      `refs/heads/${base}`,
-      "HEAD",
-    ]))
-  ) {
-    const rebased = yield* run("rebase", cwd, ["rebase", `refs/heads/${base}`], {
-      allowNonZeroExit: true,
-    });
-    if (rebased.exitCode !== 0) {
-      yield* run("rebase-abort", cwd, ["rebase", "--abort"], { allowNonZeroExit: true });
-      return yield* fail(
-        `Rebasing ${branch} onto ${base} hit conflicts, so nothing was merged. Resolve them with \`git rebase ${base}\` in this checkout, then run the action again.`,
-      );
-    }
-  }
-
   const baseSha = () =>
     run("base-sha", cwd, ["rev-parse", `refs/heads/${base}`]).pipe(
       Effect.map((result) => result.stdout.trim()),
     );
-  const merged =
-    input.pushOnly ||
-    (yield* succeeds("head-in-base", [
+  const baseInHead = () =>
+    succeeds("base-in-head", ["merge-base", "--is-ancestor", `refs/heads/${base}`, "HEAD"]);
+  // Fast-forwards the default branch; null when done, else why not and whether it moved meanwhile.
+  const fastForward = Effect.fn("GitManager.mergeIntoDefault.fastForward")(function* () {
+    const worktrees = yield* run("worktrees", cwd, ["worktree", "list", "--porcelain"]);
+    const baseCheckout = checkoutPathOf(worktrees.stdout, base);
+    // Not checked out anywhere, so no working tree can go stale; Git refuses a non-fast-forward.
+    // Git itself refuses in a checkout only when the files it would change have local edits.
+    const forwarded =
+      baseCheckout === null
+        ? yield* run("advance", cwd, ["fetch", ".", `refs/heads/${branch}:refs/heads/${base}`], {
+            allowNonZeroExit: true,
+          })
+        : yield* run("fast-forward", baseCheckout, ["merge", "--ff-only", `refs/heads/${branch}`], {
+            allowNonZeroExit: true,
+          });
+    if (forwarded.exitCode === 0) return null;
+    const inTheWay = /would be overwritten/i.test(`${forwarded.stderr}${forwarded.stdout}`);
+    return {
+      moved: !inTheWay && !(yield* baseInHead()),
+      message: inTheWay
+        ? `${baseCheckout} has uncommitted changes or untracked files in the way of this merge. Commit or stash them there, then run the action again.`
+        : `Could not fast-forward ${base}${baseCheckout === null ? "" : ` in ${baseCheckout}`}. Nothing was merged.`,
+    };
+  });
+
+  // The rebase and the fast-forward are not one step: if the default branch moved in between
+  // (a commit in its own checkout), rebase once more before giving up.
+  let merged = input.pushOnly === true;
+  for (let attempt = 0; !merged; attempt++) {
+    if (!(yield* baseInHead())) {
+      const rebased = yield* run("rebase", cwd, ["rebase", `refs/heads/${base}`], {
+        allowNonZeroExit: true,
+      });
+      if (rebased.exitCode !== 0) {
+        yield* run("rebase-abort", cwd, ["rebase", "--abort"], { allowNonZeroExit: true });
+        return yield* fail(
+          `Rebasing ${branch} onto ${base} hit conflicts, so nothing was merged. Resolve them with \`git rebase ${base}\` in this checkout, then run the action again.`,
+        );
+      }
+    }
+    merged = yield* succeeds("head-in-base", [
       "merge-base",
       "--is-ancestor",
       "HEAD",
       `refs/heads/${base}`,
-    ]));
-  if (!merged) {
-    const worktrees = yield* run("worktrees", cwd, ["worktree", "list", "--porcelain"]);
-    const baseCheckout = checkoutPathOf(worktrees.stdout, base);
-    if (baseCheckout === null) {
-      // Not checked out anywhere, so no working tree can go stale; Git refuses a non-fast-forward.
-      yield* run("advance", cwd, ["fetch", ".", `refs/heads/${branch}:refs/heads/${base}`]);
-    } else {
-      // Git itself refuses only when the files it would change have local edits, so other edits stay.
-      const forwarded = yield* run(
-        "fast-forward",
-        baseCheckout,
-        ["merge", "--ff-only", `refs/heads/${branch}`],
-        { allowNonZeroExit: true },
-      );
-      if (forwarded.exitCode !== 0) {
-        return yield* fail(
-          /would be overwritten/i.test(`${forwarded.stderr}${forwarded.stdout}`)
-            ? `${baseCheckout} has uncommitted changes or untracked files in the way of this merge. Commit or stash them there, then run the action again.`
-            : `Could not fast-forward ${base} in ${baseCheckout}. Nothing was merged.`,
-        );
-      }
-    }
+    ]);
+    if (merged) break;
+    const failure = yield* fastForward();
+    if (failure === null) break;
+    if (!failure.moved || attempt > 0) return yield* fail(failure.message);
   }
 
   const commitSha = yield* baseSha();
@@ -187,4 +189,25 @@ export const mergeIntoDefault = Effect.fn("GitManager.mergeIntoDefault")(functio
     commitSha,
     push: { status: "pushed", upstreamBranch },
   };
+});
+
+const repositoryLocks = new Map<string, Semaphore.Semaphore>();
+
+/**
+ * Merges run one at a time per repository, so threads merging at once queue instead of racing
+ * each other's rebase and fast-forward.
+ */
+export const mergeIntoDefault = Effect.fn("GitManager.mergeIntoDefault")(function* (
+  ...args: Parameters<typeof mergeIntoDefaultNow>
+) {
+  const [git, input] = args;
+  const common = yield* git.execute({
+    operation: "GitManager.mergeIntoDefault.repository",
+    cwd: input.cwd,
+    args: ["rev-parse", "--path-format=absolute", "--git-common-dir"],
+  });
+  const key = common.stdout.trim();
+  const lock = repositoryLocks.get(key) ?? Semaphore.makeUnsafe(1);
+  repositoryLocks.set(key, lock);
+  return yield* mergeIntoDefaultNow(...args).pipe(lock.withPermits(1));
 });
