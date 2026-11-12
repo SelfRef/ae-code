@@ -129,9 +129,15 @@ function useThreadGitControlModel(props: ThreadGitMenuProps) {
   const confirmPushToDefaultBranch = useConfirmPushToDefaultBranch();
   const quickMergeAction = useQuickMergeAction();
   const currentBranchAction = useCurrentBranchAction();
-  const defaultBranchPrimary =
-    resolveDefaultBranchActions(gitStatus, busy, hasPrimaryRemote, quickMergeAction)?.primary ??
-    null;
+  const defaultBranchActions = resolveDefaultBranchActions(
+    gitStatus,
+    busy,
+    hasPrimaryRemote,
+    quickMergeAction,
+  );
+  const defaultBranchPrimary = defaultBranchActions?.primary ?? null;
+  const defaultBranchRebase =
+    defaultBranchActions?.items.find((item) => item.id === "rebase_default") ?? null;
   const quickAction = (() => {
     if (!isRepo) {
       return {
@@ -254,6 +260,12 @@ function useThreadGitControlModel(props: ThreadGitMenuProps) {
     }
   };
 
+  const runDefaultBranchRebase = async () => {
+    if (defaultBranchRebase && !defaultBranchRebase.disabled && canWriteSourceControl) {
+      await runActionWithPrompt({ action: "rebase_default" });
+    }
+  };
+
   const openReview = () => {
     navigation.navigate("ThreadReview", {
       environmentId: EnvironmentId.make(String(environmentId)),
@@ -279,6 +291,8 @@ function useThreadGitControlModel(props: ThreadGitMenuProps) {
         ? ("arrow.up.circle" as const)
         : PullRequestGlyph.merged,
     defaultBranchPrimary,
+    defaultBranchRebase,
+    runDefaultBranchRebase,
     isRepo,
     openGitInspector,
     runDefaultBranchAction,
@@ -379,9 +393,28 @@ export function useThreadGitMenuDefinition(props: ThreadGitMenuProps): AppBarMen
               title: model.defaultBranchPrimary.label,
               icon: model.defaultBranchIcon,
               disabled: model.defaultBranchPrimary.disabled,
-              subtitle: "Default branch",
+              subtitle: model.defaultBranchRebase
+                ? "Default branch, branch is behind"
+                : "Default branch",
               onPress: () => {
                 void model.runDefaultBranchAction();
+              },
+            },
+          ]
+        : []),
+      ...(model.defaultBranchRebase
+        ? [
+            {
+              id: "git-default-branch-rebase",
+              title: "Rebase onto the default branch",
+              icon: model.defaultBranchIcon,
+              disabled: model.defaultBranchRebase.disabled,
+              subtitle: model.defaultBranchRebase.label.replace(
+                "Rebase onto the default branch ",
+                "",
+              ),
+              onPress: () => {
+                void model.runDefaultBranchRebase();
               },
             },
           ]
