@@ -1,4 +1,5 @@
 import IconGitBranch from "@tabler/icons-react-native/IconGitBranch";
+import IconGitFork from "@tabler/icons-react-native/IconGitFork";
 import IconGitMerge from "@tabler/icons-react-native/IconGitMerge";
 import IconGitCommit from "@tabler/icons-react-native/IconGitCommit";
 import IconGitPullRequestClosed from "@tabler/icons-react-native/IconGitPullRequestClosed";
@@ -23,6 +24,7 @@ const CUSTOM_ICONS = {
   "git.pull-request.closed": IconGitPullRequestClosed,
   "git.pull-request.draft": IconGitPullRequestDraft,
   "git.commit": IconGitCommit,
+  "git.worktree": IconGitFork,
   robot: IconRobot,
 };
 
