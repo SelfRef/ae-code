@@ -6472,6 +6472,14 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
           const branches = (yield* runGit(repoDir, ["branch", "--format=%(refname:short)"])).stdout;
           expect(branches).not.toContain("stale-merged");
           expect(branches).toContain("wip");
+
+          const forced = yield* deleteMergedBranches(git, {
+            cwd: repoDir,
+            refNames: ["wip", "main"],
+            force: true,
+          });
+          expect(forced.deleted).toEqual(["wip"]);
+          expect(forced.skipped.map((entry) => entry.name)).toEqual(["main"]);
         }),
     );
 

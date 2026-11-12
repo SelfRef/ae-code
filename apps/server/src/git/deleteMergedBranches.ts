@@ -8,12 +8,16 @@ type Git = GitVcsDriver.GitVcsDriver["Service"];
 
 /**
  * Deletes the local branches named that the default branch already contains, and says why it
- * kept the others. Never touches the default branch, a branch checked out anywhere, or one with
- * commits the default branch lacks.
+ * kept the others. Never touches the default branch or a branch checked out anywhere, nor one with
+ * commits the default branch lacks unless `force` is set.
  */
 export const deleteMergedBranches = Effect.fn("GitManager.deleteMergedBranches")(function* (
   git: Git,
-  input: { readonly cwd: string; readonly refNames: ReadonlyArray<string> },
+  input: {
+    readonly cwd: string;
+    readonly refNames: ReadonlyArray<string>;
+    readonly force?: boolean | undefined;
+  },
 ): Effect.fn.Return<VcsDeleteMergedBranchesResult, GitCommandError> {
   const { cwd } = input;
   const run = (args: ReadonlyArray<string>) =>
@@ -53,12 +57,13 @@ export const deleteMergedBranches = Effect.fn("GitManager.deleteMergedBranches")
     ) {
       skip("It does not exist.");
     } else if (
+      input.force !== true &&
       (yield* run(["merge-base", "--is-ancestor", `refs/heads/${name}`, `refs/heads/${base}`]))
         .exitCode !== 0
     ) {
       skip(`It has commits ${base} lacks.`);
     } else {
-      // Checked above, so a plain delete would only refuse over the current HEAD, not this branch.
+      // Checked above, but `git branch -d` compares with the current HEAD, not the default branch.
       yield* git.deleteLocalBranch({ cwd, refName: name, force: true });
       deleted.push(name);
     }

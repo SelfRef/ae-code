@@ -20,6 +20,15 @@ export function branchMergeState(
   return branch.isDefault ? "default" : branch.aheadOfDefault > 0 ? "unmerged" : "merged";
 }
 
+/** A local branch the Branches page can delete: not the default, not checked out, not in a worktree. */
+export function isPlainLocalBranch(
+  branch: Pick<VcsBranchOverviewEntry, "isRemoteOnly" | "isDefault" | "current" | "worktreePath">,
+): boolean {
+  return (
+    !branch.isRemoteOnly && !branch.isDefault && !branch.current && branch.worktreePath === null
+  );
+}
+
 type BranchThread = Pick<
   EnvironmentThreadShell,
   | "environmentId"

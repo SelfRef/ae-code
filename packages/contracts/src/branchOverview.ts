@@ -43,8 +43,10 @@ export type VcsBranchOverviewEntry = typeof VcsBranchOverviewEntry.Type;
 
 export const VcsDeleteMergedBranchesInput = Schema.Struct({
   cwd: TrimmedNonEmptyString,
-  /** Local branch names; each is deleted only if the default branch already contains it. */
+  /** Local branch names; each is deleted only if the default branch already contains it, unless `force`. */
   refNames: Schema.Array(TrimmedNonEmptyString).check(Schema.isMaxLength(500)),
+  /** Also delete a branch with commits the default branch lacks. Still never the default or a checked-out branch. */
+  force: Schema.optional(Schema.Boolean),
 });
 export type VcsDeleteMergedBranchesInput = typeof VcsDeleteMergedBranchesInput.Type;
 

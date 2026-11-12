@@ -1509,4 +1509,6 @@ merged into the default branch.
   `CLIENT_GUARDED_RPC_SCOPES`; `deleteMergedBranches.ts`): the server re-checks each name (exists, is an ancestor of the
   local default branch, is not checked out anywhere) and answers with what it deleted and what it kept and why. Remote
   copies stay. A thread whose branch is gone recreates it from the project's checkout on its next message.
+  Each such branch row also has its own delete button (a **Delete** link on Android): the same RPC with `force: true` for
+  a branch with commits the default branch lacks, behind a confirmation that says they are lost.
 - No data migration.
