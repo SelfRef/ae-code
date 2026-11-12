@@ -46,6 +46,7 @@ import {
   CircleCheckIcon,
   CircleDashedIcon,
   CircleDotDashedIcon,
+  CircleIcon,
   ClockIcon,
   GitBranchIcon,
   MessageCircleQuestionIcon,
@@ -249,6 +250,7 @@ function SidebarThreadTooltip({
   branchMismatch,
   terminalStatus,
   terminalProcessCount,
+  status,
 }: {
   thread: SidebarThreadSummary;
   project: ProjectFaviconProject | null;
@@ -266,6 +268,8 @@ function SidebarThreadTooltip({
   } | null;
   terminalStatus: TerminalStatusIndicator | null;
   terminalProcessCount: number;
+  // Search results carry no status line, so their popup omits it.
+  status?: { label: string; icon: keyof typeof TOP_STATUS_ICONS; className: string };
 }) {
   const driverKind = providerEntry?.driverKind ?? null;
   const previousProviderNames = thread.providerInstanceHistory
@@ -299,6 +303,12 @@ function SidebarThreadTooltip({
           </>
         }
       >
+        {status ? (
+          <div className={cn("flex min-w-0 items-center gap-2 font-medium", status.className)}>
+            <TopStatusIcon icon={status.icon} className="size-3" />
+            <div className="min-w-0 truncate">{status.label}</div>
+          </div>
+        ) : null}
         {projectDisplayName ? (
           <div className="flex min-w-0 items-center gap-2">
             {project ? <ProjectFavicon project={project} className="size-3 shrink-0" /> : null}
@@ -557,6 +567,7 @@ const TOP_STATUS_ICONS = {
   done: CircleCheckIcon,
   woke: AlarmClockIcon,
   draft: SquarePenIcon,
+  idle: CircleIcon,
 } as const;
 
 // Tints the rows that wait on the user; drafts are warning, Done green, Input purple.
@@ -888,6 +899,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
       branchMismatch={branchMismatch}
       terminalStatus={terminalStatus}
       terminalProcessCount={terminalProcessCount}
+      status={
+        topStatus ?? {
+          label: variantAction === "unsettle" ? "Settled" : "Idle",
+          icon: variantAction === "unsettle" ? "done" : "idle",
+          className: "text-muted-foreground",
+        }
+      }
     />
   );
 
