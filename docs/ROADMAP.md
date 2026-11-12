@@ -1444,4 +1444,10 @@ merged into the default branch.
   before the rebase, the merge replaces the upstream with `--force-with-lease` pinned to that commit, and says so in the
   toast; a branch with unpushed commits, or an upstream someone else moved, is left alone (the toast says the
   upstream could not be updated).
+- **Squash.** A project setting `mergeStrategy` (`fast-forward` by default, or `squash`; Settings → Source control, web,
+  desktop and Android). With `squash`, after the rebase a branch of two or more commits becomes one commit on the default
+  branch: `git commit-tree` of the branch's tree on top of the default branch with a message from the commit-message
+  generator (given the branch's diff against the default branch), then `reset --soft` of the thread's branch to it, so
+  the branch is "merged" like any other and a pushed upstream is re-synced. The commit is made without hooks, and the
+  branch's own commits are only left in the reflog. A single commit is kept as it is.
 - No data migration.

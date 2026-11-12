@@ -1175,6 +1175,15 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["merge default branch main push fast-forward pull request quick action direct"],
   },
   {
+    id: "merge-strategy",
+    title: "Merge strategy",
+    to: "/settings/source-control",
+    scope: "project-defaults",
+    searchTerms: [
+      "squash merge default branch main commits one commit fast-forward history linear",
+    ],
+  },
+  {
     id: "source-control",
     title: "Source control",
     to: "/settings/source-control",

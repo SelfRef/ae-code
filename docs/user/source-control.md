@@ -210,6 +210,11 @@ again. If the rebase rewrote a branch that was already pushed (and had nothing
 unpushed), the merge also updates the branch's remote copy to match, so it does not show as diverged. The thread's worktree and branch stay until worktree cleanup
 removes them.
 
+By default the default branch gets the branch's commits as they are. Set **Settings → Source
+control → Merge strategy** to **Squash into one commit** to land a branch of several commits as one
+commit with a generated message; the thread's branch is reset to that commit, so its own commits
+remain only in the reflog, and the commit skips git hooks.
+
 To make **Merge & push** the main action, set **Settings → Source control → Default branch action**
 globally or for a project.
 

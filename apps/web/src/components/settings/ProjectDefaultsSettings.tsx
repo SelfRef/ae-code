@@ -106,6 +106,7 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
   const mixedMergeMethod = useScopedSettingsMixed(["pullRequestMergeMethod"]);
   const mixedCurrentBranch = useScopedSettingsMixed(["currentBranchAction"]);
   const mixedQuickMerge = useScopedSettingsMixed(["quickMergeAction"]);
+  const mixedMergeStrategy = useScopedSettingsMixed(["mergeStrategy"]);
   const modelSource = useScopedSettingSource(["defaultModelSelection"]);
   const isProjectScope = scope.kind === "project" || scope.kind === "checkout";
   const unavailable = connectedEnvironments.length === 0;
@@ -566,7 +567,7 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
             settingKeys={["quickMergeAction"]}
             mixed={mixedQuickMerge}
             {...searchableSetting("quick-merge-action")}
-            description="The main action of a thread's Default branch button. Merging fast-forwards the default branch in its own checkout, which must be clean, and rebases the branch first if needed. Both stay in its menu."
+            description="The main action of a thread's Default branch button. Merging fast-forwards the default branch in its own checkout, rebasing the branch first if needed. Both stay in its menu."
             resetAction={
               settings.quickMergeAction !== "merge" ? (
                 <SettingResetButton
@@ -598,6 +599,47 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
                 <SelectPopup align="end" alignItemWithTrigger={false}>
                   <SelectItem value="merge">Merge into default branch</SelectItem>
                   <SelectItem value="merge_push">Merge into default branch & push</SelectItem>
+                </SelectPopup>
+              </Select>
+            }
+          />
+          <SettingsRow
+            serverScoped
+            settingKeys={["mergeStrategy"]}
+            mixed={mixedMergeStrategy}
+            {...searchableSetting("merge-strategy")}
+            description="How a thread's commits land on the default branch. Squash makes a branch of several commits one commit with a generated message."
+            resetAction={
+              settings.mergeStrategy !== "fast-forward" ? (
+                <SettingResetButton
+                  label="merge strategy"
+                  tooltip="Reset to keeping the commits"
+                  onClick={() => updateSettings({ mergeStrategy: "fast-forward" })}
+                />
+              ) : null
+            }
+            control={
+              <Select
+                value={mixedMergeStrategy ? null : settings.mergeStrategy}
+                onValueChange={(value) => {
+                  if (value === "fast-forward" || value === "squash")
+                    updateSettings({ mergeStrategy: value });
+                }}
+              >
+                <SelectTrigger size="sm" aria-label="Merge strategy">
+                  <SelectValue>
+                    {(value: string | null) =>
+                      value === "squash"
+                        ? "Squash into one commit"
+                        : value === null
+                          ? "Mixed"
+                          : "Keep the commits"
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectPopup align="end" alignItemWithTrigger={false}>
+                  <SelectItem value="fast-forward">Keep the commits</SelectItem>
+                  <SelectItem value="squash">Squash into one commit</SelectItem>
                 </SelectPopup>
               </Select>
             }

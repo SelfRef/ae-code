@@ -820,6 +820,52 @@ export const make = Effect.gen(function* () {
       ),
       Effect.orElseSucceed(() => null),
     );
+  /** The commit message writer for a squash merge; undefined when the project keeps the commits. */
+  const squashMessageFor = Effect.fn("GitManager.squashMessageFor")(function* (
+    input: {
+      readonly cwd: string;
+      readonly threadId?: ThreadId | undefined;
+      readonly projectId?: ProjectId | undefined;
+    },
+    textSettings: SourceControlTextGenerationSettings,
+    branch: string,
+  ) {
+    const { settings } = yield* projectSettingsFor(input).pipe(
+      Effect.orElseSucceed(() => ({ settings: null })),
+    );
+    if (settings?.mergeStrategy !== "squash") return undefined;
+    return (baseRef: string) =>
+      Effect.gen(function* () {
+        const range = yield* gitCore.readRangeContext(input.cwd, baseRef);
+        const policy = yield* resolveStylePolicy(input.cwd, textSettings);
+        const generated = yield* textGeneration
+          .generateCommitMessage({
+            cwd: input.cwd,
+            branch,
+            stagedSummary: limitContext(range.diffSummary, 8_000),
+            stagedPatch: limitContext(range.diffPatch, 50_000),
+            ...(policy ? { policy } : {}),
+            modelSelection: textSettings.modelSelection,
+            projectId: textSettings.projectId,
+          })
+          .pipe(
+            Effect.map((result) =>
+              sanitizeCommitMessage(result, policy?.kind === "conventional_commits"),
+            ),
+          );
+        return formatCommitMessage(generated.subject, generated.body);
+      }).pipe(
+        Effect.mapError(
+          (cause) =>
+            new GitManagerError({
+              operation: "runStackedAction",
+              cwd: input.cwd,
+              detail: `Could not write the squash commit message: ${cause.message}`,
+              cause,
+            }),
+        ),
+      );
+  });
   const readThreadContext = Effect.fnUntraced(
     function* (threadId: ThreadId | undefined) {
       if (threadId === undefined) return undefined;
@@ -3701,11 +3747,16 @@ export const make = Effect.gen(function* () {
                 .pipe(
                   Effect.tap(() => Ref.set(currentPhase, Option.some("merge"))),
                   Effect.flatMap(() =>
-                    mergeIntoDefault(gitCore, {
-                      cwd: input.cwd,
-                      branch: currentBranch,
-                      push: input.action === "merge_push",
-                    }),
+                    squashMessageFor(input, textGenerationSettings, currentBranch).pipe(
+                      Effect.flatMap((squashMessage) =>
+                        mergeIntoDefault(gitCore, {
+                          cwd: input.cwd,
+                          branch: currentBranch,
+                          push: input.action === "merge_push",
+                          ...(squashMessage ? { squashMessage } : {}),
+                        }),
+                      ),
+                    ),
                   ),
                   Effect.catch((error) =>
                     handOffMerge === undefined
