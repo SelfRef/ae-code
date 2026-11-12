@@ -163,6 +163,11 @@ export function useRightPanelActions(input: RightPanelActionsInput) {
     useRightPanelStore.getState().open(activeThreadRef, "branches");
   };
   const addBranchesSurfaceStable = useStableCallback(addBranchesSurface);
+  const addCommitsSurface = () => {
+    if (!activeThreadRef || !activeProject) return;
+    useRightPanelStore.getState().open(activeThreadRef, "commits");
+  };
+  const addCommitsSurfaceStable = useStableCallback(addCommitsSurface);
   const addDeviceSurface = () => {
     if (!activeThreadRef) return;
     if (!deviceState.onboardingCompleted || deviceState.hostStatus === "disabled") {
@@ -340,6 +345,7 @@ export function useRightPanelActions(input: RightPanelActionsInput) {
     addIssuesSurfaceStable,
     addReleasesSurfaceStable,
     addBranchesSurfaceStable,
+    addCommitsSurfaceStable,
     addPullRequestSurfaceStable,
     addPullRequestsSurfaceStable,
     closePreviewPanelStable,

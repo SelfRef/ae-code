@@ -1,15 +1,20 @@
-import type { EnvironmentId, ProjectId } from "@t3tools/contracts";
+import type { EnvironmentId, ProjectId, ScopedThreadRef } from "@t3tools/contracts";
 import { useState } from "react";
+
+import { useCommitsTabStore } from "~/commitsTabStore";
+import { useRightPanelStore } from "~/rightPanelStore";
 
 import { BranchList, BranchSummary, useBranchOverview, type BranchFilters } from "./BranchesPage";
 
 /** The thread's project branches, searchable and filterable in one right-panel tab. */
 export function ThreadBranchesPanel({
+  threadRef,
   environmentId,
   projectId,
   projectName,
   workspaceRoot,
 }: {
+  threadRef: ScopedThreadRef;
   environmentId: EnvironmentId;
   projectId: ProjectId;
   projectName: string;
@@ -28,6 +33,12 @@ export function ThreadBranchesPanel({
         overview={overview}
         filters={filters}
         onFilters={(patch) => setFilters((current) => ({ ...current, ...patch }))}
+        onOpenCommits={(ref) => {
+          useCommitsTabStore
+            .getState()
+            .setFocus({ projectKey: `${environmentId}:${projectId}`, ref });
+          useRightPanelStore.getState().open(threadRef, "commits");
+        }}
       />
     </div>
   );

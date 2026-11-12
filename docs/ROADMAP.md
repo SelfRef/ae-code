@@ -11,6 +11,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
 | [45] | The executable and command are `ae-code` (was `t3`); `AECODE_*` env vars work everywhere `T3CODE_*` did, which stays as the fallback                                   | done    |
+| [47] | Commit history of a branch as a list or a graph, with a branch picker and changed files per commit, on the web (`/commits`, right panel) and in the Android app        | done    |
 | [46] | Default branch workflow: cleanup follows the local default branch, merges queue per repository and keep your edits there, and more (see the section)                   | done    |
 | 44   | Device panel controls in a row above the screen, like the browser's, instead of a column at the right edge (web)                                                       | done    |
 | 43   | Browser control modes: View only, Take control, and Share control, where you and the agent both act and the agent is not interrupted (web and Android)                 | done    |
@@ -83,6 +84,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 [27]: #skills-manager-change-27
 [30]: #synced-drafts-change-30
 [33]: #saved-environments-shared-through-the-server-change-33
+[47]: #commit-history-change-47
 [46]: #default-branch-workflow-change-46
 [40]: #other-ways-to-run-the-android-emulator-change-40
 [38]: #branches-change-38
@@ -1234,6 +1236,32 @@ branch and from its own upstream. Nothing here switches, pulls or pushes; the on
 - **Android**: a Branches tab before Issues (a page like Issues and Releases; the row's "Open thread" opens it). The tab bar
   holds four tabs, so with Pulls hidden Usage moves under the overflow entry. Search, sort and filter chips (merge state,
   kind, remote) and a project chip share their logic with the web (`filterBranches`, `sortBranches`).
+- No data migration.
+
+## Commit history (change 47)
+
+The history behind a Branches row: the commits of one branch, newest first, as a list or as a lane graph like
+VS Code's and Zed's.
+
+- **Server**: two read-scope RPCs on `GitWorkflowService` (`apps/server/src/git/commitHistory.ts`, contract
+  `packages/contracts/src/commitHistory.ts`). `vcs.commitLog` runs `git log --topo-order` (a graph needs every child before
+  its parents) for `HEAD`, a branch named as the branch list names it (`main`, `origin/feature`; a branch wins over a tag of
+  the same name) or every local and remote branch (`ref: "*"`). It returns the newest `limit` commits (100 by default,
+  1000 at most) with parents, author, date and the branches and tags on each. `vcs.commitDetail` returns one commit's
+  message body and its changed files with their line counts (`git show --numstat`, against the first parent for a merge,
+  300 files at most), read when a row is opened.
+- **Growing the list**: "Load more" asks again with twice the limit instead of a cursor, so a list is one cached query and a
+  commit's position never depends on the refs moving between two pages. The loaded commits stay on screen while it answers.
+  Not virtualized: at most 1000 light rows.
+- **Graph**: `layoutCommitGraph` (`packages/client-runtime/src/commitGraph.ts`) gives every commit a lane and the lines that
+  enter, leave and pass its row; the clients only draw them (SVG on the web). A lane waits for the commit it expects next; a
+  merge's second parent gets a lane of its own. Lines beyond the tenth lane are clipped.
+- **Web**: page `/commits` (project switcher, `ref` in the URL; sidebar button after Branches and a command-palette action)
+  and a "Commits" right-panel tab (key `C`) that follows the thread's workspace, so it opens on the thread's branch. The list
+  or graph choice is one persisted preference for both. A Branches row has a history button that opens the page, or switches
+  the tab, to that branch. The row's "Open thread" button shows only its icon while the list is narrower than 42 rem.
+- **Android**: the history button on a Branches row opens the commits in place of the list, with a Back row and the same
+  branch picker and list/graph switch. There is no tab of its own: the bar is full.
 - No data migration.
 
 ## File operations (change 39)
