@@ -239,6 +239,7 @@ jobs:
   # as upstream's release-desktop.yml does: the resource monitor through cargo-xwin,
   # the installer without wine (patches/app-builder-lib). Unsigned, and the desktop has no
   # WSL runtime. The binaries cannot run here, so `windows-check` runs the server on Windows.
+  # The installer's feed (latest.yml and the blockmap) is attached so the desktop app updates itself.
   windows:
     name: Windows x64 server and desktop
     needs: [prepare]
@@ -318,7 +319,12 @@ jobs:
           set -euo pipefail
           vp run dist:desktop:artifact --platform win --target nsis --arch x64 \
             --build-version "$VERSION" --skip-build --verbose
-          mv release/*.exe release-assets/ae-code-desktop-windows-x64.exe
+          # The installer keeps electron-builder's name (AE-Code-<version>-x64.exe): the
+          # app's updater finds it by that name in latest.yml, and the version in it
+          # is how a differential update locates the old blockmap.
+          test -f release/latest.yml
+          find release -name app-update.yml | grep -q .
+          cp release/AE-Code-*-x64.exe release/AE-Code-*-x64.exe.blockmap release/latest.yml release-assets/
 
       - name: Upload the assets
         uses: actions/upload-artifact@v7
@@ -488,7 +494,9 @@ jobs:
             release-assets/ae-code-linux-x64.tar.gz \
             release-assets/ae-code-desktop-linux-x64.tar.gz \
             release-assets/ae-code-windows-x64.zip \
-            release-assets/ae-code-desktop-windows-x64.exe
+            release-assets/AE-Code-*-x64.exe \
+            release-assets/AE-Code-*-x64.exe.blockmap \
+            release-assets/latest.yml
 
   # Built after the release exists and attached to it, so an Android failure
   # never withholds the server archive. Signed with the fork's own key
