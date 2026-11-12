@@ -3,6 +3,7 @@ import {
   branchMergeState,
   branchProjects,
   filterBranches,
+  isPlainLocalBranch,
   sortBranches,
   threadForBranch,
   type BranchKind,
@@ -92,12 +93,15 @@ function BranchRow({
   threadTitle,
   onOpenThread,
   onOpenCommits,
+  onDelete,
 }: {
   branch: VcsBranchOverviewEntry;
   defaultRef: string | null;
   threadTitle: string | null;
   onOpenThread: () => void;
   onOpenCommits: () => void;
+  /** Absent when the branch cannot be deleted here. */
+  onDelete: (() => void) | undefined;
 }) {
   const state = branchMergeState(branch);
   const Icon = branch.worktreePath !== null ? FolderGit2Icon : GitBranchIcon;
@@ -169,6 +173,17 @@ function BranchRow({
         >
           <GitCommitHorizontalIcon />
         </Button>
+        {onDelete ? (
+          <Button
+            size="icon-xs"
+            variant="outline"
+            aria-label={`Delete branch ${branch.name}`}
+            title="Delete branch"
+            onClick={onDelete}
+          >
+            <Trash2Icon />
+          </Button>
+        ) : null}
         {threadTitle !== null ? (
           <Button
             size="compact"
@@ -251,25 +266,13 @@ export function BranchList({
   );
   // Plain local branches the default branch already contains: nothing is lost by deleting them.
   const mergedBranches = (data?.branches ?? []).filter(
-    (branch) =>
-      !branch.isRemoteOnly &&
-      !branch.isDefault &&
-      !branch.current &&
-      branch.worktreePath === null &&
-      branchMergeState(branch) === "merged",
+    (branch) => isPlainLocalBranch(branch) && branchMergeState(branch) === "merged",
   );
-  const deleteMerged = async () => {
-    if (project === null || mergedBranches.length === 0) return;
-    const names = mergedBranches.map((branch) => branch.name);
-    const shown = names.slice(0, 8).join(", ");
-    const confirmed = await requestConfirmDialog(
-      `Delete ${names.length} merged ${names.length === 1 ? "branch" : "branches"}?\n${shown}${names.length > 8 ? ` and ${names.length - 8} more` : ""} ${names.length === 1 ? "is" : "are"} already in ${data?.defaultRef ?? "the default branch"}. Remote copies stay.`,
-      { variant: "destructive" },
-    );
-    if (confirmed !== true) return;
+  const deleteBranches = async (names: ReadonlyArray<string>, force: boolean) => {
+    if (project === null) return;
     const result = await deleteMergedBranches({
       environmentId: project.environmentId,
-      input: { cwd: project.workspaceRoot, refNames: names },
+      input: { cwd: project.workspaceRoot, refNames: names, ...(force ? { force } : {}) },
     });
     if (result._tag === "Failure") {
       if (isAtomCommandInterrupted(result)) return;
@@ -292,6 +295,24 @@ export function BranchList({
       });
     }
     overview.refresh();
+  };
+  const deleteMerged = async () => {
+    if (mergedBranches.length === 0) return;
+    const names = mergedBranches.map((branch) => branch.name);
+    const shown = names.slice(0, 8).join(", ");
+    const confirmed = await requestConfirmDialog(
+      `Delete ${names.length} merged ${names.length === 1 ? "branch" : "branches"}?\n${shown}${names.length > 8 ? ` and ${names.length - 8} more` : ""} ${names.length === 1 ? "is" : "are"} already in ${data?.defaultRef ?? "the default branch"}. Remote copies stay.`,
+      { variant: "destructive" },
+    );
+    if (confirmed === true) await deleteBranches(names, false);
+  };
+  const deleteOne = async (branch: VcsBranchOverviewEntry) => {
+    const lost = branchMergeState(branch) !== "merged";
+    const confirmed = await requestConfirmDialog(
+      `Delete branch ${branch.name}?\n${lost ? `Its ${branch.aheadOfDefault} commits not in ${data?.defaultRef ?? "the default branch"} are lost unless another branch or a remote has them.` : `It is already in ${data?.defaultRef ?? "the default branch"}.`} Remote copies stay.`,
+      { variant: "destructive" },
+    );
+    if (confirmed === true) await deleteBranches([branch.name], lost);
   };
   const remotes = data?.remotes ?? [];
   const remote = data === null ? ALL_VCS_REMOTES : (data.remote ?? ALL_VCS_REMOTES);
@@ -433,6 +454,11 @@ export function BranchList({
                   defaultRef={data.defaultRef}
                   threadTitle={thread?.title ?? null}
                   onOpenCommits={() => onOpenCommits(branch.name)}
+                  onDelete={
+                    canDelete && isPlainLocalBranch(branch)
+                      ? () => void deleteOne(branch)
+                      : undefined
+                  }
                   onOpenThread={() => {
                     if (thread)
                       void navigate({
