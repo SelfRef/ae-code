@@ -46,6 +46,12 @@ export const T3ProjectFileScript = Schema.Struct({
         "When true, the script runs in the thread's worktree each time the thread settles, for example to delete build output. Threads without their own worktree skip it.",
     }),
   ),
+  runBeforeMerge: Schema.optionalKey(
+    Schema.Boolean.annotate({
+      description:
+        "When true, the script runs in the thread's checkout before the thread's branch is merged into the default branch, and a non-zero exit stops the merge.",
+    }),
+  ),
   stopOnSettle: Schema.optionalKey(
     Schema.Boolean.annotate({
       description:

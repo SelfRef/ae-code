@@ -210,6 +210,13 @@ again. If the rebase rewrote a branch that was already pushed (and had nothing
 unpushed), the merge also updates the branch's remote copy to match, so it does not show as diverged. The thread's worktree and branch stay until worktree cleanup
 removes them.
 
+To check the work before it lands, turn on **Run before the thread merges into the default
+branch (a failure stops it)** for one of the project's actions (Settings → Projects → Actions), or
+set `"runBeforeMerge": true` on a `t3.json` action, for example a test or lint command. The merge
+rebases the branch, runs the action in the thread's checkout, and merges only if it exits with 0;
+otherwise nothing is merged and the thread's agent is asked to fix it. Its terminal stays open
+when it fails.
+
 By default the default branch gets the branch's commits as they are. Set **Settings → Source
 control → Merge strategy** to **Squash into one commit** to land a branch of several commits as one
 commit with a generated message; the thread's branch is reset to that commit, so its own commits

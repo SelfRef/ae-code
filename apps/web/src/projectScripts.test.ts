@@ -61,7 +61,7 @@ describe("projectScripts helpers", () => {
     expect(primaryProjectScript(scripts.filter((script) => script.id === "clean"))).toBeNull();
   });
 
-  it("moves the setup and settle roles to the script that claims them", () => {
+  it("moves the setup, settle and before-merge roles to the script that claims them", () => {
     const input = {
       name: "Next",
       command: "true",
@@ -88,5 +88,11 @@ describe("projectScripts helpers", () => {
     expect(
       releaseClaimedRoles(holder, { ...input, runOnWorktreeCreate: false, runOnSettle: false }),
     ).toBe(holder);
+    expect(
+      releaseClaimedRoles(
+        { ...holder, runBeforeMerge: true },
+        { ...input, runOnWorktreeCreate: false, runOnSettle: false, runBeforeMerge: true },
+      ),
+    ).toMatchObject({ runBeforeMerge: false });
   });
 });

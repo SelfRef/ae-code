@@ -820,6 +820,57 @@ export const make = Effect.gen(function* () {
       ),
       Effect.orElseSucceed(() => null),
     );
+  /** Runs the project's "before merge" action in the thread's checkout; a failing one stops the merge. */
+  const preMergeAction = Effect.fn("GitManager.preMergeAction")(function* (
+    input: {
+      readonly cwd: string;
+      readonly projectId?: ProjectId | undefined;
+    },
+    threadId: ThreadId,
+    emit: (event: GitActionProgressPayload) => Effect.Effect<void>,
+  ) {
+    const { projectId } = yield* projectSettingsFor({ ...input, threadId }).pipe(
+      Effect.orElseSucceed(() => ({ projectId: null as ProjectId | null })),
+    );
+    const started = yield* projectSetupScriptRunner
+      .runForThread({
+        threadId,
+        ...(projectId === null ? { projectCwd: input.cwd } : { projectId }),
+        worktreePath: input.cwd,
+        trigger: "merge",
+        observeCompletion: {},
+      })
+      .pipe(
+        Effect.mapError(
+          (cause) =>
+            new GitManagerError({
+              operation: "runStackedAction",
+              cwd: input.cwd,
+              detail: `Could not run the pre-merge action: ${cause.message}`,
+              cause,
+            }),
+        ),
+      );
+    if (started.status !== "started" || started.completion === undefined) return;
+    yield* emit({
+      kind: "phase_started",
+      phase: "merge",
+      label: `Running ${started.scriptName}...`,
+    });
+    const finished = yield* started.completion;
+    if (finished.exitCode !== 0) {
+      return yield* new GitManagerError({
+        operation: "runStackedAction",
+        cwd: input.cwd,
+        detail: `The "${started.scriptName}" action ${
+          finished.exitCode === null
+            ? "ended before it finished"
+            : `failed with exit code ${finished.exitCode}`
+        }, so nothing was merged. Its output is in the "${started.scriptName}" terminal of this thread.`,
+      });
+    }
+    yield* emit({ kind: "phase_started", phase: "merge", label: "Merging..." });
+  });
   /** The commit message writer for a squash merge; undefined when the project keeps the commits. */
   const squashMessageFor = Effect.fn("GitManager.squashMessageFor")(function* (
     input: {
@@ -3754,6 +3805,9 @@ export const make = Effect.gen(function* () {
                           branch: currentBranch,
                           push: input.action === "merge_push",
                           ...(squashMessage ? { squashMessage } : {}),
+                          ...(input.threadId === undefined
+                            ? {}
+                            : { beforeLand: preMergeAction(input, input.threadId, progress.emit) }),
                         }),
                       ),
                     ),
