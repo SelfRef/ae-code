@@ -14,6 +14,7 @@ import {
   type ProjectScopedServerSettingKey,
   type CurrentBranchAction,
   type QuickMergeAction,
+  type MergeStrategy,
 } from "@t3tools/contracts";
 import { useRef, useState } from "react";
 import { View } from "react-native";
@@ -70,6 +71,7 @@ const PAGE_PROJECT_KEYS: Record<SettingsPage, readonly ProjectScopedServerSettin
     "removeAgentCreditsOnMerge",
     "currentBranchAction",
     "quickMergeAction",
+    "mergeStrategy",
   ],
   worktrees: [
     "newWorktreesStartFromOrigin",
@@ -106,12 +108,30 @@ const QUICK_MERGE_CHOICES: ReadonlyArray<{
   {
     mode: "merge",
     label: "Merge into default branch",
-    description: "Fast-forward the default branch in its own checkout, which must be clean.",
+    description:
+      "Fast-forward the default branch in its own checkout, rebasing the branch first if needed.",
   },
   {
     mode: "merge_push",
     label: "Merge into default branch & push",
     description: "Merge, then push the default branch.",
+  },
+];
+
+const MERGE_STRATEGY_CHOICES: ReadonlyArray<{
+  readonly mode: MergeStrategy;
+  readonly label: string;
+  readonly description: string;
+}> = [
+  {
+    mode: "fast-forward",
+    label: "Keep the commits",
+    description: "The default branch gets the branch's commits as they are.",
+  },
+  {
+    mode: "squash",
+    label: "Squash into one commit",
+    description: "A branch of several commits becomes one commit with a generated message.",
   },
 ];
 
@@ -505,6 +525,29 @@ function ServerSettingsDetail(props: { readonly page: SettingsPage }) {
                       separated={index > 0}
                       disabled={disabledFor("quickMergeAction")}
                       onPress={() => write({ quickMergeAction: choice.mode })}
+                    />
+                  ))}
+                </SettingsSection>
+                <SettingsSection
+                  title="Merge strategy"
+                  footer={managed("mergeStrategy")}
+                  trailing={
+                    pendingWrites === 0 && isMixed("mergeStrategy") ? (
+                      <MixedValuesLabel projectSelected={projectSelected} />
+                    ) : null
+                  }
+                >
+                  {MERGE_STRATEGY_CHOICES.map((choice, index) => (
+                    <SettingsChoiceRow
+                      key={choice.mode}
+                      label={choice.label}
+                      description={choice.description}
+                      selected={
+                        !isMixed("mergeStrategy") && uniform("mergeStrategy") === choice.mode
+                      }
+                      separated={index > 0}
+                      disabled={disabledFor("mergeStrategy")}
+                      onPress={() => write({ mergeStrategy: choice.mode })}
                     />
                   ))}
                 </SettingsSection>

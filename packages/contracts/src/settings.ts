@@ -1165,6 +1165,10 @@ export type CurrentBranchAction = typeof CurrentBranchAction.Type;
 export const QuickMergeAction = Schema.Literals(["pull_request", "merge", "merge_push"]);
 export type QuickMergeAction = typeof QuickMergeAction.Type;
 
+/** How a thread's commits land on the default branch: as they are, or as one commit. */
+export const MergeStrategy = Schema.Literals(["fast-forward", "squash"]);
+export type MergeStrategy = typeof MergeStrategy.Type;
+
 export const PROJECT_SCOPED_SERVER_SETTING_KEYS = [
   "worktreeCleanup",
   "defaultModelSelection",
@@ -1173,6 +1177,7 @@ export const PROJECT_SCOPED_SERVER_SETTING_KEYS = [
   "newWorktreesStartFromOrigin",
   "currentBranchAction",
   "quickMergeAction",
+  "mergeStrategy",
   "worktreeSubmodules",
   "defaultAutoPull",
   "defaultProjectScripts",
@@ -1215,6 +1220,7 @@ export const ProjectSettingsOverrides = Schema.Struct({
   newWorktreesStartFromOrigin: Schema.optionalKey(Schema.Boolean),
   currentBranchAction: ForwardCompatibleOptional(CurrentBranchAction),
   quickMergeAction: ForwardCompatibleOptional(QuickMergeAction),
+  mergeStrategy: ForwardCompatibleOptional(MergeStrategy),
   worktreeSubmodules: ForwardCompatibleOptional(WorktreeSubmodules),
   defaultAutoPull: Schema.optionalKey(Schema.Boolean),
   defaultProjectScripts: Schema.optionalKey(Schema.Array(ProjectScript)),
@@ -1516,6 +1522,9 @@ export const ServerSettings = Schema.Struct({
   ),
   quickMergeAction: QuickMergeAction.pipe(
     Schema.withDecodingDefault(Effect.succeed("merge" as const)),
+  ),
+  mergeStrategy: MergeStrategy.pipe(
+    Schema.withDecodingDefault(Effect.succeed("fast-forward" as const)),
   ),
   /** Null inherits t3.json, then recursive; unknown values decode to null for older clients. */
   worktreeSubmodules: ForwardCompatibleNullable(WorktreeSubmodules).pipe(
@@ -1926,6 +1935,7 @@ export const ServerSettingsPatch = Schema.Struct({
   newWorktreesStartFromOrigin: Schema.optionalKey(Schema.Boolean),
   currentBranchAction: Schema.optionalKey(CurrentBranchAction),
   quickMergeAction: Schema.optionalKey(QuickMergeAction),
+  mergeStrategy: Schema.optionalKey(MergeStrategy),
   worktreeSubmodules: Schema.optionalKey(Schema.NullOr(WorktreeSubmodules)),
   addProjectBaseDirectory: Schema.optionalKey(TrimmedString),
   ghqCloneLayout: Schema.optionalKey(Schema.Boolean),

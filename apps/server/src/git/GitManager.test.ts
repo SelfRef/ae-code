@@ -6294,6 +6294,38 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       }),
     );
 
+    it.effect("squashes a branch of several commits into one with a generated message", () =>
+      Effect.gen(function* () {
+        const { repoDir, worktreeDir, subjects } = yield* setupMerge;
+        yield* runGit(worktreeDir, ["commit", "--allow-empty", "-m", "More thread work"]);
+        const { manager } = yield* makeManager({
+          serverSettings: { mergeStrategy: "squash" },
+          textGeneration: {
+            generateCommitMessage: () =>
+              Effect.succeed({ subject: "Add the thread work", body: "All of it." }),
+          },
+        });
+        yield* runStackedAction(manager, { cwd: worktreeDir, action: "merge" });
+
+        expect(yield* subjects(repoDir, "main")).toEqual(["Add the thread work", "Initial commit"]);
+        expect(yield* subjects(worktreeDir, "HEAD")).toEqual([
+          "Add the thread work",
+          "Initial commit",
+        ]);
+        expect(NodeFS.existsSync(NodePath.join(repoDir, "thread.txt"))).toBe(true);
+      }),
+    );
+
+    it.effect("keeps a single commit as it is when squashing", () =>
+      Effect.gen(function* () {
+        const { repoDir, worktreeDir, subjects } = yield* setupMerge;
+        const { manager } = yield* makeManager({ serverSettings: { mergeStrategy: "squash" } });
+        yield* runStackedAction(manager, { cwd: worktreeDir, action: "merge" });
+
+        expect(yield* subjects(repoDir, "main")).toEqual(["Thread work", "Initial commit"]);
+      }),
+    );
+
     it.effect("queues merges from several worktrees of one repository", () =>
       Effect.gen(function* () {
         const { repoDir, worktreeDir, subjects } = yield* setupMerge;

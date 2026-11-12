@@ -44,6 +44,11 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
     readonly push: boolean;
     /** Push the default branch as it is: no rebase, no fast-forward. */
     readonly pushOnly?: boolean;
+    /**
+     * Turns a branch of several commits into one before it lands; given the default branch's ref,
+     * it writes the commit message. The branch is reset to the new commit, so its own history is gone.
+     */
+    readonly squashMessage?: (baseRef: string) => Effect.Effect<string, GitManagerError>;
   },
 ): Effect.fn.Return<MergeIntoDefaultResult, GitManagerError | GitCommandError> {
   const { cwd, branch } = input;
@@ -160,6 +165,24 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
       ).pipe(Effect.map((result) => (result.exitCode === 0 ? result.stdout.trim() : null)));
   const headBefore = (yield* run("head-sha", cwd, ["rev-parse", "HEAD"])).stdout.trim();
 
+  const squash = Effect.fn("GitManager.mergeIntoDefault.squash")(function* (
+    message: (baseRef: string) => Effect.Effect<string, GitManagerError>,
+  ) {
+    const baseRef = `refs/heads/${base}`;
+    const count = yield* run("count", cwd, ["rev-list", "--count", `${baseRef}..HEAD`]);
+    if (Number(count.stdout.trim()) < 2) return;
+    // The squashed commit has HEAD's tree, so the checkout and index stay as they are.
+    const squashed = yield* run("squash-commit", cwd, [
+      "commit-tree",
+      "HEAD^{tree}",
+      "-p",
+      baseRef,
+      "-m",
+      yield* message(baseRef),
+    ]);
+    yield* run("squash-reset", cwd, ["reset", "--soft", squashed.stdout.trim()]);
+  });
+
   // The rebase and the fast-forward are not one step: if the default branch moved in between
   // (a commit in its own checkout), rebase once more before giving up.
   let merged = input.pushOnly === true;
@@ -182,6 +205,7 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
       `refs/heads/${base}`,
     ]);
     if (merged) break;
+    if (input.squashMessage !== undefined) yield* squash(input.squashMessage);
     const failure = yield* fastForward();
     if (failure === null) break;
     if (!failure.moved || attempt > 0) return yield* fail(failure.message);
