@@ -1260,7 +1260,7 @@ VS Code's and Zed's.
   and a "Commits" right-panel tab (key `C`) that follows the thread's workspace, so it opens on the thread's branch. The list
   or graph choice is one persisted preference for both. A Branches row has a history button that opens the page, or switches
   the tab, to that branch. The row's "Open thread" button shows only its icon while the list is narrower than 42 rem.
-- **Android**: the history button on a Branches row opens the commits in place of the list, with a Back row and the same
+- **Android**: the Commits link on a Branches row opens the commits in place of the list, with a Back row and the same
   branch picker and list/graph switch. There is no tab of its own: the bar is full.
 - No data migration.
 
