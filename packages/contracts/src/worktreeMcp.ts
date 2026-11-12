@@ -85,6 +85,25 @@ export const WorktreeMcpStatusResult = Schema.Struct({
 });
 export type WorktreeMcpStatusResult = typeof WorktreeMcpStatusResult.Type;
 
+export const WorktreeMcpMergeInput = Schema.Struct({
+  action: Schema.optional(
+    Schema.Literals(["merge", "merge_push", "push_default"]).annotate({
+      description:
+        "`merge` (default) lands this branch on the default branch locally. `merge_push` also pushes it. `push_default` only pushes the default branch.",
+    }),
+  ),
+});
+export type WorktreeMcpMergeInput = typeof WorktreeMcpMergeInput.Type;
+
+export const WorktreeMcpMergeResult = Schema.Struct({
+  summary: Schema.String,
+  baseBranch: Schema.NullOr(TrimmedNonEmptyString),
+  commitSha: Schema.NullOr(TrimmedNonEmptyString),
+  merged: Schema.Boolean,
+  pushed: Schema.Boolean,
+});
+export type WorktreeMcpMergeResult = typeof WorktreeMcpMergeResult.Type;
+
 export class WorktreeMcpFailure extends Schema.TaggedError<WorktreeMcpFailure>()(
   "WorktreeMcpFailure",
   {

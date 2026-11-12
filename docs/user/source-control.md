@@ -212,6 +212,9 @@ A thread whose branch was merged shows a merged icon in the sidebar (when it has
 request) and its Merge button reads **Merged** until the branch gets new commits. Turn on
 **Settings → Source control → Settle thread after merge** to settle the thread right after a merge.
 
+Ask the agent to "merge this into main" and it does the same through its own tool, then
+gets the result (or the reason it failed) in its turn.
+
 To check the work before it lands, turn on **Run before the thread merges into the default
 branch (a failure stops it)** for one of the project's actions (Settings → Projects → Actions), or
 set `"runBeforeMerge": true` on a `t3.json` action, for example a test or lint command. The merge

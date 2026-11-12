@@ -10,6 +10,8 @@ import {
   type WorktreeMcpContinuationStatus,
   type WorktreeMcpHandoffInput,
   type WorktreeMcpHandoffResult,
+  type WorktreeMcpMergeInput,
+  type WorktreeMcpMergeResult,
   type WorktreeMcpSetupScriptStatus,
   type WorktreeMcpStatusResult,
   type VcsListRefsInput,
@@ -31,6 +33,7 @@ import * as Option from "effect/Option";
 import type * as PlatformError from "effect/PlatformError";
 
 import * as GitWorkflowService from "../git/GitWorkflowService.ts";
+import { settleAfterMerge } from "../git/settleAfterMerge.ts";
 import * as ThreadManagementService from "../orchestration-v2/ThreadManagementService.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as ProjectSetupScriptRunner from "../project/ProjectSetupScriptRunner.ts";
@@ -52,6 +55,11 @@ export class WorktreeMcpService extends Context.Service<
     readonly status: (
       scope: McpInvocationScope,
     ) => Effect.Effect<WorktreeMcpStatusResult, WorktreeMcpFailure>;
+    /** Lands this thread's branch on the default branch, as the Default branch button does. */
+    readonly merge: (
+      scope: McpInvocationScope,
+      input: WorktreeMcpMergeInput,
+    ) => Effect.Effect<WorktreeMcpMergeResult, WorktreeMcpFailure>;
     readonly listRefs: (
       input: Omit<VcsListRefsInput, "cwd"> & {
         readonly worktreePath: string | null;
@@ -506,6 +514,53 @@ const make = Effect.gen(function* () {
     },
   );
 
+  const merge: WorktreeMcpService["Service"]["merge"] = Effect.fn("WorktreeMcpService.merge")(
+    function* (callerScope, input) {
+      yield* requireCapability(callerScope);
+      const scope = yield* requireThreadScope(callerScope);
+      const target: HandoffTarget = {
+        threadId: scope.thread.threadId,
+        idSeed: scope.thread.providerSessionId,
+        requireIdle: false,
+      };
+      const projection = yield* loadThread(target);
+      const project = yield* loadProject(target, projection.thread.projectId);
+      const worktreePath = projection.thread.worktreePath;
+      // Storage cleanup removes a worktree but keeps its path on the thread.
+      const cwd =
+        worktreePath !== null && (yield* fileSystem.exists(worktreePath).pipe(Effect.orDie))
+          ? worktreePath
+          : project.workspaceRoot;
+      const action = input.action ?? "merge";
+      const actionId = yield* random.uuidV4().pipe(Effect.orDie);
+      // The error comes back to the agent as the tool result, so no hand-off to a second turn.
+      const result = yield* gitWorkflow
+        .runStackedAction({ cwd, action, actionId, threadId: target.threadId })
+        .pipe(
+          Effect.ensuring(vcsStatusBroadcaster.refreshStatus(cwd).pipe(Effect.ignoreCause())),
+          asOperationFailed("The merge failed"),
+        );
+      if (result.merge !== undefined) {
+        yield* settleAfterMerge({
+          threadId: target.threadId,
+          commandId: CommandId.make(`server:settle-after-merge:mcp:${actionId}`),
+          byOwnAgent: true,
+        }).pipe(
+          Effect.provideService(ThreadManagementService.ThreadManagementService, threadManagement),
+          Effect.provideService(ServerSettings.ServerSettingsService, serverSettings),
+          Effect.ignore({ log: true }),
+        );
+      }
+      return {
+        summary: [result.toast.title, result.toast.description].filter(Boolean).join(". "),
+        baseBranch: result.merge?.baseBranch ?? result.push.branch ?? null,
+        commitSha: result.merge?.commitSha ?? null,
+        merged: result.merge !== undefined,
+        pushed: result.push.status === "pushed",
+      } satisfies WorktreeMcpMergeResult;
+    },
+  );
+
   const listRefs: WorktreeMcpService["Service"]["listRefs"] = Effect.fn(
     "WorktreeMcpService.listRefs",
   )(function* ({ worktreePath, workspaceRoot, ...refs }) {
@@ -517,7 +572,7 @@ const make = Effect.gen(function* () {
     return yield* gitWorkflow.listRefs({ ...refs, cwd });
   });
 
-  return WorktreeMcpService.of({ handoff, moveThread, status, listRefs });
+  return WorktreeMcpService.of({ handoff, moveThread, status, merge, listRefs });
 });
 
 export const layer: Layer.Layer<

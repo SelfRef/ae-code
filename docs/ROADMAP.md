@@ -1463,4 +1463,9 @@ merged into the default branch.
 - **Settle after merge.** A project setting `settleAfterMerge` (off by default; Settings → Source control, web and
   Android) settles the thread after a successful merge from its Default branch button (`ws.ts`, after the action, for a
   session that may operate threads). It reuses the manual settle command, so the settle script and cleanup rules apply.
+- **Agents can merge.** An MCP tool `t3_worktree_merge` (`WorktreeMcpService.merge`, the `worktree` capability, acts as the
+  calling thread) runs the same `merge`, `merge_push` or `push_default` stacked action as the Default branch button, in
+  the thread's checkout (the project root once its worktree is gone). A failure comes back as the tool result instead of
+  a hand-off turn, since the caller is the agent. `settleAfterMerge` applies (the thread settles when its turn ends).
+  Its text adds about 650 bytes to the MCP tool list budget; the model-facing eval (`evals/mcp-tool-use`) was not run.
 - No data migration.
