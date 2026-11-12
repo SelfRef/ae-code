@@ -321,6 +321,12 @@ about them; comments wait with the ones from the **Code** tab until you send the
 suggested question, or **Ask about this stop**, to open a thread that already knows which stop you
 are on. **Finish review** on the last stop opens the review with everything you collected.
 
+Agents can work with pull requests and issues directly: list and read them, comment, reply to and
+resolve review threads, submit a review, edit a title, description, labels or reviewers, merge or
+close a pull request, and create or update issues. They act through your signed-in host account, in
+the project whose checkout has the repository, so ask for a merge, close or review verdict only when
+you want it made.
+
 Agents can write guides too: ask one to prepare guides for a set of pull requests, and it starts
 them for you. Each is read through the project whose checkout has that repository.
 

@@ -69,7 +69,7 @@ function projectHostAndProvider(project: OrchestrationProjectShell | undefined):
   };
 }
 
-const resolveTarget = Effect.fn("PullRequestsToolkit.resolveTarget")(function* (
+export const resolveTarget = Effect.fn("PullRequestsToolkit.resolveTarget")(function* (
   input: PullRequestTargetInput,
   project: OrchestrationProjectShell | undefined,
 ) {
@@ -161,7 +161,7 @@ export function listThreadPullRequests(
   };
 }
 
-function projectForPullRequest(
+export function projectForPullRequest(
   projects: ReadonlyArray<OrchestrationProjectShell>,
   target: { readonly host: string; readonly repository: string },
   preferred: OrchestrationProjectShell | undefined,

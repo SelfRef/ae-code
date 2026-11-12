@@ -484,6 +484,9 @@ export function summarizeT3ToolCalls(
     case "read-pr-guide":
       label = phrase("Read", "read", quantity(selected.length, "review guide"));
       break;
+    case "source-control":
+      label = phrase("Used", "use", `pull request and issue tools ${times}`);
+      break;
     case "browser":
       label = phrase("Used", "use", `browser ${times}`);
       break;
