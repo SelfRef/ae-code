@@ -2,6 +2,7 @@ import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import {
   branchMergeState,
   branchProjects,
+  canMergeBranch,
   filterBranches,
   isPlainLocalBranch,
   sortBranches,
@@ -18,6 +19,7 @@ import {
 import {
   ALL_VCS_REMOTES,
   AuthSourceControlWriteScope,
+  type EnvironmentId,
   type VcsBranchOverviewEntry,
   type VcsBranchOverviewResult,
 } from "@t3tools/contracts";
@@ -33,6 +35,7 @@ import {
   FolderGit2Icon,
   GitBranchIcon,
   GitCommitHorizontalIcon,
+  GitMergeIcon,
   LayersIcon,
   MessageSquareIcon,
   SearchIcon,
@@ -45,10 +48,11 @@ import { usePageProject } from "~/hooks/usePageProject";
 import { useProjects, useQuietThreadShells } from "~/state/entities";
 import { useEnvironmentQuery } from "~/state/query";
 import { useEnvironmentScope } from "~/state/session";
+import { useGitStackedAction } from "~/state/sourceControlActions";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { vcsEnvironment } from "~/state/vcs";
 import { formatRelativeTimeLabel } from "~/timestampFormat";
-import { cn } from "~/lib/utils";
+import { cn, randomUUID } from "~/lib/utils";
 import { buildThreadRouteParams } from "../../threadRoutes";
 
 import { Badge } from "../ui/badge";
@@ -88,13 +92,16 @@ const KIND_OPTIONS = [
 ] as const satisfies ReadonlyArray<PullRequestFilterOption<string>>;
 
 function BranchRow({
+  environmentId,
   branch,
   defaultRef,
   threadTitle,
   onOpenThread,
   onOpenCommits,
   onDelete,
+  onMerged,
 }: {
+  environmentId: EnvironmentId;
   branch: VcsBranchOverviewEntry;
   defaultRef: string | null;
   threadTitle: string | null;
@@ -102,8 +109,35 @@ function BranchRow({
   onOpenCommits: () => void;
   /** Absent when the branch cannot be deleted here. */
   onDelete: (() => void) | undefined;
+  onMerged: () => void;
 }) {
   const state = branchMergeState(branch);
+  const canWrite = useEnvironmentScope(environmentId, AuthSourceControlWriteScope);
+  const mergeAction = useGitStackedAction({ environmentId, cwd: branch.worktreePath });
+  const target = defaultRef ?? "the default branch";
+  const merge = async () => {
+    const confirmed = await requestConfirmDialog(
+      `Merge ${branch.name} into ${target}?\nUncommitted changes in its worktree are committed first. ${target} is fast-forwarded, and the branch is rebased onto it if it moved. Nothing is pushed.`,
+    );
+    if (confirmed !== true) return;
+    const result = await mergeAction.run({ actionId: randomUUID(), action: "merge" });
+    if (result._tag === "Failure") {
+      if (isAtomCommandInterrupted(result)) return;
+      const error = squashAtomCommandFailure(result);
+      toastManager.add({
+        type: "error",
+        title: "Could not merge",
+        description: error instanceof Error ? error.message : "An error occurred.",
+      });
+    } else {
+      toastManager.add({
+        type: "success",
+        title: result.value.toast.title,
+        ...(result.value.toast.description ? { description: result.value.toast.description } : {}),
+      });
+    }
+    onMerged();
+  };
   const Icon = branch.worktreePath !== null ? FolderGit2Icon : GitBranchIcon;
   const unpushed = !branch.isRemoteOnly && !branch.isDefault && branch.upstream === null;
   return (
@@ -173,6 +207,18 @@ function BranchRow({
         >
           <GitCommitHorizontalIcon />
         </Button>
+        {canWrite && canMergeBranch(branch) ? (
+          <Button
+            size="icon-xs"
+            variant="outline"
+            aria-label={`Merge ${branch.name} into ${target}`}
+            title={`Merge into ${target}`}
+            disabled={mergeAction.isPending}
+            onClick={() => void merge()}
+          >
+            <GitMergeIcon />
+          </Button>
+        ) : null}
         {onDelete ? (
           <Button
             size="icon-xs"
@@ -450,8 +496,10 @@ export function BranchList({
               return (
                 <BranchRow
                   key={`${branch.isRemoteOnly ? "remote" : "local"}:${branch.name}`}
+                  environmentId={project.environmentId}
                   branch={branch}
                   defaultRef={data.defaultRef}
+                  onMerged={overview.refresh}
                   threadTitle={thread?.title ?? null}
                   onOpenCommits={() => onOpenCommits(branch.name)}
                   onDelete={

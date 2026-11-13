@@ -2,7 +2,7 @@ import { EnvironmentId, ProjectId } from "@t3tools/contracts";
 import { expect, it } from "vite-plus/test";
 
 import type { VcsBranchOverviewEntry } from "@t3tools/contracts";
-import { filterBranches, sortBranches, threadForBranch } from "./branchOverview.ts";
+import { canMergeBranch, filterBranches, sortBranches, threadForBranch } from "./branchOverview.ts";
 
 const project = { environmentId: EnvironmentId.make("env"), id: ProjectId.make("project") };
 const thread = (
@@ -82,4 +82,13 @@ it("sorts with the default branch first", () => {
   expect(names("oldest")).toEqual(["main", "a", "b"]);
   expect(names("ahead")).toEqual(["main", "a", "b"]);
   expect(names("name")).toEqual(["main", "a", "b"]);
+});
+
+it("merges only a worktree branch that has commits the default branch lacks", () => {
+  const unmerged = entry("wt", { worktreePath: "/wt", aheadOfDefault: 2 });
+  expect(canMergeBranch(unmerged)).toBe(true);
+  expect(canMergeBranch({ ...unmerged, aheadOfDefault: 0 })).toBe(false);
+  expect(canMergeBranch({ ...unmerged, worktreePath: null })).toBe(false);
+  expect(canMergeBranch({ ...unmerged, isDefault: true })).toBe(false);
+  expect(canMergeBranch({ ...unmerged, isRemoteOnly: true })).toBe(false);
 });
