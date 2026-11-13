@@ -11,7 +11,12 @@ import { View, type TextInputInstance } from "react-native";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { ComposerAttachmentButton } from "./ComposerAttachmentButton";
 import { ComposerAttachmentStrip } from "../../components/ComposerAttachmentStrip";
-import { pickComposerFiles, pickComposerMedia } from "../../lib/composerImages";
+import type { Asset as LibraryAsset } from "expo-media-library/legacy";
+import {
+  attachComposerLibraryAssets,
+  pickComposerFiles,
+  pickComposerMedia,
+} from "../../lib/composerImages";
 import { useThreadSelection } from "../../state/use-thread-selection";
 import { useNavigation } from "@react-navigation/native";
 import { FilePreviewModal, type FilePreviewSource } from "../../components/ui/FilePreviewModal";
@@ -137,21 +142,24 @@ export function QuestionAttachments(props: {
     props.question.id,
   );
   const attachments = drafts[key]?.attachments ?? [];
-  const pick = async (kind: "media" | "files") => {
+  const pick = async (kind: "media" | "files", libraryAssets?: ReadonlyArray<LibraryAsset>) => {
     const scope = pickerScope.current;
     changeQuestionAttachmentPreparation(key, 1);
     const picked = await settlePromise(async () => {
       const existingCount = appAtomRegistry.get(composerDraftsAtom)[key]?.attachments.length ?? 0;
+      const mediaInput = {
+        existingCount,
+        maxVideoBytes: capabilities?.fileAttachments?.maxUploadBytes,
+      };
       const result =
         kind === "files"
           ? await pickComposerFiles({
               existingCount,
               maxBytes: capabilities?.fileAttachments?.maxUploadBytes,
             })
-          : await pickComposerMedia({
-              existingCount,
-              maxVideoBytes: capabilities?.fileAttachments?.maxUploadBytes,
-            });
+          : await (libraryAssets
+              ? attachComposerLibraryAssets(libraryAssets, mediaInput)
+              : pickComposerMedia(mediaInput));
       const picked = "files" in result ? result.files : result.attachments;
       // Resolution on another client clears the reservation while the picker is open.
       if (
@@ -177,7 +185,7 @@ export function QuestionAttachments(props: {
         <ComposerAttachmentButton
           disabled={props.disabled}
           supportsFiles
-          onPickMedia={() => pick("media")}
+          onPickMedia={(assets) => pick("media", assets)}
           onPickFiles={() => pick("files")}
         />
       ) : null}

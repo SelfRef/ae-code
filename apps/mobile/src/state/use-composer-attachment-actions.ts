@@ -4,7 +4,9 @@ import { PROVIDER_SEND_TURN_MAX_ATTACHMENTS, type ServerConfig } from "@t3tools/
 import { clampFileAttachmentUploadBytes } from "@t3tools/client-runtime/state/attachments";
 import { nextPastedTextFileName } from "@t3tools/client-runtime/text-paste";
 import type { ComposerTextPaste } from "../components/ComposerEditor";
+import type { Asset as LibraryAsset } from "expo-media-library/legacy";
 import {
+  attachComposerLibraryAssets,
   convertPastedImagesToAttachments,
   createPastedTextComposerAttachment,
   pickComposerFiles,
@@ -58,15 +60,19 @@ export function useComposerAttachmentActions(props: {
     ];
     if (problems.length) Dialog.alert(title, problems.join("\n\n"));
   };
-  const onPickDraftMedia = async () => {
+  // `libraryAssets` come from the recent-photos drawer; without them the system picker opens.
+  const onPickDraftMedia = async (libraryAssets?: ReadonlyArray<LibraryAsset>) => {
     const key = props.draftKey;
     if (!key || props.locked) return;
     const insertion = captureComposerDraftInsertion(key);
     await withDraftOperation(key, async (signal) => {
-      const result = await pickComposerMedia({
+      const mediaInput = {
         existingCount: countComposerDraftAttachmentsAfterSelection(key, insertion),
         maxVideoBytes: capabilities?.fileAttachments?.maxUploadBytes,
-      });
+      };
+      const result = libraryAssets
+        ? await attachComposerLibraryAssets(libraryAssets, mediaInput)
+        : await pickComposerMedia(mediaInput);
       report(
         "Could not attach photo or video",
         result.error,
