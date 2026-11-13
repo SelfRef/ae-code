@@ -38,6 +38,8 @@ import { ListActionRow as SettingsActionRow } from "../../components/ui/ListActi
 import { SettingsDragHandle } from "./components/SettingsDragHandle";
 import { SettingsScreen } from "./components/SettingsScreen";
 import { SettingsSection } from "./components/SettingsSection";
+import { SettingsSwitchRow } from "./components/SettingsSwitchRow";
+import { useMicrophoneButtonEnabled } from "../voice-input/useMicrophoneButtonEnabled";
 import {
   deviceMicrophoneOrder,
   localVoiceTranscriberAtom,
@@ -225,6 +227,7 @@ export function SettingsVoiceRouteScreen() {
   const preferencesResult = useAtomValue(mobilePreferencesAtom);
   const savePreferences = useAtomSet(updateMobilePreferencesAtom);
   const ready = AsyncResult.isSuccess(preferencesResult) && !preferencesResult.waiting;
+  const microphoneButtonEnabled = useMicrophoneButtonEnabled();
   const entries = deviceMicrophoneOrder(
     AsyncResult.isSuccess(preferencesResult) ? preferencesResult.value.microphones : undefined,
   );
@@ -340,6 +343,17 @@ export function SettingsVoiceRouteScreen() {
                 : "Turn on microphone access for AE Code in Settings to use voice input."}
             </Text>
           </>
+        ) : null}
+        {Platform.OS === "android" ? (
+          <SettingsSection title="Message box">
+            <SettingsSwitchRow
+              icon="mic"
+              label="Microphone button"
+              subtitle="Show the microphone button next to the message box and in scheduled task prompts."
+              value={microphoneButtonEnabled}
+              onValueChange={(value) => savePreferences({ microphoneButtonEnabled: value })}
+            />
+          </SettingsSection>
         ) : null}
         <SettingsSection title="Preferred order">
           {entries.map((entry, index) => {

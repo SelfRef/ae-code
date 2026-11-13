@@ -125,6 +125,8 @@ export interface Preferences {
   readonly confirmPushToDefaultBranch?: boolean;
   /** Unset means on: a floating button commits, merges and settles. */
   readonly shipButtonEnabled?: boolean;
+  /** Unset means on: the composer shows its microphone button. */
+  readonly microphoneButtonEnabled?: boolean;
   readonly useLastProjectForNewThreads?: boolean;
   readonly lastThreadProject?: typeof ThreadProject.Type;
   readonly modelFavorites?: ReadonlyArray<{
@@ -214,6 +216,7 @@ function sanitizePreferences(parsed: Preferences): Preferences {
     workingShelfEnabled?: boolean;
     confirmPushToDefaultBranch?: boolean;
     shipButtonEnabled?: boolean;
+    microphoneButtonEnabled?: boolean;
     useLastProjectForNewThreads?: boolean;
     lastThreadProject?: typeof ThreadProject.Type;
     modelFavorites?: Preferences["modelFavorites"];
@@ -350,6 +353,9 @@ function sanitizePreferences(parsed: Preferences): Preferences {
   }
   if (typeof parsed.shipButtonEnabled === "boolean") {
     preferences.shipButtonEnabled = parsed.shipButtonEnabled;
+  }
+  if (typeof parsed.microphoneButtonEnabled === "boolean") {
+    preferences.microphoneButtonEnabled = parsed.microphoneButtonEnabled;
   }
   if (typeof parsed.useLastProjectForNewThreads === "boolean") {
     preferences.useLastProjectForNewThreads = parsed.useLastProjectForNewThreads;

@@ -19,6 +19,7 @@ import { useAndroidControlSizing } from "../../components/ui/useAndroidControlSi
 import { cn } from "../../lib/cn";
 import type { VoiceComposerPresentation } from "./voiceInputPresentation";
 import { VOICE_WAVEFORM_SAMPLE_COUNT } from "./voiceInputMetering";
+import { useMicrophoneButtonEnabled } from "./useMicrophoneButtonEnabled";
 
 const DICTATION_TIMING = {
   duration: 220,
@@ -442,7 +443,8 @@ export function ComposerDictationStartAction(props: {
   readonly onStart: () => void;
   readonly onCancel: () => void;
 }) {
-  if (!props.isAvailable) return null;
+  const buttonEnabled = useMicrophoneButtonEnabled();
+  if (!props.isAvailable || !buttonEnabled) return null;
   const openSettings = props.state.phase === "error" && props.state.errorAction === "settings";
   return (
     <VoiceActionButton

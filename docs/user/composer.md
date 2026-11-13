@@ -232,6 +232,7 @@ switches hosts. Choose **This device** to revoke access and discard pending audi
 For [cloud dictation](./voice-input.md#choose-where-audio-goes), open **Cloud providers**
 under the environment in **Settings → Voice** and confirm which provider may receive recordings.
 On Android, keep T3 Code open while recording and transcribing.
+To hide the microphone button, turn off **Microphone button** in **Settings → Voice**; Android has no dictation shortcut, so this turns voice input off there.
 
 On-device dictation may need a network connection to download a speech model the
 first time. After that it works offline for that language. iPhone dictates in the

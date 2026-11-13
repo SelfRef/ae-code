@@ -9,6 +9,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 ## [Unreleased]
 
 - Android: the ship button is now the status capsule itself: when the agent stops working, "Working 2m 55s" turns into Commit, Merge or Settle in the same centred spot instead of a separate button on the right.
+- Android: Settings → Voice has a Microphone button switch to hide the dictation button in the message box and scheduled task prompts.
 - Android: pushing local commits to the default branch no longer asks "Commit & push?" when there is nothing to commit; it says "Push" like the web app.
 - Android: a chat image whose file was moved or deleted on the host (for example a temporary screenshot an agent read) now says so instead of just "Image unavailable".
 - Android: with "Settle after merge" on, the ship button's Merge also closes the thread's screen once it is settled.
