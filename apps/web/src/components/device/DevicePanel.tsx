@@ -256,6 +256,7 @@ export function DevicePanel(props: {
                 diagnostics.find(({ hostId }) => hostId === activeDevice.hostId)?.detail
               }
               visible={props.visible}
+              agentOpened={activeSession.agent === true}
               onFloat={floatActive}
               onClose={() => closeActive(false)}
               onPowerOff={() => closeActive(true)}

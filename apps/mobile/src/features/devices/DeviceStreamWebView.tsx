@@ -1,6 +1,7 @@
 import { Button } from "../../components/ui/Button";
 import deviceStreamScript from "@t3tools/mobile-device-stream";
 import {
+  useEffect,
   useEffectEvent,
   useImperativeHandle,
   useLayoutEffect,
@@ -31,6 +32,8 @@ export interface DeviceStreamRef {
 
 type NativeStreamBridge = {
   readonly ref?: Ref<DeviceStreamRef>;
+  /** Drops your own input in the viewer; the screen stays live. */
+  readonly viewOnly: boolean;
   readonly onUnauthorized: () => Promise<void>;
   readonly onInputConnected: (connected: boolean) => Promise<void>;
 };
@@ -55,6 +58,7 @@ export function DeviceStreamWebView({
       configuration={configuration}
       baseUrl={deviceStreamBaseUrl(Platform.OS, props.platform, props.access.httpBase)}
       background={props.colors.background}
+      viewOnly={props.viewOnly}
       onUnauthorized={props.onUnauthorized}
       onInputConnected={props.onInputConnected}
       onRetry={() => {
@@ -81,6 +85,7 @@ function DeviceStreamDocumentView({
   configuration,
   baseUrl,
   background,
+  viewOnly,
   onUnauthorized,
   onInputConnected,
   onRetry,
@@ -118,6 +123,13 @@ function DeviceStreamDocumentView({
     fail("Device viewer could not start. Reconnect to try again."),
   );
   const resetInput = useEffectEvent(() => void onInputConnected(false));
+  const syncInputEnabled = useEffectEvent(() =>
+    webView.current?.injectJavaScript(
+      `window.T3DeviceStream?.setInputEnabled(${!viewOnly}); true;`,
+    ),
+  );
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- pushes the view-only choice into the WebView's stream client
+  useEffect(syncInputEnabled, [viewOnly]);
   // The stream lives exactly as long as this view.
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- starts the bootstrap timeout and stops the WebView device stream when this view unmounts
   useLayoutEffect(() => {
@@ -177,8 +189,11 @@ function DeviceStreamDocumentView({
           if (!active.current || failed.current) return;
           const message = deviceStreamMessage(event.nativeEvent.data);
           if (message?.type === "unauthorized") void onUnauthorized();
-          else if (message?.type === "input") void onInputConnected(message.connected);
-          else if (message?.type === "retry") onRetry();
+          else if (message?.type === "input") {
+            // A reconnect can build a new stream client, which starts with input on.
+            syncInputEnabled();
+            void onInputConnected(message.connected);
+          } else if (message?.type === "retry") onRetry();
           else if (message?.type === "status") {
             clearBootstrapTimer();
             if (message.status === "error") fail(message.detail ?? "Device stream failed.");

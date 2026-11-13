@@ -844,6 +844,7 @@ export const makeWithHosts = Effect.fn("DeviceService.makeWithHosts")(function* 
         deviceId: device.id,
         platform: device.platform,
         openedAt,
+        ...(context?.agent ? { agent: true } : {}),
       };
       yield* lifecycleLock.withPermit(
         Effect.gen(function* () {

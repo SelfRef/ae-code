@@ -489,6 +489,10 @@ describe("shared device stream readiness and recovery", () => {
     client.sendPointer({ type: "button", button: "right", down: true, x: 0.5, y: 0.5 });
     client.sendText("hé");
     client.pressButton("home");
+    client.setInputEnabled(false);
+    client.sendPointer({ type: "scroll", dx: 1, dy: 1 });
+    client.sendText("dropped");
+    client.setInputEnabled(true);
     const sent = input.send.mock.calls.map(([payload]) => {
       const bytes = payload as Uint8Array;
       return [bytes[0], JSON.parse(new TextDecoder().decode(bytes.subarray(1)))];

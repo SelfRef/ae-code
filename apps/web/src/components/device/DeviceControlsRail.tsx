@@ -2,6 +2,8 @@ import type { DeviceHostSummary, DevicePlatform } from "@t3tools/contracts";
 import {
   Camera,
   ChevronLeft,
+  Eye,
+  MousePointer2,
   Home,
   Keyboard,
   Box,
@@ -51,7 +53,7 @@ export function DeviceControlsRail(props: {
   const { view, handle, controls } = props;
   const popupSide = "bottom";
   const settings = controls.detail?.settings;
-  const inputDisabled = !handle?.inputConnected;
+  const inputDisabled = !handle?.inputConnected || view.viewOnly;
   // A desktop has no hardware buttons, rotation, phone settings or 3D phone.
   const desktop = props.platform === "linux";
   const runsHostCommands = !desktop && (props.hostKind === "local" || props.hostKind === "ssh");
@@ -251,7 +253,41 @@ export function DeviceControlsRail(props: {
           {view.foldingControls}
         </>
       ) : null}
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center">
+        <Menu>
+          <MenuTrigger
+            render={
+              <Button
+                size="icon-sm"
+                variant={view.viewOnly ? "secondary" : "ghost"}
+                aria-label="Device input"
+                title={view.viewOnly ? "View only" : "You can control the device"}
+              />
+            }
+          >
+            {view.viewOnly ? <Eye /> : <MousePointer2 />}
+          </MenuTrigger>
+          <MenuPopup side={popupSide} align="end" className="min-w-40">
+            <MenuRadioGroup
+              value={view.viewOnly ? "view" : "control"}
+              onValueChange={(value) => view.setViewOnly(value === "view")}
+            >
+              {(
+                [
+                  ["view", "View only"],
+                  ["control", "Take control"],
+                ] as const
+              ).map(([value, label]) => (
+                <MenuRadioItem key={value} value={value}>
+                  <span className="flex items-center gap-2">
+                    <span className="flex-1">{label}</span>
+                    <MenuRadioItemIndicator />
+                  </span>
+                </MenuRadioItem>
+              ))}
+            </MenuRadioGroup>
+          </MenuPopup>
+        </Menu>
         <Menu>
           <MenuTrigger
             render={

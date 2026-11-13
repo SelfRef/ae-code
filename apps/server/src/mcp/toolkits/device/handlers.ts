@@ -269,7 +269,7 @@ const handlers = {
           deviceId: target.id,
           platform: target.platform,
         },
-        { workspaceRoot: yield* threadWorkspaceRoot(scope.thread.threadId) },
+        { workspaceRoot: yield* threadWorkspaceRoot(scope.thread.threadId), agent: true },
       );
       const after = yield* devices.state;
       const device =

@@ -23,6 +23,10 @@ export function command(button: "home" | "back" | "appSwitcher" | "rotate") {
   else activeClient?.pressButton(button);
 }
 
+export function setInputEnabled(enabled: boolean) {
+  activeClient?.setInputEnabled(enabled);
+}
+
 export function start(configuration: DeviceStreamConfiguration) {
   stop();
   // oxlint-disable-next-line unicorn/require-post-message-target-origin -- The native WebView bridge takes one string.
