@@ -1,5 +1,9 @@
+import { scopeProjectRef } from "@t3tools/client-runtime/environment";
 import type { EnvironmentId, ProjectId } from "@t3tools/contracts";
-import { ExternalLinkIcon } from "lucide-react";
+import { ExternalLinkIcon, MessageSquarePlusIcon } from "lucide-react";
+import { useState } from "react";
+
+import { useNewThreadHandler } from "~/hooks/useHandleNewThread";
 
 import { useEnvironmentQuery } from "~/state/query";
 import { issueEnvironment } from "~/state/issues";
@@ -8,8 +12,11 @@ import { formatRelativeTimeLabel } from "~/timestampFormat";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
+import { toastManager } from "../ui/toast";
+import { writeHandoffToComposer } from "../pullRequest/usePullRequestActions";
 import { PullRequestLabelChip } from "../pullRequest/pullRequestPresentation";
 import { PullRequestMarkdown } from "../pullRequest/PullRequestMarkdown";
+import { buildIssueContext, issueContextBody } from "./issueContext";
 import { IssueStateGlyph } from "./IssueStateGlyph";
 
 function Author({ login, at }: { login: string | undefined; at: string }) {
@@ -36,6 +43,29 @@ export function IssueDetailPane({
     issueEnvironment.detail({ environmentId, input: { projectId, number } }),
   );
   const issue = result.data;
+  const newThread = useNewThreadHandler();
+  const [starting, setStarting] = useState(false);
+  const startThread = async () => {
+    if (issue === null || starting) return;
+    setStarting(true);
+    const session = await newThread(scopeProjectRef(environmentId, projectId)).then(
+      (opened) => opened,
+      () => null,
+    );
+    setStarting(false);
+    if (session === null) {
+      toastManager.add({
+        type: "error",
+        title: "Could not open a thread",
+        description: "Try again from the project, or open a thread first.",
+      });
+      return;
+    }
+    writeHandoffToComposer(session.draftId, {
+      prompt: `Work on issue #${issue.number}.`,
+      reviewComments: [buildIssueContext({ ...issue, body: issueContextBody(issue) })],
+    });
+  };
   if (issue === null) {
     return result.error !== null ? (
       <div className="flex flex-col items-start gap-2 p-4 text-sm">
@@ -69,8 +99,16 @@ export function IssueDetailPane({
             <Author login={issue.author?.login} at={issue.createdAt} />
             <Button
               size="compact"
-              variant="ghost-muted"
+              variant="outline"
               className="ms-auto"
+              disabled={starting}
+              onClick={() => void startThread()}
+            >
+              <MessageSquarePlusIcon /> Work on this
+            </Button>
+            <Button
+              size="compact"
+              variant="ghost-muted"
               render={<a href={issue.url} target="_blank" rel="noreferrer" />}
             >
               <ExternalLinkIcon /> Open on GitHub

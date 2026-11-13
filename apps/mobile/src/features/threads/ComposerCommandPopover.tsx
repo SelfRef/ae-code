@@ -22,8 +22,16 @@ import { PierreEntryIcon } from "../../components/PierreEntryIcon";
 import { ProviderIcon } from "../../components/ProviderIcon";
 import { cn } from "../../lib/cn";
 import type { ModelOption } from "../../lib/modelOptions";
+import type { IssueContextInput } from "@t3tools/shared/issueContext";
 import { pullRequestStatus } from "../pull-requests/pullRequestStatus";
 export type ComposerCommandItem =
+  | {
+      readonly id: string;
+      readonly type: "issue";
+      readonly issue: IssueContextInput;
+      readonly label: string;
+      readonly description: string;
+    }
   | {
       readonly id: string;
       readonly type: "pull-request";
@@ -129,6 +137,7 @@ function itemIcon(item: ComposerCommandItem): AppSymbolName | null {
       return SKILL_SOURCE_SYMBOL_BY_KIND[resolveProviderSkillSourceKind(item.skill)];
     case "path":
     case "model":
+    case "issue":
       return null;
     case "thread":
       return "text.bubble";
@@ -143,7 +152,7 @@ function groupLabel(
 ): string | null {
   switch (triggerKind) {
     case "pull-request":
-      return "Pull requests";
+      return "Pull requests and issues";
     case "slash-command":
       return "Commands";
     case "skill":
@@ -161,7 +170,7 @@ function emptyText(triggerKind: ComposerTriggerKind | null, isLoading: boolean):
   }
   switch (triggerKind) {
     case "pull-request":
-      return "No matching pull requests.";
+      return "No matching pull requests or issues.";
     case "path":
       return "No matching mentions.";
     case "skill":

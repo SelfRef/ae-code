@@ -65,6 +65,9 @@ import {
   useThreadSearch,
 } from "../../state/queries";
 import type { ModelOption } from "../../lib/modelOptions";
+import { issueComposerContext } from "../issues/issueComposerContext";
+import { useComposerIssueSearch } from "../issues/useComposerIssueSearch";
+import { issueStateLabel } from "../issues/issueStateLabel";
 import type { ComposerCommandItem } from "./ComposerCommandPopover";
 import { matchesSlashSkillQuery } from "./composerSlashSkillSearch";
 
@@ -354,11 +357,25 @@ export function useComposerCommandMenu({
     query: trigger?.kind === "pull-request" ? trigger.query : null,
   });
 
+  const issueSearch = useComposerIssueSearch({
+    environmentId,
+    projectId: pullRequestProjectId,
+    repository: pullRequestRepository,
+    query: trigger?.kind === "pull-request" ? trigger.query : null,
+  });
+
   const items = ((): ComposerCommandItem[] => {
     if (!trigger) return [];
 
     if (trigger.kind === "pull-request") {
-      return pullRequestSearch.entries.map((entry) => ({
+      const issueItems = issueSearch.entries.map((issue): ComposerCommandItem => ({
+        id: `issue:${pullRequestProjectId}:${issue.number}`,
+        type: "issue",
+        issue: { number: issue.number, title: issue.title, url: issue.url },
+        label: `#${issue.number}`,
+        description: `${issueStateLabel(issue)} issue · ${issue.title}`,
+      }));
+      const pullRequestItems = pullRequestSearch.entries.map((entry): ComposerCommandItem => ({
         id: `pr:${entry.projectId}:${threadPullRequestKeyOf(entry)}`,
         type: "pull-request",
         pullRequest: {
@@ -377,6 +394,7 @@ export function useComposerCommandMenu({
             : `${entry.repository} · `
         }${entry.title}`,
       }));
+      return [...pullRequestItems, ...issueItems];
     }
 
     if (trigger.kind === "slash-command") {
@@ -596,14 +614,17 @@ export function useComposerCommandMenu({
       setSelection({ start: result.cursor, end: result.cursor });
       return;
     }
-    if (item.type === "pull-request") {
+    if (item.type === "pull-request" || item.type === "issue") {
       if (
         !ownerKey ||
         trigger.kind !== "pull-request" ||
         !items.some((candidate) => candidate.id === item.id)
       )
         return;
-      const record = pullRequestComposerContext(item.pullRequest, uuidv4());
+      const record =
+        item.type === "issue"
+          ? issueComposerContext(item.issue, uuidv4())
+          : pullRequestComposerContext(item.pullRequest, uuidv4());
       if (
         (getComposerDraftSnapshot(ownerKey).context?.records.length ?? 0) >=
         COMPOSER_CONTEXT_MAX_RECORDS
@@ -658,7 +679,9 @@ export function useComposerCommandMenu({
     items,
     skills,
     isLoading:
-      trigger?.kind === "pull-request" ? pullRequestSearch.isPending : pathSearch.isPending,
+      trigger?.kind === "pull-request"
+        ? pullRequestSearch.isPending || issueSearch.isPending
+        : pathSearch.isPending,
     error:
       trigger?.kind === "pull-request"
         ? pullRequestProjectId === null || pullRequestRepository === null

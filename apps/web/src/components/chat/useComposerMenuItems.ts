@@ -41,6 +41,7 @@ import {
   usePullRequestList,
   type EnvironmentQueryTarget,
 } from "~/state/pullRequests";
+import { issueEnvironment } from "~/state/issues";
 import { useEnvironmentQuery } from "~/state/query";
 import { useComposerPathSearch, useDebouncedValue, useThreadSearch } from "~/state/queries";
 import {
@@ -58,6 +59,7 @@ import {
 
 const COMPOSER_PULL_REQUEST_LIST_LIMIT = 99;
 const COMPOSER_PULL_REQUEST_RESULT_LIMIT = 12;
+const COMPOSER_ISSUE_RESULT_LIMIT = 8;
 const EMPTY_PULL_REQUEST_LIST_TARGETS: ReadonlyArray<EnvironmentQueryTarget<PullRequestListInput>> =
   [];
 
@@ -188,6 +190,24 @@ export function useComposerMenuItems({
             projectId: pullRequestProjectId,
             repository: pullRequestRepository,
             number: settledPullRequestNumber,
+          },
+        }),
+  );
+
+  // `#` offers the project's issues beside its pull requests. Hosts without issues answer an error, so none show.
+  // ponytail: a number only finds issues among the 50 most recently updated; text goes to the host's search.
+  const issueLookup = useEnvironmentQuery(
+    composerTriggerKind !== "pull-request" ||
+      pullRequestProjectId === null ||
+      pullRequestRepository === null ||
+      (pullRequestTextQuery !== null && settledPullRequestTextQuery === null)
+      ? null
+      : issueEnvironment.list({
+          environmentId,
+          input: {
+            projectId: pullRequestProjectId,
+            state: "all",
+            ...(settledPullRequestTextQuery === null ? {} : { query: settledPullRequestTextQuery }),
           },
         }),
   );
@@ -374,9 +394,30 @@ export function useComposerMenuItems({
             query: composerTrigger.query,
             limit: COMPOSER_PULL_REQUEST_RESULT_LIMIT,
           });
-      return matches.map((pullRequest) => ({
+      const issues = (issueLookup.data?.issues ?? [])
+        .filter(
+          (issue) =>
+            pullRequestTextQuery !== null ||
+            composerTrigger.query === "" ||
+            String(issue.number).startsWith(composerTrigger.query),
+        )
+        .slice(0, COMPOSER_ISSUE_RESULT_LIMIT)
+        .map((issue): ComposerCommandItem => ({
+          id: `issue:${pullRequestProjectId}:${issue.number}`,
+          type: "issue",
+          issue: {
+            number: issue.number,
+            title: issue.title,
+            url: issue.url,
+            state: issue.state,
+            stateReason: issue.stateReason ?? null,
+          },
+          label: `#${issue.number}`,
+          description: issue.title,
+        }));
+      const pullRequestItems = matches.map((pullRequest) => ({
         id: `pull-request:${pullRequest.projectId}:${threadPullRequestKeyOf(pullRequest)}`,
-        type: "pull-request",
+        type: "pull-request" as const,
         pullRequest: {
           number: pullRequest.number,
           title: pullRequest.title,
@@ -392,6 +433,7 @@ export function useComposerMenuItems({
             ? pullRequest.title
             : `${pullRequest.repository} · ${pullRequest.title}`,
       }));
+      return [...pullRequestItems, ...issues];
     }
     return [];
   })();
@@ -405,7 +447,8 @@ export function useComposerMenuItems({
       (pullRequestLookup.isPending ||
         pullRequestTextQuery !== debouncedPullRequestTextQuery ||
         pullRequestTriggerNumber !== debouncedPullRequestNumber ||
-        exactPullRequestLookup.isPending));
+        exactPullRequestLookup.isPending ||
+        issueLookup.isPending));
   const emptyState = (() => {
     if (composerTriggerKind === "skill") {
       return "No skills found. Try / to browse provider commands.";

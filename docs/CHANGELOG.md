@@ -11,6 +11,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 ### Added
 
 - Android: the git menu in a thread's header lists **Rebase onto the default branch** while the branch is behind it, and the Default branch row says so, so a big "Merge N commits" count after the default branch moved no longer looks like N new commits.
+- Issues (web and Android): **Work on this** in an issue opens a new thread with the issue (description and comments) attached to the composer, and typing `#` in the chat composer now offers the project's issues next to its pull requests.
 - Device panel: the GNOME desktop starts `gnome-keyring-daemon` (when installed) so apps on it have a secrets provider to save logins in.
 - Agents get tools for pull requests and issues of a project's repository (all through your signed-in host account): `list_pull_requests`, `read_pull_request` (with comments, reviews and review threads), `comment_on_pull_request` (also replies to and resolves review threads), `review_pull_request`, `update_pull_request` (title, description, labels, reviewers), `act_on_pull_request` (merge, close, reopen, ready, draft, update or delete the branch, auto-merge, revert, approve workflows), `list_issues`, `read_issue`, `create_issue` and `update_issue` (title, body, state, labels, assignees, comment).
 - Android: the git button in a thread's header shows a worktree (fork) icon instead of the branch icon when the thread runs in a worktree.

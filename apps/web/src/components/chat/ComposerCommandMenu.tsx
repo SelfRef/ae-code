@@ -7,6 +7,7 @@ import {
 import {
   type EnvironmentId,
   type EnvironmentMachineKind,
+  type IssueSummary,
   type ProjectEntry,
   type ProviderDriverKind,
   type ProviderInstanceId,
@@ -35,6 +36,7 @@ import { EnvironmentMachineIcon } from "../EnvironmentMachineIcon";
 import { PierreEntryIcon } from "./PierreEntryIcon";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import { ComposerBanner } from "./ComposerBanner";
+import { IssueStateGlyph } from "../issue/IssueStateGlyph";
 import { resolvePullRequestState } from "../pullRequest/pullRequestPresentation";
 
 export type ComposerCommandItem =
@@ -74,6 +76,13 @@ export type ComposerCommandItem =
       id: string;
       type: "pull-request";
       pullRequest: PullRequestContextMetadata;
+      label: string;
+      description: string;
+    }
+  | {
+      id: string;
+      type: "issue";
+      issue: Pick<IssueSummary, "number" | "title" | "url" | "state" | "stateReason">;
       label: string;
       description: string;
     }
@@ -170,7 +179,7 @@ export const ComposerCommandMenu = memo(function ComposerCommandMenu(props: {
                 ? props.triggerKind === "skill" || props.triggerKind === "slash-command"
                   ? "Searching workspace skills..."
                   : props.triggerKind === "pull-request"
-                    ? "Finding pull request..."
+                    ? "Finding pull request or issue..."
                     : "Searching workspace files..."
                 : (props.emptyStateText ??
                   (props.triggerKind === "skill"
@@ -255,6 +264,9 @@ const ComposerCommandMenuItem = memo(function ComposerCommandMenuItem(props: {
           iconClassName="size-4"
         />
       ) : null}
+      {props.item.type === "issue" ? (
+        <IssueStateGlyph issue={props.item.issue} className="shrink-0" />
+      ) : null}
       {pullRequestPresentation ? (
         <pullRequestPresentation.Icon
           role="img"
@@ -305,7 +317,7 @@ export function composerSuggestionOptionId(listId: string, itemId: string): stri
 
 const LISTBOX_LABEL_BY_TRIGGER: Record<ComposerTriggerKind, string> = {
   path: "Files and folders",
-  "pull-request": "Pull requests",
+  "pull-request": "Pull requests and issues",
   "slash-command": "Commands",
   skill: "Skills",
 };
