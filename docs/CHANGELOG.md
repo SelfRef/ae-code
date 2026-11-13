@@ -8,6 +8,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+## [v2026.11.13] - 2026-11-13
+
 ### Added
 
 - Android: the git menu in a thread's header lists **Rebase onto the default branch** while the branch is behind it, and the Default branch row says so, so a big "Merge N commits" count after the default branch moved no longer looks like N new commits.
