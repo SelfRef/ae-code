@@ -12,6 +12,8 @@ import {
   type UploadChatImageAttachment,
 } from "@t3tools/contracts";
 import type { DocumentPickerResult } from "expo-document-picker";
+import type { ImagePickerAsset } from "expo-image-picker";
+import type { Asset as LibraryAsset } from "expo-media-library/legacy";
 import { estimateBase64ByteSize } from "./base64";
 import {
   COMPOSER_ATTACHMENT_DIRECTORY,
@@ -426,10 +428,51 @@ export async function pickComposerMedia(input: {
     };
   }
 
+  return composerAttachmentsFromMediaAssets(result.assets, {
+    remainingSlots,
+    maxVideoBytes: input.maxVideoBytes,
+  });
+}
+
+type PickedMediaAsset = Pick<
+  ImagePickerAsset,
+  "uri" | "type" | "mimeType" | "fileName" | "fileSize"
+>;
+
+/** Attaches recent-photo drawer picks, which skip the system picker but share its import rules. */
+export async function attachComposerLibraryAssets(
+  assets: ReadonlyArray<LibraryAsset>,
+  input: { readonly existingCount: number; readonly maxVideoBytes?: number },
+) {
+  return composerAttachmentsFromMediaAssets(
+    assets.map((asset): PickedMediaAsset => ({
+      uri: asset.uri,
+      type: asset.mediaType === "video" ? "video" : "image",
+      fileName: asset.filename,
+      mimeType:
+        imageMimeType({ name: asset.filename, mimeType: "" }) ??
+        videoMimeType({ name: asset.filename, mimeType: "" }) ??
+        undefined,
+    })),
+    {
+      remainingSlots: PROVIDER_SEND_TURN_MAX_ATTACHMENTS - input.existingCount,
+      maxVideoBytes: input.maxVideoBytes,
+    },
+  );
+}
+
+async function composerAttachmentsFromMediaAssets(
+  assets: ReadonlyArray<PickedMediaAsset>,
+  input: { readonly remainingSlots: number; readonly maxVideoBytes?: number },
+): Promise<{
+  readonly attachments: ReadonlyArray<DraftComposerAttachment>;
+  readonly error: string | null;
+}> {
+  const { remainingSlots } = input;
   const attachments: DraftComposerAttachment[] = [];
   let error: string | null = null;
 
-  for (const asset of result.assets) {
+  for (const asset of assets) {
     if (attachments.length >= remainingSlots) {
       error = `You can attach up to ${PROVIDER_SEND_TURN_MAX_ATTACHMENTS} attachments per message.`;
       break;

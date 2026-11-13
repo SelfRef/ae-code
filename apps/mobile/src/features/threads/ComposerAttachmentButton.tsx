@@ -4,19 +4,14 @@ import { Pressable } from "react-native";
 import { useAndroidControlSizing } from "../../components/ui/useAndroidControlSizing";
 import { SymbolView } from "../../components/ui/AppSymbol";
 import { Menu } from "../../components/ui/Menu";
+import type { ComposerAttachmentButtonProps } from "./ComposerAttachmentButton.types";
 
 const ATTACHMENT_MENU_ACTIONS: MenuAction[] = [
   { id: "photos", title: "Photo Library", image: "photo" },
   { id: "files", title: "Choose Files", image: "folder" },
 ];
 
-export function ComposerAttachmentButton(props: {
-  readonly disabled?: boolean;
-  readonly size?: "regular" | "large";
-  readonly supportsFiles: boolean;
-  readonly onPickMedia: () => Promise<void>;
-  readonly onPickFiles: () => Promise<void>;
-}) {
+export function ComposerAttachmentButton(props: ComposerAttachmentButtonProps) {
   const { scale } = useAndroidControlSizing();
   const button = (
     <Pressable
