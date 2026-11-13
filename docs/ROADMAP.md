@@ -403,8 +403,10 @@ disabled.
   (the server: `ae-code.exe`, the web client and the resource monitor, renamed from upstream's `t3.exe` like the Linux one)
   and the installer `AE-Code-<version>-x64.exe`. Unsigned (SmartScreen warns), no relay or Clerk configuration, and
   the desktop has no WSL runtime. The binaries cannot run on the build host, so `windows-check` runs `ae-code.exe --version`
-  on a Windows runner and the release waits for it; nothing starts the installer or the desktop app, so the first run on
-  Windows is the real test.
+  on a Windows runner; nothing starts the installer or the desktop app, so the first run on
+  Windows is the real test. The release does not wait for any of this (it is the slowest build): `windows-attach` adds
+  the assets to the release once the check passes, `latest.yml` last, and a failure leaves the release without Windows
+  until the job is run again.
   - **Updates:** the installer is an NSIS per-user install, and the desktop app updates itself with `electron-updater`.
     The build bakes a GitHub feed for `GITHUB_REPOSITORY` into `app-update.yml`, and the release attaches `latest.yml` and the
     `.blockmap` beside the installer, so the installer keeps electron-builder's versioned name, which `latest.yml` and the
