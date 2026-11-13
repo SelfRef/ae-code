@@ -1,5 +1,8 @@
 import { useAtomValue } from "@effect/atom-react";
-import { MISSING_FILE_ACCESS_MESSAGE } from "@t3tools/client-runtime/state/assets";
+import {
+  FILE_NOT_FOUND_MESSAGE,
+  MISSING_FILE_ACCESS_MESSAGE,
+} from "@t3tools/client-runtime/state/assets";
 import type { AssetResource, EnvironmentId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
@@ -309,9 +312,13 @@ export function ThreadMarkdownImage(props: {
       sourceKey={sourceKey}
       unavailable={assetUrl._tag === "Failure"}
       unavailableDetail={
-        assetUrl._tag === "Failure" && assetUrl.reason === "missing-file-access"
-          ? MISSING_FILE_ACCESS_MESSAGE
-          : undefined
+        assetUrl._tag !== "Failure"
+          ? undefined
+          : assetUrl.reason === "missing-file-access"
+            ? MISSING_FILE_ACCESS_MESSAGE
+            : assetUrl.reason === "file-not-found"
+              ? FILE_NOT_FOUND_MESSAGE
+              : undefined
       }
       knownSize={assetUrl._tag === "Success" ? assetUrl.imageDimensions : undefined}
       format={

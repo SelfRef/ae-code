@@ -1,5 +1,6 @@
 import {
   type AssetCreateUrlInput,
+  AssetWorkspaceAssetNotFoundError,
   type AssetCreateUrlResult,
   type AssetImageDimensions,
   AssetResource,
@@ -73,7 +74,7 @@ export type AssetUrlState =
   | { readonly _tag: "Loading" }
   | {
       readonly _tag: "Failure";
-      readonly reason?: "missing-file-access";
+      readonly reason?: "missing-file-access" | "file-not-found";
     }
   | {
       readonly _tag: "Success";
@@ -86,6 +87,10 @@ export type AssetUrlState =
 
 export const MISSING_FILE_ACCESS_MESSAGE =
   "This connection cannot read host files. Pair again with a new link to view it.";
+
+export const FILE_NOT_FOUND_MESSAGE = "The file was moved or deleted on the host.";
+
+const isAssetNotFoundError = Schema.is(AssetWorkspaceAssetNotFoundError);
 
 export function blockedAssetUrlState(
   resource: AssetResource | null,
@@ -115,7 +120,11 @@ export function assetUrlStateFromResult(
   result: AsyncResult.AsyncResult<AssetCreateUrlResult, unknown>,
   httpBaseUrl: string | null,
 ): AssetUrlState {
-  if (result._tag === "Failure") return { _tag: "Failure" };
+  if (result._tag === "Failure") {
+    return isAssetNotFoundError(Cause.squash(result.cause))
+      ? { _tag: "Failure", reason: "file-not-found" }
+      : { _tag: "Failure" };
+  }
   if (httpBaseUrl === null || result._tag !== "Success") return { _tag: "Loading" };
   const url = resolveAssetUrl(httpBaseUrl, result.value.relativeUrl);
   if (url === null) return { _tag: "Failure" };

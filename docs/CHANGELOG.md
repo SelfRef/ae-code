@@ -8,6 +8,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+- Android: a chat image whose file was moved or deleted on the host (for example a temporary screenshot an agent read) now says so instead of just "Image unavailable".
 - Android: with "Settle after merge" on, the ship button's Merge also closes the thread's screen once it is settled.
 - Android: the ship button no longer flashes Merge again after a merge before turning into Settle; it keeps its spinner until the status has refreshed.
 - Android: an expanded tool call or command row now indents its details under the row label, with a little vertical padding.
