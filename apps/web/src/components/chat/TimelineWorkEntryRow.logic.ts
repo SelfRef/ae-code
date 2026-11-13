@@ -20,6 +20,8 @@ export function toolGroupSummaryIconName(
     case "watch-pr":
     case "unwatch-pr":
       return "pull-request";
+    case "memory":
+      return "memory";
     case "read":
       return "eye";
     case "edit":

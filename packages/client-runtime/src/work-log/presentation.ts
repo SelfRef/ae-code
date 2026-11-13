@@ -121,6 +121,7 @@ export type ToolGroupAction =
 
 export type ToolGroupSummaryKind =
   | "pull-request"
+  | "memory"
   | ToolGroupAction
   | "dynamic-tool"
   | "reasoning"
@@ -663,6 +664,11 @@ export function toolGroupSummaryKind(
     entries.every((entry) => resolveWorkEntryToolPresentation(entry)?.icon === "pull-request")
   )
     return "pull-request";
+  if (
+    entries.length > 0 &&
+    entries.every((entry) => resolveWorkEntryToolPresentation(entry)?.icon === "memory")
+  )
+    return "memory";
   const actions = new Set(entries.map(toolGroupAction));
   if (actions.size !== 1) return "mixed";
   const action = actions.values().next().value!;
