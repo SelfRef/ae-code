@@ -8,6 +8,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+- Android: swiping a chat right slides it away once and the list eases in, instead of the chat sliding off, coming back and animating away a second time.
+
 ## [v2026.11.13.8] - 2026-11-13
 
 - Android: the terminal menu in a new, empty thread now lists the project's scripts instead of "No project scripts", and runs them in a terminal in the project folder.
