@@ -14,7 +14,7 @@ export function useSidebarToggleState() {
         ? "Maximize content"
         : "Hide sidebar"
       : "Show sidebar",
-    icon: maximizes ? "arrow.up.left.and.arrow.down.right" : "sidebar.left",
+    icon: "sidebar.left",
     onPress: togglePrimarySidebar,
   } as const;
 }

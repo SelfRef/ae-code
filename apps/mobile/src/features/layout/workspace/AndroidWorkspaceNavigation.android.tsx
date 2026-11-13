@@ -40,7 +40,7 @@ interface NativeNavigationProps extends ViewProps {
   readonly dark: boolean;
   readonly textScale: number;
   readonly newEnabled: boolean;
-  /** The rail's bottom button: "sidebar", "maximize", or "" for none. */
+  /** The rail's top button: "sidebar" replaces the menu, "" keeps the menu. */
   readonly sidebarToggle: string;
   readonly sidebarToggleLabel: string;
   readonly safeAreaTop: number;
@@ -130,13 +130,7 @@ export function AndroidWorkspaceNavigation(props: {
         dark={themeAppearance === "dark"}
         textScale={scale}
         newEnabled={connectionState.hasConnections}
-        sidebarToggle={
-          rail && sidebarToggle
-            ? sidebarToggle.icon === "sidebar.left"
-              ? "sidebar"
-              : "maximize"
-            : ""
-        }
+        sidebarToggle={rail && sidebarToggle ? "sidebar" : ""}
         sidebarToggleLabel={sidebarToggle?.accessibilityLabel ?? ""}
         safeAreaTop={toolbar.paddingTop}
         safeAreaBottom={insets.bottom}
