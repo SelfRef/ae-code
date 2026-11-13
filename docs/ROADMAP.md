@@ -1249,6 +1249,9 @@ branch and from its own upstream. Nothing here switches, pulls or pushes; the on
   "Remote only". Highlighted: a branch with commits the default lacks ("N ahead of main", warning tint). A branch
   with none is "Merged". Each row also shows commits to push and to pull, "Not pushed" without an upstream, and
   "Upstream deleted".
+- **Merge**: a worktree branch ahead of the default (`canMergeBranch`) has a merge button that runs the existing `merge`
+  stacked action with the worktree as `cwd`, no new RPC. Plain branches have no checkout to rebase in, so they get none. On
+  Android the row's history, merge and delete buttons collapse into a menu (button and long press) under 600 dp.
 - **Threads**: a row links to the newest live thread of that project working on it (in that worktree, or on that branch in
   the project root). Matching is client-side (`threadForBranch` in `packages/client-runtime/src/branchOverview.ts`);
   remote-only branches have no thread.

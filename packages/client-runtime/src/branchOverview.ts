@@ -29,6 +29,21 @@ export function isPlainLocalBranch(
   );
 }
 
+/** A worktree branch with commits the default branch lacks: the merge action runs in its checkout. */
+export function canMergeBranch(
+  branch: Pick<
+    VcsBranchOverviewEntry,
+    "isRemoteOnly" | "isDefault" | "worktreePath" | "aheadOfDefault"
+  >,
+): boolean {
+  return (
+    !branch.isRemoteOnly &&
+    !branch.isDefault &&
+    branch.worktreePath !== null &&
+    branch.aheadOfDefault > 0
+  );
+}
+
 type BranchThread = Pick<
   EnvironmentThreadShell,
   | "environmentId"

@@ -16,11 +16,14 @@ import {
 } from "@t3tools/client-runtime/state/runtime";
 import { useAtomValue } from "@effect/atom-react";
 import { ALL_VCS_REMOTES, type VcsBranchOverviewEntry } from "@t3tools/contracts";
+import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
 import { useRef, useState } from "react";
-import { Pressable, ScrollView as RowScrollView, View } from "react-native";
+import { Pressable, ScrollView as RowScrollView, View, useWindowDimensions } from "react-native";
 
 import { AppText as Text } from "../../components/ui/AppText";
 import { Button } from "../../components/ui/Button";
+import { IconButton } from "../../components/ui/IconButton";
+import { Menu } from "../../components/ui/Menu";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { AppActivityIndicator } from "../../components/ui/AppActivityIndicator";
 import * as Dialog from "../../components/ui/Dialog";
@@ -37,6 +40,7 @@ import { useOpenWorkspaceDetail } from "../layout/useOpenWorkspaceDetail";
 import { ChoiceChip } from "../layout/workspace/ChoiceChip";
 import { SettingsScreen } from "../settings/components/SettingsScreen";
 import { CommitsView } from "./CommitsView";
+import { useMergeBranch } from "./useMergeBranch";
 
 const SORT_OPTIONS = [
   { value: "recent", label: "Latest commit" },
@@ -58,7 +62,11 @@ const KIND_OPTIONS = [
   { value: "remote", label: "Remote only" },
 ] as const;
 
+/** Below this window width the row's actions collapse into a menu. */
+const COMPACT_WIDTH = 600;
+
 function BranchRow(props: {
+  readonly project: Pick<EnvironmentProject, "environmentId" | "id">;
   readonly branch: VcsBranchOverviewEntry;
   readonly defaultRef: string | null;
   readonly threadTitle: string | null;
@@ -66,8 +74,29 @@ function BranchRow(props: {
   readonly onOpenCommits: () => void;
   /** Absent when the branch cannot be deleted here. */
   readonly onDelete: (() => void) | undefined;
+  readonly onMerged: () => void;
 }) {
   const { branch } = props;
+  const compact = useWindowDimensions().width < COMPACT_WIDTH;
+  const onMerge = useMergeBranch(props.project, branch, props.defaultRef, props.onMerged);
+  const handlers: Record<string, (() => void) | undefined> = {
+    commits: props.onOpenCommits,
+    merge: onMerge,
+    delete: props.onDelete,
+  };
+  const menuActions = [
+    { id: "commits", title: "Commit history", image: "git.commit" },
+    ...(onMerge ? [{ id: "merge", title: "Merge", image: "arrow.triangle.merge" }] : []),
+    ...(props.onDelete
+      ? [{ id: "delete", title: "Delete", image: "trash", attributes: { destructive: true } }]
+      : []),
+  ];
+  const menuProps = {
+    title: branch.name,
+    actions: menuActions,
+    onPressAction: ({ nativeEvent }: { nativeEvent: { event: string } }) =>
+      handlers[nativeEvent.event]?.(),
+  };
   const state = branchMergeState(branch);
   const kind = branch.isRemoteOnly ? "Remote only" : branch.worktreePath ? "Worktree" : "Branch";
   const sync = [
@@ -76,13 +105,8 @@ function BranchRow(props: {
     branch.upstreamGone ? "Upstream deleted" : null,
     !branch.isRemoteOnly && !branch.isDefault && branch.upstream === null ? "Not pushed" : null,
   ].filter(Boolean);
-  return (
-    <View
-      className={cn(
-        "gap-1 border-b border-l-2 border-border py-3 pl-3",
-        state === "unmerged" ? "border-l-warning-foreground bg-warning" : "border-l-transparent",
-      )}
-    >
+  const body = (
+    <View className="min-w-0 flex-1 gap-1">
       <Text textRole="body" className="font-t3-bold" numberOfLines={2}>
         {branch.name}
       </Text>
@@ -112,39 +136,57 @@ function BranchRow(props: {
           {branch.lastCommitSubject ? ` · ${branch.lastCommitSubject}` : ""}
         </Text>
       ) : null}
-      <View className="flex-row items-center gap-4 pt-1">
+      {props.threadTitle !== null ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Commit history of ${branch.name}`}
-          onPress={props.onOpenCommits}
-          className="active:opacity-70"
+          onPress={props.onOpenThread}
+          className="min-w-0 self-start pt-1 active:opacity-70"
         >
-          <Text textRole="footnote" className="font-t3-bold text-primary">
-            Commits
+          <Text textRole="footnote" className="font-t3-bold text-primary" numberOfLines={1}>
+            Open thread: {props.threadTitle}
           </Text>
         </Pressable>
-        {props.onDelete ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Delete branch ${branch.name}`}
-            onPress={props.onDelete}
-            className="active:opacity-70"
-          >
-            <Text textRole="footnote" className="font-t3-bold text-destructive">
-              Delete
-            </Text>
-          </Pressable>
+      ) : null}
+    </View>
+  );
+  const rowClassName = cn(
+    "flex-row items-start gap-1 border-b border-l-2 border-border py-3 pl-3",
+    state === "unmerged" ? "border-l-warning-foreground bg-warning" : "border-l-transparent",
+  );
+  return compact ? (
+    // A long press anywhere on the row opens the same menu as the button.
+    <Menu shouldOpenOnLongPress {...menuProps}>
+      <Pressable className={rowClassName}>
+        {body}
+        <Menu {...menuProps}>
+          <IconButton accessibilityLabel={`Actions for ${branch.name}`} icon="ellipsis" />
+        </Menu>
+      </Pressable>
+    </Menu>
+  ) : (
+    <View className={rowClassName}>
+      {body}
+      <View className="flex-row items-center">
+        <IconButton
+          accessibilityLabel={`Commit history of ${branch.name}`}
+          icon="git.commit"
+          onPress={props.onOpenCommits}
+        />
+        {onMerge ? (
+          <IconButton
+            accessibilityLabel={`Merge ${branch.name} into ${props.defaultRef ?? "the default branch"}`}
+            icon="arrow.triangle.merge"
+            onPress={onMerge}
+          />
         ) : null}
-        {props.threadTitle !== null ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={props.onOpenThread}
-            className="min-w-0 shrink active:opacity-70"
-          >
-            <Text textRole="footnote" className="font-t3-bold text-primary" numberOfLines={1}>
-              Open thread: {props.threadTitle}
-            </Text>
-          </Pressable>
+        {props.onDelete ? (
+          <IconButton
+            accessibilityLabel={`Delete branch ${branch.name}`}
+            icon="trash"
+            variant="standard"
+            tintColorClassName="accent-danger-foreground"
+            onPress={props.onDelete}
+          />
         ) : null}
       </View>
     </View>
@@ -399,8 +441,10 @@ export function BranchesScreen() {
                   return (
                     <BranchRow
                       key={`${branch.isRemoteOnly ? "remote" : "local"}:${branch.name}`}
+                      project={project}
                       branch={branch}
                       defaultRef={data.defaultRef}
+                      onMerged={overview.refresh}
                       threadTitle={thread?.title ?? null}
                       onOpenCommits={() => setCommitsRef(branch.name)}
                       onDelete={

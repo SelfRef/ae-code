@@ -229,6 +229,12 @@ branch, checked-out branches, branches in a worktree and remote copies alone. A 
 Android) removes that one branch, even when it is not merged; it warns that the commits the default
 branch lacks are lost. Worktree cleanup never deletes branches itself.
 
+A worktree branch with commits the default branch lacks has a merge button on its Branches row: after
+you confirm, it does what the thread's Merge button does (commits the worktree's uncommitted changes,
+rebases the branch if the default branch moved, fast-forwards the default branch), without pushing. On
+Android a narrow screen shows one menu button (also opened by a long press on the row) instead of the
+history, merge and delete buttons.
+
 To check the work before it lands, turn on **Run before the thread merges into the default
 branch (a failure stops it)** for one of the project's actions (Settings → Projects → Actions), or
 set `"runBeforeMerge": true` on a `t3.json` action, for example a test or lint command. The merge
