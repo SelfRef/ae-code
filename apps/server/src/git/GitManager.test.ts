@@ -6240,6 +6240,44 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       }),
     );
 
+    it.effect("gives a rejected push of the default branch to the hand-off", () =>
+      Effect.gen(function* () {
+        const { remoteDir, worktreeDir } = yield* setupMerge;
+        const { manager } = yield* makeManager();
+        yield* runStackedAction(manager, { cwd: worktreeDir, action: "merge" });
+        const other = NodePath.join(yield* makeTempDir("t3code-git-other-"), "clone");
+        yield* runGit(NodePath.dirname(other), ["clone", remoteDir, other]);
+        yield* runGit(other, [
+          "-c",
+          "user.name=Other",
+          "-c",
+          "user.email=other@example.com",
+          "commit",
+          "--allow-empty",
+          "-m",
+          "Remote moved",
+        ]);
+        yield* runGit(other, ["push", "origin", "main"]);
+
+        const errors: string[] = [];
+        const result = yield* runStackedAction(
+          manager,
+          { cwd: worktreeDir, action: "push_default" },
+          { handOffMerge: (error) => Effect.sync(() => errors.push(error) > 0) },
+        );
+        expect(errors).toHaveLength(1);
+        expect(result.push.status).toBe("skipped_not_requested");
+        expect(result.toast.title).toBe("The agent finished its turn");
+
+        const declined = yield* runStackedAction(
+          manager,
+          { cwd: worktreeDir, action: "push_default" },
+          { handOffMerge: () => Effect.succeed(false) },
+        ).pipe(Effect.result);
+        expect(Result.isFailure(declined)).toBe(true);
+      }),
+    );
+
     it.effect("rebases onto a default branch that moved, keeping history linear", () =>
       Effect.gen(function* () {
         const { repoDir, worktreeDir, subjects } = yield* setupMerge;

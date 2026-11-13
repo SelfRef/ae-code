@@ -1497,10 +1497,14 @@ export const layerWsRpc = (
           Effect.orDie,
           Effect.map((id) => CommandId.make(`server:${tag}:${id}`)),
         );
-      // A failed merge starts an agent turn, which source control access alone may not.
+      // A failed merge or push starts an agent turn, which source control access alone may not.
       const mergeHandOff = ({ threadId, action }: GitRunStackedActionInput) =>
         threadId === undefined ||
-        (action !== "merge" && action !== "merge_push") ||
+        (action !== "merge" &&
+          action !== "merge_push" &&
+          action !== "push" &&
+          action !== "commit_push" &&
+          action !== "push_default") ||
         !currentSession.scopes.includes(AuthOrchestrationOperateScope)
           ? {}
           : {
@@ -1510,7 +1514,7 @@ export const layerWsRpc = (
                   Effect.flatMap((uuid) =>
                     handOffMerge({
                       threadId,
-                      push: action === "merge_push",
+                      action: action === "commit_push" ? "push" : action,
                       error,
                       modelSelection,
                       uuid,

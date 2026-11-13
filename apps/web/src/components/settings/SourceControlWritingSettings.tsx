@@ -672,7 +672,7 @@ export function SourceControlWritingSettingsSection() {
         settingKeys={["mergeByAgentEnabled"]}
         mixed={mixedMergeByAgent}
         {...searchableSetting("merge-by-agent")}
-        description="When a merge into the default branch cannot be done without conflicts, the thread's agent finishes it. Turn off to just show the error."
+        description="When a merge into the default branch or a push cannot be done (conflicts, a remote that moved on), the thread's agent finishes it. Turn off to just show the error."
         resetAction={
           mixedMergeByAgent || !settings.mergeByAgentEnabled ? (
             <SettingResetButton
