@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import {
   type AssetCreateUrlResult,
+  AssetWorkspaceAssetNotFoundError,
   type AssetResource,
   EnvironmentId,
   ThreadId,
@@ -26,6 +27,7 @@ import * as EnvironmentSupervisor from "../connection/supervisor.ts";
 import type * as RpcSession from "../rpc/session.ts";
 import {
   ASSET_URL_MAX_IN_FLIGHT,
+  assetUrlStateFromResult,
   createAssetEnvironmentAtoms,
   createProjectFaviconUrlAtomFamily,
   makeRevisionedAssetUrlFamily,
@@ -302,6 +304,25 @@ function setup(initial: MintResult) {
   };
   return { mount, settle, url, mints: () => mints };
 }
+
+describe("assetUrlStateFromResult", () => {
+  it("tells a missing file from other failures", () => {
+    const resource = {
+      _tag: "media-file",
+      threadId: ThreadId.make("t"),
+      path: "/tmp/a.png",
+    } as const;
+    expect(
+      assetUrlStateFromResult(
+        AsyncResult.fail(new AssetWorkspaceAssetNotFoundError({ resource })),
+        "https://host.test",
+      ),
+    ).toEqual({ _tag: "Failure", reason: "file-not-found" });
+    expect(
+      assetUrlStateFromResult(AsyncResult.fail(new Error("boom")), "https://host.test"),
+    ).toEqual({ _tag: "Failure" });
+  });
+});
 
 describe("makeRevisionedAssetUrlFamily", () => {
   it("re-mints a settled URL on first read and on each new revision, not on remount", () => {
