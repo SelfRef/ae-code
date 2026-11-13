@@ -310,33 +310,35 @@ class T3WorkspaceNavigationView(
           .padding(top = safeAreaTop.dp, bottom = safeAreaBottom.dp + 12.dp)
           .selectableGroup(),
       ) {
-        // As tall as the list toolbar so the menu lines up with the toolbar's actions.
+        // As tall as the list toolbar so the button lines up with the toolbar's actions. The
+        // sidebar toggle takes the menu's place; the menu only stays where there is no sidebar.
         Box(
           Modifier.height(headerHeight.dp).padding(start = RAIL_INSET),
           contentAlignment = Alignment.CenterStart,
         ) {
+          val toggles = sidebarToggle.isNotEmpty()
           IconButton(
-            onClick = { expanded = !expanded },
+            onClick = {
+              if (toggles) {
+                expanded = false
+                onSidebarToggle(emptyMap<String, Any>())
+              } else {
+                expanded = !expanded
+              }
+            },
             modifier = Modifier.semantics {
               contentDescription =
-                if (expanded) "Collapse navigation rail" else "Expand navigation rail"
+                if (toggles) sidebarToggleLabel
+                else if (expanded) "Collapse navigation rail"
+                else "Expand navigation rail"
             },
           ) {
             Icon(
-              painterResource(R.drawable.t3_menu),
+              painterResource(if (toggles) R.drawable.t3_sidebar else R.drawable.t3_menu),
               contentDescription = null,
               tint = Color(unselectedColor),
             )
           }
-        }
-        // Other tabs keep the button's slot so the destinations below never move between tabs.
-        if (selectedTab == "threads") {
-          newThreadButton(fraction) {
-            expanded = false
-            onNewThread(emptyMap<String, Any>())
-          }
-        } else {
-          Spacer(Modifier.padding(top = 12.dp).height(FAB_SIZE))
         }
         Spacer(Modifier.weight(1f))
         tabs.forEach { tab ->
@@ -346,24 +348,14 @@ class T3WorkspaceNavigationView(
           }
         }
         Spacer(Modifier.weight(1f))
-        if (sidebarToggle.isNotEmpty()) {
-          Box(Modifier.padding(start = RAIL_INSET)) {
-            IconButton(
-              onClick = {
-                expanded = false
-                onSidebarToggle(emptyMap<String, Any>())
-              },
-              modifier = Modifier.semantics { contentDescription = sidebarToggleLabel },
-            ) {
-              Icon(
-                painterResource(
-                  if (sidebarToggle == "maximize") R.drawable.t3_maximize else R.drawable.t3_sidebar
-                ),
-                contentDescription = null,
-                tint = Color(unselectedColor),
-              )
-            }
+        // Other tabs keep the button's slot so the destinations below never move between tabs.
+        if (selectedTab == "threads") {
+          newThreadButton(fraction) {
+            expanded = false
+            onNewThread(emptyMap<String, Any>())
           }
+        } else {
+          Spacer(Modifier.padding(top = 12.dp).height(FAB_SIZE))
         }
       }
     }
