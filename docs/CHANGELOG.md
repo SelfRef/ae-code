@@ -8,6 +8,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+- Android: an expanded tool call or command row now indents its details under the row label, with a little vertical padding.
+
 ## [v2026.11.13.7] - 2026-11-13
 
 - Android: the floating **Settle** button no longer jumps up when the scroll-to-end button shows, and settling a thread with it closes the thread. The button has a colour per step (Commit blue, Merge violet, Settle green) and shows a spinner and ignores presses while its step runs.
