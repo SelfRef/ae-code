@@ -480,7 +480,7 @@ export function collectLimitPools(
     if (list) list.push(account);
     else byDriver.set(account.driver, [account]);
   }
-  return [...byDriver].map(([driver, members]) => {
+  const pools = [...byDriver].map(([driver, members]) => {
     const orderWindow = members
       .flatMap((account) => account.limits.windows)
       .sort((left, right) => WINDOW_KIND_ORDER[left.kind] - WINDOW_KIND_ORDER[right.kind])[0];
@@ -501,6 +501,10 @@ export function collectLimitPools(
     );
     return { driver, accounts: sorted, windows: poolWindows(sorted, now) };
   });
+  // Tightest provider first; the sort is stable, so ties keep driver order.
+  const tightest = (pool: LimitPool) =>
+    Math.min(...pool.windows.map((window) => window.remainingPercent));
+  return pools.sort((left, right) => tightest(left) - tightest(right));
 }
 
 function accountSortName(account: LimitAccount): string {
