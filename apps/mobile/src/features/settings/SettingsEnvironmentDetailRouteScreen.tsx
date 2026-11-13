@@ -328,7 +328,7 @@ function EnvironmentDetail({ environmentId }: { readonly environmentId: Environm
                     }}
                   />
                   {config.providers
-                    .filter((provider) => provider.enabled)
+                    .filter((provider) => provider.enabled && provider.installed)
                     .map((provider) => (
                       <View key={provider.instanceId}>
                         <View className="gap-1 p-4">
@@ -343,9 +343,7 @@ function EnvironmentDetail({ environmentId }: { readonly environmentId: Environm
                             </Text>
                           </View>
                           <Text className="text-sm text-foreground-muted">
-                            {provider.installed
-                              ? (provider.version ?? "Version unknown")
-                              : "Not installed"}
+                            {provider.version ?? "Version unknown"}
                             {provider.versionAdvisory?.latestVersion
                               ? ` · Latest ${provider.versionAdvisory.latestVersion}`
                               : ""}
