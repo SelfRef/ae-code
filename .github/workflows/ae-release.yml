@@ -625,9 +625,16 @@ jobs:
           ABI: ${{ matrix.abi }}
         # Lint vital checks a release for crashes at build time; they are not a gate here.
         run: |
+          set -o pipefail
           ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures="$ABI" -Dorg.gradle.jvmargs=-Xmx4g \
-            -x lintVitalAnalyzeRelease -x lintVitalReportRelease
+            -x lintVitalAnalyzeRelease -x lintVitalReportRelease 2>&1 | tee "$RUNNER_TEMP/gradle.log"
           ccache -s
+
+      # The runner's live log drops Gradle's output once the JS bundle task starts, and with
+      # it the reason for a failure.
+      - name: Show the Gradle failure
+        if: failure()
+        run: grep -n -B2 -A30 -E 'FAILURE: Build failed|What went wrong' "$RUNNER_TEMP/gradle.log" || tail -n 60 "$RUNNER_TEMP/gradle.log"
 
       # Expo's template signs release builds with the public debug key; replace it.
       - name: Sign the APK
