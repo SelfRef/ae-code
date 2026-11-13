@@ -8,6 +8,10 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+### Fixed
+
+- A failed Android build in the release workflow prints Gradle's error in the job log (the live log dropped it).
+
 ## [v2026.11.13.4] - 2026-11-13
 
 ### Changed
