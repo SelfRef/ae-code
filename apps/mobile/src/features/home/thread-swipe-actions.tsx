@@ -123,6 +123,8 @@ function resolveSecondaryAction(input: {
 const SwipeableScrollGateContext = createContext(true);
 // Swipeable rebuilds its native pan gesture whenever its config changes identity, so the props
 // that feed it stay stable across row re-renders such as selection.
+// Rows only open on a left drag; a rightward one belongs to the compact screen swipe, which would otherwise lose the race to a row on a fast flick. An open row closes by tap.
+const RIGHT_DRAG_DISABLED = 10_000;
 const FAIL_OFFSET_Y: [number, number] = [-10, 10];
 
 export function SwipeableScrollGateProvider(props: {
@@ -495,7 +497,7 @@ export function ThreadSwipeable(props: ThreadSwipeableProps) {
           animationOptions={THREAD_SWIPE_SPRING}
           childrenContainerStyle={childrenContainerStyle}
           containerStyle={swipeableContainerStyle}
-          dragOffsetFromLeft={40}
+          dragOffsetFromLeft={RIGHT_DRAG_DISABLED}
           dragOffsetFromRight={-8}
           enabled={!props.dormant && !isDismissing && props.enabled !== false && gateEnabled}
           enableTrackpadTwoFingerGesture={props.enableTrackpadSwipe ?? true}
