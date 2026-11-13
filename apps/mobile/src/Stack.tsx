@@ -18,6 +18,7 @@ import { useResolveClassNames } from "uniwind";
 
 import { AppText as Text } from "./components/ui/AppText";
 import { androidWorkspaceDestinationAnimation } from "./lib/android-workspace-navigation";
+import { swipeNavigation } from "./features/layout/compact-swipe-navigation";
 import { getCompactBrandHeaderOptions } from "./features/layout/workspace/brand-header-options";
 import { WorkspaceConnectionStatusProvider } from "./features/home/WorkspaceConnectionTitle";
 import { WorkspaceRootScreen } from "./features/layout/workspace/WorkspaceRootScreen";
@@ -791,11 +792,13 @@ export const RootStack = RootStackConfig.with(function AdaptiveRootStack({ Navig
       screenOptions={({ route, navigation }) =>
         Platform.OS === "android"
           ? {
-              animation: androidWorkspaceDestinationAnimation(
-                route,
-                navigation.getState().routes,
-                usesSplitView,
-              ),
+              animation: swipeNavigation.active
+                ? "none"
+                : androidWorkspaceDestinationAnimation(
+                    route,
+                    navigation.getState().routes,
+                    usesSplitView,
+                  ),
             }
           : {}
       }
