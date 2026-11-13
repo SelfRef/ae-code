@@ -8,6 +8,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+- Android: the floating **Settle** button no longer jumps up when the scroll-to-end button shows, and settling a thread with it closes the thread.
+
 ## [v2026.11.13.6] - 2026-11-13
 
 ### Fixed

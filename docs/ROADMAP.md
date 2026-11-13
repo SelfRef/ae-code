@@ -1191,7 +1191,8 @@ and `merge_push` (both commit pending changes first), plus a project-scoped sett
   shared `resolveShipAction`: commit with a dirty tree, merge (or merge & push per the project's default branch action)
   while commits are missing from the default branch, settle once merged. Git cannot tell a merged branch from an untouched
   one, so Settle also needs a ready checkpoint with changed files. The device preference `shipButtonEnabled` (unset = on)
-  hides it; no data migration. iOS has no button.
+  hides it; no data migration. iOS has no button. Settle also leaves the thread, and the button only rises above
+  the status capsule, not the centred scroll-to-end button.
 
 ## Saved environments shared through the server (change 33)
 

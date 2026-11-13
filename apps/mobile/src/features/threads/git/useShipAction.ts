@@ -7,6 +7,7 @@ import {
 } from "@t3tools/client-runtime/state/vcs";
 
 import { useThreadListActions } from "../../home/useThreadListActions";
+import { useWorkspaceBackNavigation } from "../../layout/workspace/useAndroidWorkspaceNavigation";
 import { useEnvironmentScope } from "../../../state/session";
 import { useQuickMergeAction } from "./useQuickMergeAction";
 import { useShipButtonEnabled } from "./useShipButtonEnabled";
@@ -36,6 +37,7 @@ export function useShipAction(input: {
   const enabled = useShipButtonEnabled();
   const quickMergeAction = useQuickMergeAction();
   const { settleThread } = useThreadListActions();
+  const goBack = useWorkspaceBackNavigation("threads");
   const canWriteSourceControl = useEnvironmentScope(
     input.thread?.environmentId ?? null,
     AuthSourceControlWriteScope,
@@ -52,8 +54,11 @@ export function useShipAction(input: {
     label: LABELS[kind],
     disabled: input.busy || (kind !== "settle" && !canWriteSourceControl),
     onPress: () => {
-      if (kind === "settle") void settleThread(thread);
-      else void input.onRunAction({ action: kind === "merge" ? mergeAction : "commit" });
+      if (kind === "settle") {
+        void settleThread(thread).then((settled) => {
+          if (settled) goBack();
+        });
+      } else void input.onRunAction({ action: kind === "merge" ? mergeAction : "commit" });
     },
   };
 }
