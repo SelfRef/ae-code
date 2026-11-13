@@ -34,7 +34,7 @@ const run = (afterTurn: ModelSelection | null, override: ModelSelection | undefi
   };
   return handOffMerge({
     threadId,
-    push: false,
+    action: "merge",
     error: "conflict",
     modelSelection: override,
     uuid: "u",

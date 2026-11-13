@@ -12,6 +12,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Added
 
+- A push that the remote rejects (it moved on, for example after a release commit) is handed to the thread's agent, like a failed merge: **Push**, **Push n commits** and the Commit & push actions now fall back to it. The agent commits pending work, rebases onto the remote keeping every change and pushes again, with no force-push. The Merge by agent setting covers it and can still turn it off.
 - The thread details card shows, under the branch picker, whether the branch is up to date with the default branch. When it is behind, an amber row ("3 commits behind main") has an **Update** button that rebases the branch onto it.
 - Devices (web and Android): every device has an **Input** choice, **View only** or **Take control** (the pointer button in the web toolbar, the **Input** group in the Android device menu). View only keeps the screen live but drops your own touches, keys and buttons, so you can watch an agent without nudging the device; a device an agent opened starts in View only. It does not stop the agent. Needs a new app build on Android.
 - Android: the terminal button in the thread bar shows a count of terminals with a task running (idle shells are not counted).

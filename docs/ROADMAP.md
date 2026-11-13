@@ -1169,7 +1169,8 @@ and `merge_push` (both commit pending changes first), plus a project-scoped sett
   open until that run ends, so the Merge button keeps its progress ("Merging by agent...") on web and mobile alike. The
   result's toast only points at the thread; without operate access, when the hand-off cannot start, or with the
   project setting `mergeByAgentEnabled` off (Settings → Source control, on by default), the failure is reported as
-  before. `mergeByAgentModelSelection` (off by default: the thread's own model) picks a coding agent for the turn only: the thread's own model is put back when the turn ends (unless another was
+  before. A rejected push goes the same way (`push`, `commit_push` and `push_default`; not the pull request actions, whose next step needs the push): the agent is told to fetch, rebase onto the
+  remote counterpart keeping every change and push again, no force-push; the setting and model are the ones above. `mergeByAgentModelSelection` (off by default: the thread's own model) picks a coding agent for the turn only: the thread's own model is put back when the turn ends (unless another was
   picked meanwhile). Nothing is retried automatically.
 - Not cleaned up here: the existing worktree cleanup removes merged branches' worktrees.
 - Its own button: the actions live in a **Default branch** section of the thread details card (off by default, shown with

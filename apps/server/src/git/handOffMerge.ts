@@ -7,12 +7,39 @@ import { modelSelectionsEqual } from "@t3tools/shared/model";
 
 import * as ThreadManagementService from "../orchestration-v2/ThreadManagementService.ts";
 
+const HAND_OFF_SUMMARY: Record<HandOffAction, string> = {
+  merge: "Merging by the agent",
+  merge_push: "Merging and pushing by the agent",
+  push: "Pushing by the agent",
+  push_default: "Pushing by the agent",
+};
+
 const WAIT_MS = Duration.toMillis(Duration.hours(1));
 
-/** What the thread's agent is told when the built-in merge could not finish. */
-function mergeHandOffPrompt(input: { readonly push: boolean; readonly error: string }) {
+export type HandOffAction = "merge" | "merge_push" | "push" | "push_default";
+
+/** What the thread's agent is told when the built-in merge or push could not finish. */
+function handOffPrompt(input: { readonly action: HandOffAction; readonly error: string }) {
+  const keepHistory =
+    "Keep the history linear: no merge commits, no force-push, and never discard uncommitted work in the default branch's checkout. If a step cannot be done safely, stop and say why.";
+  if (input.action === "push" || input.action === "push_default") {
+    const target = input.action === "push" ? "this branch" : "the default branch";
+    return [
+      `Pushing ${target} failed:`,
+      "",
+      input.error,
+      "",
+      "Finish the push yourself:",
+      "1. Commit any pending changes in this checkout.",
+      `2. Fetch the remote and rebase ${target} onto its remote counterpart, keeping every local commit and change and resolving any conflicts so the intent of both sides stays. Run the project's checks afterwards.`,
+      `3. Push ${target} again.`,
+      "",
+      keepHistory,
+    ].join("\n");
+  }
+  const push = input.action === "merge_push";
   return [
-    `Merging this branch into the default branch${input.push ? " and pushing it" : ""} failed:`,
+    `Merging this branch into the default branch${push ? " and pushing it" : ""} failed:`,
     "",
     input.error,
     "",
@@ -20,21 +47,21 @@ function mergeHandOffPrompt(input: { readonly push: boolean; readonly error: str
     "1. Commit any pending changes in this checkout.",
     "2. Rebase this branch onto the default branch and resolve any conflicts, keeping the intent of both sides. Run the project's checks afterwards.",
     "3. Fast-forward the default branch to this branch (`git merge --ff-only` in the checkout that has the default branch checked out, or `git fetch . <branch>:<default>` when none has).",
-    ...(input.push ? ["4. Push the default branch to its remote."] : []),
+    ...(push ? ["4. Push the default branch to its remote."] : []),
     "",
-    "Keep the history linear: no merge commits, no force-push, and never discard uncommitted work in the default branch's checkout. If a step cannot be done safely, stop and say why.",
+    keepHistory,
   ].join("\n");
 }
 
 /**
- * Hands a failed merge to the thread's agent as a system notice, the way compaction runs as its
+ * Hands a failed merge or push to the thread's agent as a system notice, the way compaction runs as its
  * own turn, and resolves once that turn ends. False when the agent could not be started.
  * A `modelSelection` is for this turn only: the thread's own model is put back afterwards.
  */
 export const handOffMerge = Effect.fn("handOffMerge")(
   function* (input: {
     readonly threadId: ThreadId;
-    readonly push: boolean;
+    readonly action: HandOffAction;
     readonly error: string;
     /** Absent runs the thread's own model. */
     readonly modelSelection?: ModelSelection | undefined;
@@ -43,7 +70,7 @@ export const handOffMerge = Effect.fn("handOffMerge")(
     const threads = yield* ThreadManagementService.ThreadManagementService;
     const thread = Option.fromNullishOr(yield* threads.getThreadShell(input.threadId));
     if (Option.isNone(thread)) return false;
-    const text = mergeHandOffPrompt(input);
+    const text = handOffPrompt(input);
     yield* threads.dispatch({
       type: "message.dispatch",
       commandId: CommandId.make(`server:merge-hand-off:${input.uuid}`),
@@ -53,7 +80,7 @@ export const handOffMerge = Effect.fn("handOffMerge")(
       notification: {
         source: { kind: "system" },
         outcome: "updated",
-        summary: input.push ? "Merging and pushing by the agent" : "Merging by the agent",
+        summary: HAND_OFF_SUMMARY[input.action],
         detail: text,
       },
       attachments: [],

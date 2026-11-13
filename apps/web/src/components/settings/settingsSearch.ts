@@ -1255,7 +1255,7 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "merge-by-agent",
     title: "Merge by agent",
     to: "/settings/source-control",
-    searchTerms: ["merge conflict rebase default branch agent fix fall back"],
+    searchTerms: ["merge push rejected conflict rebase default branch agent fix fall back"],
     environmentOnly: true,
     scope: "project-defaults",
   },

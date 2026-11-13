@@ -3604,6 +3604,31 @@ export const make = Effect.gen(function* () {
       > {
         const initialStatus = yield* gitCore.statusDetails(input.cwd);
         const wantsCommit = isCommitAction(input.action);
+        const handOffMerge = options?.handOffMerge;
+        let handedOff = false;
+        // True once the thread's agent has finished a step that failed; false leaves the failure as it is.
+        const handOffToAgent = (
+          phase: GitActionProgressPhase,
+          label: string,
+          error: { readonly message: string },
+        ) =>
+          handOffMerge === undefined
+            ? Effect.succeed(false)
+            : mergeByAgentModel(input).pipe(
+                Effect.flatMap((choice) =>
+                  choice === null
+                    ? Effect.succeed(false)
+                    : progress
+                        .emit({ kind: "phase_started", phase, label })
+                        .pipe(Effect.andThen(handOffMerge(error.message, choice.modelSelection))),
+                ),
+              );
+        const handedOffToast = {
+          title: "The agent finished its turn",
+          description: "Check the thread for how it went.",
+          cta: { kind: "none" as const },
+        };
+
         const upToDateBranch =
           input.action === "create_pr" &&
           initialStatus.hasUpstream &&
@@ -3661,7 +3686,25 @@ export const make = Effect.gen(function* () {
             branch: initialStatus.branch ?? "",
             push: true,
             pushOnly: true,
-          });
+          }).pipe(
+            Effect.catch((error) =>
+              handOffToAgent("push", "Pushing by agent...", error).pipe(
+                Effect.flatMap((done) => (done ? Effect.succeed(null) : Effect.fail(error))),
+              ),
+            ),
+          );
+          if (pushed === null) {
+            const result = {
+              action: input.action,
+              branch: { status: "skipped_not_requested" as const },
+              commit: { status: "skipped_not_requested" as const },
+              push: { status: "skipped_not_requested" as const },
+              pr: { status: "skipped_not_requested" as const },
+              toast: handedOffToast,
+            };
+            yield* progress.emit({ kind: "action_finished", result });
+            return result;
+          }
           const pushedStatus = pushed.push?.status ?? "skipped_up_to_date";
           const result = {
             action: input.action,
@@ -3830,8 +3873,6 @@ export const make = Effect.gen(function* () {
             )
           : { status: "skipped_not_requested" as const };
 
-        const handOffMerge = options?.handOffMerge;
-        let handedOff = false;
         const merge =
           wantsMerge && currentBranch
             ? yield* progress
@@ -3854,33 +3895,16 @@ export const make = Effect.gen(function* () {
                     ),
                   ),
                   Effect.catch((error) =>
-                    handOffMerge === undefined
-                      ? Effect.fail(error)
-                      : mergeByAgentModel(input).pipe(
-                          Effect.flatMap((choice) =>
-                            choice === null
-                              ? Effect.succeed(false)
-                              : progress
-                                  .emit({
-                                    kind: "phase_started",
-                                    phase: "merge",
-                                    label: "Merging by agent...",
-                                  })
-                                  .pipe(
-                                    Effect.andThen(
-                                      handOffMerge(error.message, choice.modelSelection),
-                                    ),
-                                  ),
-                          ),
-                          Effect.flatMap((done) =>
-                            done
-                              ? Effect.sync(() => {
-                                  handedOff = true;
-                                  return undefined;
-                                })
-                              : Effect.fail(error),
-                          ),
-                        ),
+                    handOffToAgent("merge", "Merging by agent...", error).pipe(
+                      Effect.flatMap((done) =>
+                        done
+                          ? Effect.sync(() => {
+                              handedOff = true;
+                              return undefined;
+                            })
+                          : Effect.fail(error),
+                      ),
+                    ),
                   ),
                 )
             : undefined;
@@ -3895,6 +3919,18 @@ export const make = Effect.gen(function* () {
               .pipe(
                 Effect.tap(() => Ref.set(currentPhase, Option.some("push"))),
                 Effect.flatMap(() => pushCurrentBranch(input.cwd, currentBranch)),
+                Effect.catch((error) =>
+                  handOffToAgent("push", "Pushing by agent...", error).pipe(
+                    Effect.flatMap((done) =>
+                      done
+                        ? Effect.sync(() => {
+                            handedOff = true;
+                            return { status: "skipped_not_requested" as const };
+                          })
+                        : Effect.fail(error),
+                    ),
+                  ),
+                ),
               )
           : merge?.push
             ? {
@@ -3929,11 +3965,7 @@ export const make = Effect.gen(function* () {
           : { status: "skipped_not_requested" as const };
 
         const toast = handedOff
-          ? {
-              title: "The agent finished its turn",
-              description: "Check the thread for how the merge went.",
-              cta: { kind: "none" as const },
-            }
+          ? handedOffToast
           : merge
             ? mergeCompletionToast(merge, commit.status === "created")
             : yield* buildCompletionToast(input.cwd, {
