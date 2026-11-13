@@ -627,7 +627,7 @@ jobs:
         run: |
           set -o pipefail
           ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures="$ABI" -Dorg.gradle.jvmargs=-Xmx4g \
-            -x lintVitalAnalyzeRelease -x lintVitalReportRelease 2>&1 | tee "$RUNNER_TEMP/gradle.log"
+            -x lintVitalRelease -x lintVitalReportRelease -x lintVitalAnalyzeRelease 2>&1 | tee "$RUNNER_TEMP/gradle.log"
           ccache -s
 
       # The runner's live log drops Gradle's output once the JS bundle task starts, and with

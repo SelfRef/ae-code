@@ -8,6 +8,10 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+### Fixed
+
+- The Android APKs of a release are attached again after the faster build skipped lint in a way Gradle rejected.
+
 ## [v2026.11.13.5] - 2026-11-13
 
 ### Fixed
