@@ -8,6 +8,10 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+### Changed
+
+- Releases build the Android APKs faster: the native libraries are cached between releases and the APKs build beside the other jobs.
+
 ## [v2026.11.13.3] - 2026-11-13
 
 ### Added
