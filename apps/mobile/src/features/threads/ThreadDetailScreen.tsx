@@ -188,7 +188,6 @@ import { ComposerUsageLimits } from "./ComposerUsageLimits";
 import { PendingUserInputCard } from "./PendingUserInputCard";
 import { ProviderSubagentBar } from "./ProviderSubagentBar";
 import { ThreadCreationFailedCard } from "./ThreadCreationFailedCard";
-import { ShipFab } from "./ship-fab";
 import type { ShipButton } from "./git/useShipAction";
 import {
   FLOATING_WORKING_CONTROL_COVERAGE,
@@ -885,6 +884,10 @@ function ThreadDetailBody(
             void runStatusAction(lifecycleSnoozed ? "wake" : settled ? "unsettle" : "dismiss"),
         },
       };
+    }
+    if (Platform.OS === "android" && props.shipAction && contentPresentationKind === "ready") {
+      const { kind, ...button } = props.shipAction;
+      return { kind: "ship", step: kind, ...button };
     }
     if (props.selectedThread.goal !== null && contentPresentationKind === "ready") {
       const goal = presentProviderGoal(props.selectedThread.goal, false);
@@ -1614,6 +1617,7 @@ function ThreadDetailBody(
                         floatingStatus.kind === "compacting" ||
                         floatingStatus.kind === "background" ||
                         floatingStatus.kind === "goal" ||
+                        floatingStatus.kind === "ship" ||
                         floatingStatus.kind === "lifecycle")
                         ? extensionStatus
                         : null
@@ -1648,13 +1652,6 @@ function ThreadDetailBody(
                       });
                     }}
                   />
-                  {Platform.OS === "android" && props.shipAction ? (
-                    <ShipFab
-                      action={props.shipAction}
-                      raised={showFloatingStatus}
-                      lift={floatingControlLift}
-                    />
-                  ) : null}
                   <ComposerPanels
                     className="w-full"
                     style={Platform.OS === "android" ? composerPanelsHeightStyle : undefined}
