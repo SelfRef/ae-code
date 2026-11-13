@@ -400,6 +400,13 @@ const SHIP_ICONS = {
   settle: "checkmark.circle",
 } as const;
 
+// One colour per step so the next one is recognisable at a glance.
+const SHIP_TONES = {
+  commit: "bg-primary",
+  merge: "bg-violet-600",
+  settle: "bg-emerald-600",
+} as const;
+
 function CompactingLabel(props: { readonly onLayout: (event: LayoutChangeEvent) => void }) {
   return (
     <StatusLabelRow accessibilityLabel="Compacting" className="gap-1.5" onLayout={props.onLayout}>
@@ -568,20 +575,20 @@ function FloatingStatusLabel(props: {
         accessibilityRole="button"
         disabled={props.status.disabled}
         onPress={props.status.onPress}
-        className={`gap-2 ${props.status.loading ? "opacity-60" : ""}`}
+        className={`gap-2 ${SHIP_TONES[props.status.step]} ${props.status.loading ? "opacity-60" : ""}`}
         onLayout={props.onLayout}
       >
         {props.status.loading ? (
-          <AppActivityIndicator size="small" colorClassName="accent-icon-muted" />
+          <AppActivityIndicator size="small" color="#ffffff" />
         ) : (
           <SymbolView
             name={SHIP_ICONS[props.status.step]}
             size={13}
-            tintColorClassName="accent-foreground"
+            tintColor="#ffffff"
             type="monochrome"
           />
         )}
-        <Text className="shrink font-t3-bold text-xs text-foreground" numberOfLines={1}>
+        <Text className="shrink font-t3-bold text-xs text-white" numberOfLines={1}>
           {props.status.label}
         </Text>
       </StatusLabelRow>

@@ -1194,7 +1194,7 @@ and `merge_push` (both commit pending changes first), plus a project-scoped sett
   Git cannot tell a merged branch from an untouched one, so Settle also needs a ready checkpoint with changed files. It ranks
   below the working, background-work and snooze/settled statuses and above the goal and Pi extension ones. The device
   preference `shipButtonEnabled` (unset = on) hides it; no data migration. iOS has no button. Settle also leaves the thread.
-  The capsule shows a spinner (and ignores presses) while the step runs.
+  The capsule shows a spinner (and ignores presses) while the step runs. Each step has its own fill (primary, violet, emerald).
 
 ## Saved environments shared through the server (change 33)
 
