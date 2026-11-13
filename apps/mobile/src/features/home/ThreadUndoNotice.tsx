@@ -4,6 +4,8 @@ import { useKeyboardState } from "react-native-keyboard-controller";
 import { Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Toast } from "../../components/ui/Toast";
+import { useAndroidControlSizing } from "../../components/ui/useAndroidControlSizing";
+import { androidHomeFabPosition } from "./AndroidHomeFab.shared";
 import {
   useDeviceType,
   useDuoBottomBarInset,
@@ -18,7 +20,12 @@ import {
   useThreadUndoNotice,
 } from "./thread-undo-notice";
 
-export function ThreadUndoNotice(props: { readonly visible: boolean }) {
+export function ThreadUndoNotice(props: {
+  readonly visible: boolean;
+  /** The Android New thread FAB sits at the bottom edge of this view; stack above it. */
+  readonly aboveFab?: boolean;
+}) {
+  const { fabSize } = useAndroidControlSizing();
   const floatingTabsEnabled = useAndroidFloatingTabs();
   const notice = useThreadUndoNotice();
   const insets = useSafeAreaInsets();
@@ -68,7 +75,9 @@ export function ThreadUndoNotice(props: { readonly visible: boolean }) {
             ) + 8
       : floatingTabsEnabled && keyboardHeight === 0
         ? Math.max(insets.bottom + 12, workspace?.bottomClearance ?? 0)
-        : insets.bottom + 12;
+        : props.aboveFab
+          ? androidHomeFabPosition(insets.bottom, false).bottom + fabSize + 12
+          : insets.bottom + 12;
   return (
     <View
       key={instance.key}
