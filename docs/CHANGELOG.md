@@ -12,6 +12,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Added
 
+- Devices (web and Android): every device has an **Input** choice, **View only** or **Take control** (the pointer button in the web toolbar, the **Input** group in the Android device menu). View only keeps the screen live but drops your own touches, keys and buttons, so you can watch an agent without nudging the device; a device an agent opened starts in View only. It does not stop the agent. Needs a new app build on Android.
 - Android: the composer's **+** button opens a drawer with your recent photos and **Gallery** and **File** buttons, instead of a two-item menu. Tap photos to select several, then **Attach**. The photos need the photo permission, asked only when you tap **Show recent photos**; without it, the buttons still work. Needs a new app build.
 - Thread list (web and Android): when only snoozed or settled threads are left, the list says **No active threads** instead of leaving the space above the shelves empty.
 - Android: a draft chat has a terminal button in its header, opening a shell in the draft's workspace.

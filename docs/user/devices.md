@@ -43,7 +43,11 @@ devices and iOS do not need ffmpeg.
 
 The screen is interactive: click and drag to touch, type while the screen is
 focused, and use the toolbar for Home, Back, and Recents on Android, rotate on
-iOS, and power off. Close the tab to stop watching; the device keeps running
+iOS, and power off. Choose **View only** in the toolbar's input menu (the **Input** group in the
+Android app's device menu) to watch without touching: your own taps, keys and
+buttons stop reaching the device, while agents can still drive it. **Take
+control** turns your input back on. A device an agent opened starts in View only.
+Close the tab to stop watching; the device keeps running
 unless you power it off. Closed tabs stay closed after a reload. To watch the
 device again, choose it from **+ → Device**.
 

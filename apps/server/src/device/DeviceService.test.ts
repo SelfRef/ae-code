@@ -580,9 +580,14 @@ describe("device setup consent", () => {
         deviceId: "physical-android",
         platform: "android",
       });
-      const ios = yield* service.open({ threadId, deviceId: "ios-simulator", platform: "ios" });
+      const ios = yield* service.open(
+        { threadId, deviceId: "ios-simulator", platform: "ios" },
+        { agent: true },
+      );
       expect(physical.deviceId).toBe("physical-android");
+      expect(physical.agent).toBeUndefined();
       expect(ios.deviceId).toBe("ios-simulator");
+      expect(ios.agent).toBe(true);
 
       const openEmulator = service.open({
         threadId,

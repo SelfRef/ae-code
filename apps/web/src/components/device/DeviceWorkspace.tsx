@@ -22,6 +22,8 @@ export function DeviceWorkspace(props: {
   hostKind: DeviceHostSummary["kind"] | undefined;
   hostDiagnostics: string | undefined;
   visible: boolean;
+  /** The agent opened this device, so your input starts off. */
+  agentOpened: boolean;
   onFloat: () => void;
   onClose: () => void;
   onPowerOff: () => void;
@@ -93,6 +95,7 @@ export function DeviceWorkspace(props: {
             serveSimOnly={props.hostKind === "simlock"}
             axOverlay={axOverlay}
             allowPhoneView
+            defaultViewOnly={props.agentOpened}
             renderControls={(view) => (
               <DeviceControlsRail
                 platform={props.device.platform}

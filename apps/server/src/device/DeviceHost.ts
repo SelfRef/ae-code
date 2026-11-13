@@ -80,6 +80,8 @@ export type HostDevice = Omit<DeviceSummary, "hostId">;
 /** Where a device is being opened from, for hosts whose devices depend on the project. */
 export interface DeviceOpenContext {
   readonly workspaceRoot?: string | undefined;
+  /** The open comes from an agent's `device_open`. */
+  readonly agent?: boolean | undefined;
 }
 
 export type AgentDaemonEndpoint = Pick<AgentDeviceEndpoint, "baseUrl" | "token">;

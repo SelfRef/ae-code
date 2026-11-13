@@ -325,6 +325,8 @@ export interface DeviceStreamClient {
   readonly sendPointer: (event: DesktopPointerEvent) => void;
   readonly pressButton: (button: DeviceHardwareButton) => void;
   readonly rotate: () => void;
+  /** Off drops every input message; the view stays live. On by default. */
+  readonly setInputEnabled: (enabled: boolean) => void;
   readonly setOrientation: (orientation: DeviceScreenSize["orientation"]) => void;
   readonly controlDuo: (command: DuoCommand) => void;
   readonly setDuoPanels: (panels: DuoPanelSinks | null) => void;
@@ -477,6 +479,7 @@ export function createDeviceStreamClient(
   let panelClients: DeviceStreamClient[] = [];
   let panelSinks: DuoPanelSinks | null = null;
   let rotationCursor: DeviceScreenSize["orientation"] | null = null;
+  let inputEnabled = true;
   let pendingOrientation: { requestId: number } | null = null;
   let iceGatheringDeadlineMs = ICE_GATHERING_TIMEOUT_MS;
   let peer: { connection: RTCPeerConnection; sessionId: string; video: HTMLVideoElement } | null =
@@ -484,6 +487,7 @@ export function createDeviceStreamClient(
   const duoControl = createDuoControl({
     send(request) {
       if (
+        !inputEnabled ||
         !iosInputAdmitted ||
         iosInputUnavailable ||
         socket?.readyState !== WebSocket.OPEN ||
@@ -1370,6 +1374,7 @@ export function createDeviceStreamClient(
   const send = (payload: Uint8Array<ArrayBuffer> | string) => {
     if (
       !stopped &&
+      inputEnabled &&
       (!avcc || (iosInputAdmitted && !iosInputUnavailable)) &&
       socket?.readyState === WebSocket.OPEN
     )
@@ -1396,6 +1401,9 @@ export function createDeviceStreamClient(
     start,
     stop,
     setMjpegImage,
+    setInputEnabled: (enabled) => {
+      inputEnabled = enabled;
+    },
     controlDuo: duoControl.enqueue,
     sendRawTouch: (phase, x, y) => {
       if (platform === "ios") send(taggedJson(IOS_MSG_TOUCH, { type: phase, x, y }));
