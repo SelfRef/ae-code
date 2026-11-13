@@ -1631,7 +1631,7 @@ function ThreadDetailBody(
                   {Platform.OS === "android" && props.shipAction ? (
                     <ShipFab
                       action={props.shipAction}
-                      raised={showFloatingStatus || showScrollToEndButton}
+                      raised={showFloatingStatus}
                       lift={floatingControlLift}
                     />
                   ) : null}
