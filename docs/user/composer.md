@@ -250,7 +250,7 @@ Bluetooth, and CarPlay on iOS) with wired and Bluetooth devices you have dictate
 with, listed by name. Drag to rank them together:
 for example, put **Other Bluetooth** above your AirPods so a new headset is preferred
 while the AirPods microphone stays low. By default, CarPlay comes after the built-in
-microphone on iOS. Swipe a device left to forget it. Android may use another input
+microphone on iOS. Swipe a device right to forget it. Android may use another input
 when the preferred microphone cannot be routed. Devices with the same name may share
 a saved preference, but simultaneous same-name inputs remain separately selectable.
 

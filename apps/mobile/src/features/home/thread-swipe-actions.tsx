@@ -126,8 +126,8 @@ function resolveSecondaryAction(input: {
 const SwipeableScrollGateContext = createContext(true);
 // Swipeable rebuilds its native pan gesture whenever its config changes identity, so the props
 // that feed it stay stable across row re-renders such as selection.
-// Rows only open on a left drag; a rightward one belongs to the compact screen swipe, which would otherwise lose the race to a row on a fast flick. An open row closes by tap.
-const RIGHT_DRAG_DISABLED = 10_000;
+// Rows only open on a right drag; a leftward one belongs to the compact screen swipe, which would otherwise lose the race to a row on a fast flick. An open row closes by tap.
+const LEFT_DRAG_DISABLED = -10_000;
 const FAIL_OFFSET_Y: [number, number] = [-10, 10];
 
 export function SwipeableScrollGateProvider(props: {
@@ -336,7 +336,7 @@ export function ThreadSwipeable(props: ThreadSwipeableProps) {
       };
       actionOpacity.set(withTiming(0, timing));
       translation.set(
-        withTiming(Math.min(translation.value, -rowWidth.value), timing, (finished) => {
+        withTiming(Math.max(translation.value, rowWidth.value), timing, (finished) => {
           if (!finished) return;
           collapse.set(
             withTiming(1, { ...timing, duration: 180 }, (collapsed) => {
@@ -399,7 +399,7 @@ export function ThreadSwipeable(props: ThreadSwipeableProps) {
     (translation: SharedValue<number>, canceled: boolean) => {
       "worklet";
       if (dismissing.value) return true;
-      if (!canceled && -translation.value >= fullSwipeThreshold) {
+      if (!canceled && translation.value >= fullSwipeThreshold) {
         runOnJS(commitFullSwipe)();
         return true;
       }
@@ -428,8 +428,8 @@ export function ThreadSwipeable(props: ThreadSwipeableProps) {
   const { secondaryAction, threadTitle } = props;
   // Swipeable calls this on every render; returning the previous element while nothing it shows
   // changed keeps a selection change from re-rendering the hidden actions.
-  const rightActions = useRef<{ deps: readonly unknown[]; element: ReactNode } | null>(null);
-  const renderRightActions = (
+  const leftActions = useRef<{ deps: readonly unknown[]; element: ReactNode } | null>(null);
+  const renderLeftActions = (
     _progress: SharedValue<number>,
     translation: SharedValue<number>,
     methods: SwipeableMethods,
@@ -450,7 +450,7 @@ export function ThreadSwipeable(props: ThreadSwipeableProps) {
       secondaryAction,
       threadTitle,
     ];
-    const cached = rightActions.current;
+    const cached = leftActions.current;
     if (cached && deps.every((dep, index) => Object.is(dep, cached.deps[index]))) {
       return cached.element;
     }
@@ -478,7 +478,7 @@ export function ThreadSwipeable(props: ThreadSwipeableProps) {
         />
       </Animated.View>
     );
-    rightActions.current = { deps, element };
+    leftActions.current = { deps, element };
     return element;
   };
   const childrenContainerStyle = useMemo(() => ({ backgroundColor }), [backgroundColor]);
@@ -500,8 +500,8 @@ export function ThreadSwipeable(props: ThreadSwipeableProps) {
           animationOptions={THREAD_SWIPE_SPRING}
           childrenContainerStyle={childrenContainerStyle}
           containerStyle={swipeableContainerStyle}
-          dragOffsetFromLeft={RIGHT_DRAG_DISABLED}
-          dragOffsetFromRight={-8}
+          dragOffsetFromLeft={8}
+          dragOffsetFromRight={LEFT_DRAG_DISABLED}
           enabled={!props.dormant && !isDismissing && props.enabled !== false && gateEnabled}
           enableTrackpadTwoFingerGesture={props.enableTrackpadSwipe ?? true}
           // Reject vertical pans via patched RNGH failOffsetY; simultaneous trackpad scrolls otherwise open rows on horizontal drift.
@@ -512,9 +512,9 @@ export function ThreadSwipeable(props: ThreadSwipeableProps) {
           onSwipeableOpenStartDrag={handleWillOpen}
           onSwipeableWillOpen={handleWillOpen}
           overshootFriction={1}
-          overshootRight
-          renderRightActions={renderRightActions}
-          rightThreshold={actionsWidth * 0.42}
+          overshootLeft
+          renderLeftActions={renderLeftActions}
+          leftThreshold={actionsWidth * 0.42}
           simultaneousWith={props.simultaneousWith}
         >
           {
@@ -561,7 +561,7 @@ function SwipeActionButton(props: {
         : labelLineHeight,
   };
   const actionStyle = useAnimatedStyle(() => {
-    const reveal = Math.max(-translation.value, 0);
+    const reveal = Math.max(translation.value, 0);
     const entryProgress = interpolate(
       reveal,
       [entryRangeStart, entryRangeEnd],
@@ -581,23 +581,22 @@ function SwipeActionButton(props: {
       transform: [
         {
           translateX:
-            interpolate(entryProgress, [0, 1], [22, 0]) - (stretchesOnFullSwipe ? 0 : stretch),
+            interpolate(entryProgress, [0, 1], [-22, 0]) + (stretchesOnFullSwipe ? 0 : stretch),
         },
         { scale: interpolate(entryProgress, [0, 1], [0.78, 1]) },
       ],
     };
   });
   const circleStyle = useAnimatedStyle(() => {
-    const reveal = Math.max(-translation.value, 0);
+    const reveal = Math.max(translation.value, 0);
     const stretch = stretchesOnFullSwipe ? Math.max(reveal - actionsWidth, 0) : 0;
 
     return {
-      transform: [{ translateX: -stretch }],
       width: circleSize + stretch,
     };
   });
   const iconStyle = useAnimatedStyle(() => {
-    const reveal = Math.max(-translation.value, 0);
+    const reveal = Math.max(translation.value, 0);
     const stretch = stretchesOnFullSwipe ? Math.max(reveal - actionsWidth, 0) : 0;
     const armedProgress = interpolate(
       reveal,
@@ -607,7 +606,7 @@ function SwipeActionButton(props: {
     );
 
     return {
-      transform: [{ translateX: -stretch * (0.5 + armedProgress * 0.5) }],
+      transform: [{ translateX: stretch * (0.5 + armedProgress * 0.5) }],
     };
   });
   const labelStyle = useAnimatedStyle(() => {
@@ -615,7 +614,7 @@ function SwipeActionButton(props: {
       return { opacity: 1 };
     }
 
-    const reveal = Math.max(-translation.value, 0);
+    const reveal = Math.max(translation.value, 0);
     const stretch = Math.max(reveal - actionsWidth, 0);
     return {
       opacity: interpolate(
@@ -624,7 +623,7 @@ function SwipeActionButton(props: {
         [1, 0],
         Extrapolation.CLAMP,
       ),
-      transform: [{ translateX: -stretch * 0.5 }],
+      transform: [{ translateX: stretch * 0.5 }],
     };
   });
 
@@ -751,7 +750,7 @@ function ThreadSwipeActions(props: {
   const fullSwipeIsPrimary = props.fullSwipeAction === "primary" || secondaryAction === null;
   const actionsWidth = swipeActionsWidth(secondaryAction !== null);
   useAnimatedReaction(
-    () => -translation.value >= fullSwipeThreshold,
+    () => translation.value >= fullSwipeThreshold,
     (armed, previous) => {
       if (armed !== previous) {
         runOnJS(onFullSwipeArmedChange)(armed);
@@ -764,7 +763,7 @@ function ThreadSwipeActions(props: {
     <View
       style={{
         backgroundColor: props.backgroundColor,
-        flexDirection: "row",
+        flexDirection: "row-reverse",
         height: "100%",
         width: actionsWidth,
       }}

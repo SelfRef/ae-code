@@ -89,7 +89,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 - Settings → Source control → Merge strategy: **Squash into one commit** makes a merge into the default branch land a branch of several commits as one commit with a generated message (web, desktop and Android). The default keeps the commits.
 - Settings → Voice → Input: a switch hides the microphone button in the message box. The dictation shortcut still works.
 - Releases now include a Windows x64 server (`ae-code-windows-x64.zip`) and desktop installer (`AE-Code-<version>-x64.exe`). The Windows desktop app updates itself from the releases (Settings → About, or the update button). Both are unsigned and not yet tested on a real Windows machine.
-- Android: on a phone-sized screen, swipe right anywhere in a chat to return to the list, and right anywhere in the list to reopen the last chat (no longer only from the screen edge).
+- Android: on a phone-sized screen, swipe left anywhere in a chat to return to the list, and left anywhere in the list to reopen the last chat; thread rows reveal their actions on a right swipe (no longer only from the screen edge).
 - Android: long-press the New thread button for a menu of your most recent projects (with icons) to start a thread in one, or to choose another project.
 - Android: on a wide screen, the sidebar button moved from the top bar to the bottom of the navigation rail.
 - Android: on a wide screen (tablet, unfolded), a device or browser button in the thread's top bar, beside Files and Git, opens the preview next to the chat instead of over the whole screen. Its Maximize button takes it full screen, and the sidebar's expand button gives the chat the room instead.

@@ -12,8 +12,8 @@ import Animated, {
 
 import { useWorkspaceBackNavigation } from "./workspace/useAndroidWorkspaceNavigation";
 
-// Activates after 24dp. List rows reveal their actions on a left swipe, so the swipe here is
-// rightward and never competes with them.
+// Activates after 24dp. List rows reveal their actions on a right swipe, so the swipe here is
+// leftward and never competes with them.
 const ACTIVATE_DISTANCE = 24;
 const COMMIT_DISTANCE = 40;
 const COMMIT_VELOCITY = 600;
@@ -31,17 +31,20 @@ function swipeGesture(
 ) {
   return Gesture.Pan()
     .enabled(enabled)
-    .activeOffsetX(ACTIVATE_DISTANCE)
+    .activeOffsetX(-ACTIVATE_DISTANCE)
     .failOffsetY([-16, 16])
     .onStart((event) => {
       start.value = event.translationX;
     })
     .onUpdate((event) => {
-      offset.value = Math.max(0, event.translationX - start.value);
+      offset.value = Math.min(0, event.translationX - start.value);
     })
     .onEnd((event) => {
-      if (event.translationX - start.value > COMMIT_DISTANCE || event.velocityX > COMMIT_VELOCITY) {
-        offset.value = withTiming(width, { duration: EXIT_MS }, (finished) => {
+      if (
+        start.value - event.translationX > COMMIT_DISTANCE ||
+        -event.velocityX > COMMIT_VELOCITY
+      ) {
+        offset.value = withTiming(-width, { duration: EXIT_MS }, (finished) => {
           if (finished) runOnJS(onCommit)();
         });
       } else {
@@ -54,7 +57,7 @@ function swipeGesture(
 }
 
 /**
- * Phone-sized Android: drag right anywhere in a chat to return to the list, and right anywhere in
+ * Phone-sized Android: drag left anywhere in a chat to return to the list, and left anywhere in
  * the list to reopen the chat that was last open. The screen follows the finger and slides off
  * before the navigation happens.
  */
