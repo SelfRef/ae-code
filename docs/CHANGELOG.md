@@ -8,8 +8,6 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
-## [v2026.11.13.2] - 2026-11-13
-
 ### Added
 
 - A push that the remote rejects (it moved on, for example after a release commit) is handed to the thread's agent, like a failed merge: **Push**, **Push n commits** and the Commit & push actions now fall back to it. The agent commits pending work, rebases onto the remote keeping every change and pushes again, with no force-push. The Merge by agent setting covers it and can still turn it off.
@@ -17,20 +15,29 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 - Devices (web and Android): every device has an **Input** choice, **View only** or **Take control** (the pointer button in the web toolbar, the **Input** group in the Android device menu). View only keeps the screen live but drops your own touches, keys and buttons, so you can watch an agent without nudging the device; a device an agent opened starts in View only. It does not stop the agent. Needs a new app build on Android.
 - Android: the terminal button in the thread bar shows a count of terminals with a task running (idle shells are not counted).
 - Android: the composer's **+** button opens a drawer with your recent photos and **Gallery** and **File** buttons, instead of a two-item menu. Tap photos to select several, then **Attach**. The photos need the photo permission, asked only when you tap **Show recent photos**; without it, the buttons still work. Needs a new app build.
-- Thread list (web and Android): when only snoozed or settled threads are left, the list says **No active threads** instead of leaving the space above the shelves empty.
-- Android: a draft chat has a terminal button in its header, opening a shell in the draft's workspace.
-- Work log (web and Android): the memory tools (recall, save, forget) get their own bookmark icon instead of the AE glyph, which stays the fallback for other T3 tools.
 - Android threads show a floating button at the bottom right that does the next step of working in a worktree: **Commit** with uncommitted changes, **Merge** once they are committed but not in the default branch, **Settle** once merged. It hides while the agent works and when the thread had no changes. Turn it off under Settings → Source control → This device.
 - The usage limits move out of the thread details card into a card of their own under it. The first card keeps its scroll and drops to a smaller density to leave room for it.
 - The thread details card labels its Current branch, Default branch and usage (for example Claude usage) sections, and each usage limit shows the time left until it resets (`2d 4h`, `3h 20m`). The branch picker shows a worktree icon for a thread in a worktree. The Thread actions section moves below Default branch and now holds the Context row too, with no divider between them. The Settle thread button is dimmed and says "Not all changes merged into main" until the thread's changes are merged into the default branch; Settle thread then leads the arrow menu, and only appears there while the button cannot settle.
 - Android: the navigation rail's sidebar button moves from the bottom to the top, replacing the menu button, and keeps the sidebar icon whether the sidebar is shown or hidden; the new thread button moves to the bottom. Without a sidebar to toggle, the menu button stays.
+- Branches (page, right-panel tab and Android): a worktree branch with commits the default branch lacks has a **Merge** button that fast-forwards the default branch to it (committing the worktree's uncommitted changes first, rebasing the branch if the default moved; nothing is pushed), after a confirmation. On Android the history, merge and delete buttons are icons on the right of the row, and on a narrow screen they collapse into one menu button that a long press on the row also opens.
 
 ### Fixed
 
 - Android: a git action from the thread header (merge back to source, commit, push, pull request) keeps its progress banner until the result replaces it, instead of hiding for the seconds the app spent refreshing the branch.
-- Android: the swipe from the list to the last chat did nothing, because the rows' own swipe took the gesture; the screen now also follows your finger and slides away instead of switching on release. An open row closes by tap, no longer by a swipe to the right.
 - Thread list (Android): a thread waiting on another thread now shows how long it has been running, like a working one, instead of a bare icon.
 - Android: the thread header's git menu icon for a worktree is a folder with a branch badge, the same as "New worktree", instead of a fork that looked like the branch icon.
+
+## [v2026.11.13.2] - 2026-11-13
+
+### Added
+
+- Thread list (web and Android): when only snoozed or settled threads are left, the list says **No active threads** instead of leaving the space above the shelves empty.
+- Android: a draft chat has a terminal button in its header, opening a shell in the draft's workspace.
+- Work log (web and Android): the memory tools (recall, save, forget) get their own bookmark icon instead of the AE glyph, which stays the fallback for other T3 tools.
+
+### Fixed
+
+- Android: the swipe from the list to the last chat did nothing, because the rows' own swipe took the gesture; the screen now also follows your finger and slides away instead of switching on release. An open row closes by tap, no longer by a swipe to the right.
 - Release: the Windows installer job always failed on a check that could not pass, so no release carried the Windows assets.
 
 ## [v2026.11.13.1] - 2026-11-13
@@ -54,7 +61,6 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 - Settings → Environments on the web now lists the server the page is served from as its first row, as the desktop app already did, so it no longer looks like there is only one environment.
 - Branches (page, right-panel tab and Android): **Delete merged (n)** removes the local branches the default branch already contains, after listing them for confirmation. Checked-out branches, worktree branches and remote copies are left alone.
 - Branches (page, right-panel tab and Android): every plain local branch row has a delete button, so one branch can be removed on its own, merged or not (an unmerged one asks first and says its commits are lost). The default, checked-out and worktree branches and remote copies stay.
-- Branches (page, right-panel tab and Android): a worktree branch with commits the default branch lacks has a **Merge** button that fast-forwards the default branch to it (committing the worktree's uncommitted changes first, rebasing the branch if the default moved; nothing is pushed), after a confirmation. On Android the history, merge and delete buttons are icons on the right of the row, and on a narrow screen they collapse into one menu button that a long press on the row also opens.
 - The Default branch section lists **Rebase onto the default branch** while the default branch has commits the thread's branch lacks, so a long-running thread can catch up (and meet conflicts) before it merges.
 - Agents get a `t3_worktree_merge` tool that lands their thread's branch on the default branch (optionally pushing it), the same as the Default branch button, so they can finish their own work when you ask them to merge.
 - Settings → Source control → **Settle thread after merge** (off by default, web and Android): a merge from a thread's Default branch button settles the thread.
