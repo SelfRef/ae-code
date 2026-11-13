@@ -383,6 +383,14 @@ export function requiresDefaultBranchConfirmation(
   );
 }
 
+/** A commit_push with a clean working tree only pushes, so the confirm copy must not say "commit". */
+export function confirmedActionIncludesCommit(
+  action: GitStackedAction,
+  hasWorkingTreeChanges: boolean,
+): boolean {
+  return (action === "commit_push" || action === "commit_push_pr") && hasWorkingTreeChanges;
+}
+
 export function resolveDefaultBranchActionDialogCopy(input: {
   action: DefaultBranchConfirmableAction;
   branchName: string;
