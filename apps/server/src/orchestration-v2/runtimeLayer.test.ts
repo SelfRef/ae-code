@@ -10963,7 +10963,7 @@ it.layer(layerSharedApplicationDataPlaneTest)("shared application data plane", (
 });
 
 it.layer(layerTest)("usage-limit recovery", (it) => {
-  it.effect.each(["interrupted", "usage_limit"] as const)(
+  it.effect.each(["interrupted", "usage_limit", "provider_error"] as const)(
     "manually resumes an %s run ahead of its queued message only once",
     (reason) =>
       Effect.gen(function* () {
@@ -11044,7 +11044,7 @@ it.layer(layerTest)("usage-limit recovery", (it) => {
           ],
         });
         let scheduledResume: ReturnType<typeof limitRecoveryCommand> = null;
-        if (reason === "usage_limit") {
+        if (reason !== "interrupted") {
           const resetAt = DateTime.formatIso(DateTime.add(now, { minutes: 1 }));
           yield* events.write({
             events: [
@@ -11065,32 +11065,42 @@ it.layer(layerTest)("usage-limit recovery", (it) => {
                   parentItemId: null,
                   ordinal: 2,
                   status: "failed",
-                  title: "Usage limit reached",
+                  title: reason === "usage_limit" ? "Usage limit reached" : "Provider error",
                   startedAt: now,
                   completedAt: now,
                   updatedAt: now,
-                  failure: {
-                    class: "usage_limit",
-                    message: "Plan limit reached.",
-                    code: "usageLimitExceeded",
-                    retryable: null,
-                    resetAt,
-                  },
+                  failure:
+                    reason === "usage_limit"
+                      ? {
+                          class: "usage_limit",
+                          message: "Plan limit reached.",
+                          code: "usageLimitExceeded",
+                          retryable: null,
+                          resetAt,
+                        }
+                      : {
+                          class: "provider_error",
+                          message: "Failed to authenticate. API Error: 403",
+                          code: null,
+                          retryable: null,
+                        },
                 },
               },
             ],
           });
-          const shell = (yield* orchestrator.getShellSnapshot()).threads.find(
-            (thread) => thread.id === threadId,
-          )!;
-          yield* orchestrator.dispatch(
-            limitRecoveryCommand(shell, true, DateTime.toEpochMillis(now))!,
-          );
-          const armed = (yield* orchestrator.getShellSnapshot()).threads.find(
-            (thread) => thread.id === threadId,
-          )!;
-          scheduledResume = limitRecoveryCommand(armed, true, Date.parse(resetAt));
-          assert.isNotNull(scheduledResume);
+          if (reason === "usage_limit") {
+            const shell = (yield* orchestrator.getShellSnapshot()).threads.find(
+              (thread) => thread.id === threadId,
+            )!;
+            yield* orchestrator.dispatch(
+              limitRecoveryCommand(shell, true, DateTime.toEpochMillis(now))!,
+            );
+            const armed = (yield* orchestrator.getShellSnapshot()).threads.find(
+              (thread) => thread.id === threadId,
+            )!;
+            scheduledResume = limitRecoveryCommand(armed, true, Date.parse(resetAt));
+            assert.isNotNull(scheduledResume);
+          }
         }
         const resume = (suffix: string) => ({
           type: "message.dispatch" as const,

@@ -1,7 +1,8 @@
-import type {
-  OrchestrationV2ProviderFailure,
-  OrchestrationV2Run,
-  OrchestrationV2TurnItem,
+import {
+  ORCHESTRATION_V2_WORKSPACE_PREPARATION_FAILURE_CODE,
+  type OrchestrationV2ProviderFailure,
+  type OrchestrationV2Run,
+  type OrchestrationV2TurnItem,
 } from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 
@@ -35,6 +36,15 @@ export function latestRootProviderFailure(
     }
   }
   return latest?.failure ?? null;
+}
+
+/** A failed run a manual continuation can retry; a failed workspace setup has its own retry. */
+export function resumableProviderFailure(
+  run: OrchestrationV2Run | null,
+  turnItems: ReadonlyArray<FailureScanTurnItem>,
+): OrchestrationV2ProviderFailure | null {
+  const failure = latestRootProviderFailure(run, turnItems);
+  return failure?.code === ORCHESTRATION_V2_WORKSPACE_PREPARATION_FAILURE_CODE ? null : failure;
 }
 
 export function threadErrorSummary(

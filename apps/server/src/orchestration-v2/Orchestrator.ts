@@ -10,6 +10,7 @@ import {
   latestExecutedRun,
   latestRootProviderFailure,
   orchestrationV2WorktreePending,
+  resumableProviderFailure,
   runRanAfter,
   usageLimitBlockedRun,
 } from "@t3tools/shared/orchestrationV2ThreadError";
@@ -6757,12 +6758,11 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
     }
     if (command.manualContinuationOfRunId !== undefined) {
       const source = projection.runs.find((run) => run.id === command.manualContinuationOfRunId);
-      const limited = latestRootProviderFailure(source ?? null, projection.turnItems);
+      const failed = resumableProviderFailure(source ?? null, projection.turnItems);
       if (
         command.dispatchMode.type !== "start_immediately" ||
         source === undefined ||
-        (source.status !== "interrupted" &&
-          !(source.status === "failed" && limited?.class === "usage_limit")) ||
+        (source.status !== "interrupted" && failed === null) ||
         latestExecutedRun(projection.runs)?.id !== source.id ||
         projection.thread.archivedAt !== null ||
         projection.thread.deletedAt !== null ||
