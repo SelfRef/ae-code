@@ -121,6 +121,14 @@ export function cliReleaseIndexPageUrl(page: number): string {
   return `https://api.github.com/repos/${CLI_RELEASE_REPOSITORY}/releases?per_page=100&page=${page}`;
 }
 
+/** `v2026.11.09` is `2026.1109.0`, `v2026.11.09.2` is `2026.1109.2`: the version the fork's packages carry. */
+export function releaseVersionOfTag(tag: string): string | undefined {
+  const match = /^v(\d{4})\.(\d{2})\.(\d{2})(?:\.(\d+))?$/.exec(tag);
+  if (match === null) return undefined;
+  const [, year, month, day, counter] = match;
+  return `${year}.${Number(month) * 100 + Number(day)}.${counter ?? 0}`;
+}
+
 /** Draft assets are not downloadable. */
 export function newestCliReleaseVersion(
   releases: ReadonlyArray<{
@@ -131,7 +139,9 @@ export function newestCliReleaseVersion(
 ): string | undefined {
   for (const release of releases) {
     if (release.draft) continue;
-    const version = /^v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/.exec(release.tag_name)?.[1];
+    const version =
+      releaseVersionOfTag(release.tag_name) ??
+      /^v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/.exec(release.tag_name)?.[1];
     if (version === undefined) continue;
     if (cliReleaseChannelOf(version) === channel) return version;
   }

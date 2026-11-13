@@ -1,4 +1,4 @@
-import { CLI_RELEASE_REPOSITORY } from "@t3tools/shared/cliRelease";
+import { CLI_RELEASE_REPOSITORY, releaseVersionOfTag } from "@t3tools/shared/cliRelease";
 import * as Cause from "effect/Cause";
 import * as Config from "effect/Config";
 import * as Duration from "effect/Duration";
@@ -37,14 +37,6 @@ const isForkReleaseError = Schema.is(ForkReleaseError);
 export const selfUpdateEnabled = Config.Boolean(UPDATE_SUPERVISED_ENV).pipe(
   Config.withDefault(false),
 );
-
-/** `v2026.11.09` is `2026.1109.0`, `v2026.11.09.2` is `2026.1109.2`: the version the packages carry. */
-function releaseVersionOfTag(tag: string): string | undefined {
-  const match = /^v(\d{4})\.(\d{2})\.(\d{2})(?:\.(\d+))?$/.exec(tag);
-  if (match === null) return undefined;
-  const [, year, month, day, counter] = match;
-  return `${year}.${Number(month) * 100 + Number(day)}.${counter ?? 0}`;
-}
 
 export interface ForkRelease {
   readonly version: string;

@@ -39,4 +39,9 @@ describe("cliRelease", () => {
     expect(newestCliReleaseVersion(releases, "stable")).toBe("1.2.3");
     expect(newestCliReleaseVersion([{ tag_name: "v1.2.3" }], "preview")).toBeUndefined();
   });
+
+  it("reads the fork's date tags as the version its packages carry", () => {
+    expect(newestCliReleaseVersion([{ tag_name: "v2026.11.13" }], "stable")).toBe("2026.1113.0");
+    expect(newestCliReleaseVersion([{ tag_name: "v2026.11.11.2" }], "stable")).toBe("2026.1111.2");
+  });
 });
