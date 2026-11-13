@@ -1269,7 +1269,9 @@ describe("pooled account columns", () => {
       { ...blocked, key: "cursor", driver: ProviderDriverKind.make("cursor") },
     ];
     const snapshot = structuredClone(accounts);
-    const [claude, cursor] = collectLimitPools(accounts, now);
+    const pools = collectLimitPools(accounts, now);
+    const claude = pools.find((pool) => pool.driver === "claudeAgent");
+    const cursor = pools.find((pool) => pool.driver === "cursor");
     expect.soft(claude?.windows.map((row) => row.remainingPercent)).toEqual([40, 1, 70]);
     expect.soft(cursor?.windows.map((row) => row.remainingPercent)).toEqual([60, 0, 80]);
     expect(accounts).toEqual(snapshot);
@@ -1373,6 +1375,21 @@ describe("pooled account columns", () => {
       now,
     );
     expect(keys(pool!)).toEqual([["b", "a"]]);
+  });
+
+  it("lists the provider with the least remaining quota first", () => {
+    const roomy = {
+      ...account("a", [{ ...window, usedPercent: 0 }]),
+      driver: ProviderDriverKind.make("antigravity"),
+    };
+    const tight = {
+      ...account("b", [{ ...window, usedPercent: 80 }]),
+      driver: ProviderDriverKind.make("claudeAgent"),
+    };
+    expect(collectLimitPools([roomy, tight], now).map((pool) => pool.driver)).toEqual([
+      "claudeAgent",
+      "antigravity",
+    ]);
   });
 });
 
