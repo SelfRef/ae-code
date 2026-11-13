@@ -24,6 +24,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Fixed
 
+- Android: a git action from the thread header (merge back to source, commit, push, pull request) keeps its progress banner until the result replaces it, instead of hiding for the seconds the app spent refreshing the branch.
 - Android: the swipe from the list to the last chat did nothing, because the rows' own swipe took the gesture; the screen now also follows your finger and slides away instead of switching on release. An open row closes by tap, no longer by a swipe to the right.
 - Thread list (Android): a thread waiting on another thread now shows how long it has been running, like a working one, instead of a bare icon.
 - Android: the thread header's git menu icon for a worktree is a folder with a branch badge, the same as "New worktree", instead of a fork that looked like the branch icon.

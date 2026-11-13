@@ -224,7 +224,10 @@ describe("thread Git mutation permissions", () => {
       expect(state.thread.branch).toBe("main");
       expect(state.thread.worktreePath).toBeNull();
       expect(state.metadataRequests).toEqual([]);
-      expect(state.results.map((result) => result.type)).toEqual(["error"]);
+      // The commit itself succeeded and is reported before the metadata sync is refused.
+      expect(state.results.map((result) => result.type)).toEqual(
+        operation === "commit" ? ["success", "error"] : ["error"],
+      );
     },
   );
 
