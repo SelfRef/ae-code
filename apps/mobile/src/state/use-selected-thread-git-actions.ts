@@ -418,6 +418,14 @@ export function useSelectedThreadGitActions() {
           return result;
         }
 
+        // The command clears its running state when the stream ends, so post the result before
+        // the refresh below or the banner disappears for as long as it takes.
+        showGitActionResult({
+          type: "success",
+          title: result.value.toast.title,
+          description: result.value.toast.description,
+          prUrl: result.value.toast.cta.kind === "open_pr" ? result.value.toast.cta.url : undefined,
+        });
         if (result.value.branch.status === "created" && result.value.branch.name) {
           const syncResult = await syncSelectedThreadBranchState({
             thread,
@@ -433,12 +441,6 @@ export function useSelectedThreadGitActions() {
         } else {
           await refreshSelectedThreadGitStatus({ quiet: true, cwd });
         }
-        showGitActionResult({
-          type: "success",
-          title: result.value.toast.title,
-          description: result.value.toast.description,
-          prUrl: result.value.toast.cta.kind === "open_pr" ? result.value.toast.cta.url : undefined,
-        });
         return result;
       },
       {
