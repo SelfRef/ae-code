@@ -11,6 +11,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 - Android: an expanded tool call or command row now indents its details under the row label, with a little vertical padding.
 - Android: Settings → Providers no longer lists providers that are not installed on the environment.
 - Usage → Limits (web and Android) lists the provider with the least remaining quota first.
+- Android: the "Settled thread" undo notice on the thread list now sits above the New thread button instead of covering it.
 
 ## [v2026.11.13.7] - 2026-11-13
 
