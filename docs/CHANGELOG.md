@@ -8,6 +8,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+## [v2026.11.13.8] - 2026-11-13
+
 - Android: the terminal menu in a new, empty thread now lists the project's scripts instead of "No project scripts", and runs them in a terminal in the project folder.
 - Android: the ship button is now the status capsule itself: when the agent stops working, "Working 2m 55s" turns into Commit, Merge or Settle in the same centred spot instead of a separate button on the right.
 - Android: Settings → Voice has a Microphone button switch to hide the dictation button in the message box and scheduled task prompts.
