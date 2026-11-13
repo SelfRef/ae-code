@@ -3,7 +3,12 @@ import * as Dialog from "../../components/ui/Dialog";
 import { useNavigation } from "@react-navigation/native";
 import { AsyncResult } from "effect/reactivity";
 import * as Cause from "effect/Cause";
-import { AuthFilesystemReadScope, AuthSourceControlWriteScope } from "@t3tools/contracts";
+import {
+  AuthFilesystemReadScope,
+  AuthSourceControlWriteScope,
+  AuthTerminalOperateScope,
+  AuthTerminalReadScope,
+} from "@t3tools/contracts";
 import type {
   EnvironmentProject,
   EnvironmentThreadShell,
@@ -13,6 +18,8 @@ import { useEnvironmentScope } from "../../state/session";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { vcsActionManager, vcsEnvironment } from "../../state/vcs";
 import { useVcsActionState } from "../../state/use-vcs-action-state";
+import { useKnownTerminalSessions } from "../../state/use-terminal-session";
+import { buildTerminalMenuSessions, nextOpenTerminalId } from "../terminal/terminalMenu";
 import { ThreadHeader } from "./ThreadHeader";
 
 export function DraftThreadHeader(props: {
@@ -24,6 +31,27 @@ export function DraftThreadHeader(props: {
   const environmentId = props.thread.environmentId;
   const canReadFiles = useEnvironmentScope(environmentId, AuthFilesystemReadScope);
   const canWriteGit = useEnvironmentScope(environmentId, AuthSourceControlWriteScope);
+  const canReadTerminal = useEnvironmentScope(environmentId, AuthTerminalReadScope);
+  const canOperateTerminal = useEnvironmentScope(environmentId, AuthTerminalOperateScope);
+  const { sessions: knownTerminalSessions } = useKnownTerminalSessions({
+    environmentId,
+    threadId: props.thread.id,
+  });
+  const terminalSessions = buildTerminalMenuSessions({
+    knownSessions: knownTerminalSessions ?? [],
+    workspaceRoot: props.cwd,
+  });
+  // The draft has no saved thread: the terminal route takes its workspace from here.
+  const openTerminal = (terminalId?: string | null) => {
+    if (!props.cwd) return;
+    navigation.navigate("ThreadTerminal", {
+      environmentId: String(environmentId),
+      threadId: String(props.thread.id),
+      draftCwd: props.cwd,
+      draftTitle: props.project.title,
+      ...(terminalId ? { terminalId } : {}),
+    });
+  };
   const status = useEnvironmentQuery(
     props.cwd ? vcsEnvironment.status({ environmentId, input: { cwd: props.cwd } }) : null,
   );
@@ -58,15 +86,23 @@ export function DraftThreadHeader(props: {
         currentBranch: props.thread.branch,
         gitStatus: status.data,
         gitOperationLabel: progress.currentLabel,
-        canOpenTerminal: false,
-        canOperateTerminal: false,
+        canOpenTerminal: props.cwd !== null && (canReadTerminal || canOperateTerminal),
+        canOperateTerminal,
         canOpenFiles: canReadFiles && props.cwd !== null,
         projectScripts: [],
-        terminalSessions: [],
+        terminalSessions,
         onOpenFilesInspector: openFiles,
         onOpenGitInspector: requiresThread,
-        onOpenTerminal: requiresThread,
-        onOpenNewTerminal: requiresThread,
+        onOpenTerminal: openTerminal,
+        onOpenNewTerminal: () =>
+          openTerminal(
+            nextOpenTerminalId({
+              listedTerminalIds: terminalSessions.map((session) => session.terminalId),
+              ...(knownTerminalSessions === null || !canReadTerminal
+                ? { uniqueSuffix: uuidv4() }
+                : {}),
+            }),
+          ),
         onRunProjectScript: async () => {
           requiresThread();
         },

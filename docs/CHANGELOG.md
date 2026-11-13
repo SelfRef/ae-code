@@ -11,6 +11,12 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 ### Added
 
 - Thread list (web and Android): when only snoozed or settled threads are left, the list says **No active threads** instead of leaving the space above the shelves empty.
+- Android: a draft chat has a terminal button in its header, opening a shell in the draft's workspace.
+
+### Fixed
+
+- Android: the swipe from the list to the last chat did nothing, because the rows' own swipe took the gesture; the screen now also follows your finger and slides away instead of switching on release.
+- Release: the Windows installer job always failed on a check that could not pass, so no release carried the Windows assets.
 
 ## [v2026.11.13.1] - 2026-11-13
 
