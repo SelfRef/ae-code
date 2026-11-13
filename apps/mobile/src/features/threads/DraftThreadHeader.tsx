@@ -5,10 +5,18 @@ import { AsyncResult } from "effect/reactivity";
 import * as Cause from "effect/Cause";
 import {
   AuthFilesystemReadScope,
+  DEFAULT_SERVER_SETTINGS,
   AuthSourceControlWriteScope,
   AuthTerminalOperateScope,
   AuthTerminalReadScope,
+  type ProjectScript,
 } from "@t3tools/contracts";
+import {
+  projectScriptCwd,
+  projectScriptRuntimeEnv,
+  projectScriptTerminalInput,
+  resolveProjectScripts,
+} from "@t3tools/shared/projectScripts";
 import type {
   EnvironmentProject,
   EnvironmentThreadShell,
@@ -19,7 +27,13 @@ import { useAtomCommand } from "../../state/use-atom-command";
 import { vcsActionManager, vcsEnvironment } from "../../state/vcs";
 import { useVcsActionState } from "../../state/use-vcs-action-state";
 import { useKnownTerminalSessions } from "../../state/use-terminal-session";
-import { buildTerminalMenuSessions, nextOpenTerminalId } from "../terminal/terminalMenu";
+import { useRemoteEnvironmentRuntime } from "../../state/use-remote-environment-registry";
+import {
+  buildTerminalMenuSessions,
+  nextOpenTerminalId,
+  resolveProjectScriptTerminalId,
+} from "../terminal/terminalMenu";
+import { stagePendingTerminalLaunch } from "../terminal/terminalLaunchContext";
 import { ThreadHeader } from "./ThreadHeader";
 
 export function DraftThreadHeader(props: {
@@ -51,6 +65,33 @@ export function DraftThreadHeader(props: {
       draftTitle: props.project.title,
       ...(terminalId ? { terminalId } : {}),
     });
+  };
+  const runtime = useRemoteEnvironmentRuntime(environmentId);
+  const projectScripts = resolveProjectScripts(
+    runtime?.serverConfig?.settings ?? DEFAULT_SERVER_SETTINGS,
+    props.project,
+  );
+  const runProjectScript = async (script: ProjectScript) => {
+    if (!props.cwd || !canOperateTerminal) return;
+    const terminalId = resolveProjectScriptTerminalId({
+      existingTerminalIds: terminalSessions.map((session) => session.terminalId),
+      ...(knownTerminalSessions === null || !canReadTerminal ? { uniqueSuffix: uuidv4() } : {}),
+      hasRunningTerminal: terminalSessions.some(
+        (session) => session.status === "running" || session.status === "starting",
+      ),
+    });
+    const project = { cwd: props.cwd };
+    stagePendingTerminalLaunch({
+      target: { environmentId, threadId: props.thread.id, terminalId },
+      launch: {
+        cwd: projectScriptCwd({ project }),
+        worktreePath: null,
+        env: projectScriptRuntimeEnv({ project }),
+        initialInput: projectScriptTerminalInput(script.command),
+        stopOnSettle: script.stopOnSettle ?? false,
+      },
+    });
+    openTerminal(terminalId);
   };
   const status = useEnvironmentQuery(
     props.cwd ? vcsEnvironment.status({ environmentId, input: { cwd: props.cwd } }) : null,
@@ -89,7 +130,7 @@ export function DraftThreadHeader(props: {
         canOpenTerminal: props.cwd !== null && (canReadTerminal || canOperateTerminal),
         canOperateTerminal,
         canOpenFiles: canReadFiles && props.cwd !== null,
-        projectScripts: [],
+        projectScripts,
         terminalSessions,
         onOpenFilesInspector: openFiles,
         onOpenGitInspector: requiresThread,
@@ -103,9 +144,7 @@ export function DraftThreadHeader(props: {
                 : {}),
             }),
           ),
-        onRunProjectScript: async () => {
-          requiresThread();
-        },
+        onRunProjectScript: runProjectScript,
         onPull: async () => {
           if (!canWriteGit || !props.cwd) return;
           const result = await pull({ environmentId, input: { cwd: props.cwd } });
