@@ -48,3 +48,6 @@ export const THREAD_DETAILS_PANEL_SPLIT_SEPARATOR_CLASS =
 
 export const THREAD_DETAILS_CARD_SURFACE_CLASS =
   "dropdown-glass isolate contain-paint overflow-hidden rounded-2xl";
+
+export const THREAD_DETAILS_PANEL_STATUS_TEXT_CLASS =
+  "text-[13px] font-medium text-muted-foreground";
