@@ -246,9 +246,17 @@ type ThreadTerminalRouteScreenProps = StaticScreenProps<{
   readonly environmentId: string;
   readonly threadId: string;
   readonly terminalId?: string;
+  /** A draft chat has no saved thread yet: its workspace comes with the route. */
+  readonly draftCwd?: string;
+  readonly draftTitle?: string;
 }>;
 
 type ThreadSelection = ReturnType<typeof useThreadSelection>;
+type TerminalThread = Pick<
+  NonNullable<ThreadSelection["selectedThread"]>,
+  "environmentId" | "id" | "worktreePath"
+>;
+type TerminalProject = { readonly workspaceRoot: string; readonly title: string };
 
 function useTerminalAccess(environmentId: EnvironmentId | null) {
   const session = useEnvironmentQuery(
@@ -273,11 +281,26 @@ export function ThreadTerminalRouteScreen(props: ThreadTerminalRouteScreenProps)
   const connectionsReady = useConnectionsReady();
   const params = props.route.params;
   const selection = useThreadSelection();
-  const { selectedThread } = selection;
   const routeEnvironmentIdRaw = firstRouteParam(params.environmentId);
   const routeEnvironmentId = routeEnvironmentIdRaw
     ? EnvironmentId.make(routeEnvironmentIdRaw)
     : null;
+  const routeThreadIdRaw = firstRouteParam(params.threadId);
+  const draftCwd = firstRouteParam(params.draftCwd);
+  const selectedThread: TerminalThread | null =
+    selection.selectedThread ??
+    (draftCwd && routeEnvironmentId && routeThreadIdRaw
+      ? {
+          environmentId: routeEnvironmentId,
+          id: ThreadId.make(routeThreadIdRaw),
+          worktreePath: null,
+        }
+      : null);
+  const project: TerminalProject | null = selection.selectedThread
+    ? selection.selectedThreadProject
+    : draftCwd
+      ? { workspaceRoot: draftCwd, title: firstRouteParam(params.draftTitle) ?? "" }
+      : null;
   const access = useTerminalAccess(routeEnvironmentId);
   const knownSessions = useKnownTerminalSessions({
     environmentId: selectedThread?.environmentId ?? null,
@@ -325,6 +348,7 @@ export function ThreadTerminalRouteScreen(props: ThreadTerminalRouteScreenProps)
       routeEnvironmentId={routeEnvironmentId}
       selection={selection}
       thread={selectedThread}
+      project={project}
       terminalId={terminalId}
       hasExplicitTerminalId={explicitTerminalId !== null}
       access={access}
@@ -356,14 +380,16 @@ function ThreadTerminal(props: {
   readonly params: ThreadTerminalRouteScreenProps["route"]["params"];
   readonly routeEnvironmentId: EnvironmentId | null;
   readonly selection: ThreadSelection;
-  readonly thread: NonNullable<ThreadSelection["selectedThread"]>;
+  readonly thread: TerminalThread;
+  readonly project: TerminalProject | null;
   readonly terminalId: string;
   readonly hasExplicitTerminalId: boolean;
   readonly access: ReturnType<typeof useTerminalAccess>;
   readonly knownSessions: ReturnType<typeof useKnownTerminalSessions>;
 }) {
   const { params, routeEnvironmentId, thread: selectedThread, terminalId } = props;
-  const { selectedThreadProject, selectedEnvironmentConnection } = props.selection;
+  const { selectedEnvironmentConnection } = props.selection;
+  const selectedThreadProject = props.project;
   const {
     session: terminalSession,
     isAuthenticated,
