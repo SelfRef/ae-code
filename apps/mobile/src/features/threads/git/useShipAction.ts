@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { AuthSourceControlWriteScope, type VcsStatusResult } from "@t3tools/contracts";
+import {
+  AuthOrchestrationOperateScope,
+  AuthSourceControlWriteScope,
+  type GitRunStackedActionResult,
+  type VcsStatusResult,
+} from "@t3tools/contracts";
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell";
 import {
   type GitActionRequestInput,
@@ -10,7 +15,7 @@ import {
 import { useThreadListActions } from "../../home/useThreadListActions";
 import { useWorkspaceBackNavigation } from "../../layout/workspace/useAndroidWorkspaceNavigation";
 import { useEnvironmentScope } from "../../../state/session";
-import { useQuickMergeAction } from "./useQuickMergeAction";
+import { useQuickMergeAction, useSettleAfterMerge } from "./useQuickMergeAction";
 import { useShipButtonEnabled } from "./useShipButtonEnabled";
 
 export interface ShipButton {
@@ -35,17 +40,22 @@ export function useShipAction(input: {
   readonly hadChanges: boolean;
   readonly working: boolean;
   readonly busy: boolean;
-  readonly onRunAction: (input: GitActionRequestInput) => Promise<unknown>;
+  readonly onRunAction: (input: GitActionRequestInput) => Promise<GitRunStackedActionResult | null>;
 }): ShipButton | null {
   const enabled = useShipButtonEnabled();
   const quickMergeAction = useQuickMergeAction();
+  const settleAfterMerge = useSettleAfterMerge();
   const { settleThread } = useThreadListActions();
-  const goBack = useWorkspaceBackNavigation("threads");
+  const goBack = useWorkspaceBackNavigation();
   // Covers the gap after the action's own busy state clears and before the status refresh lands.
   const [pending, setPending] = useState(false);
   const canWriteSourceControl = useEnvironmentScope(
     input.thread?.environmentId ?? null,
     AuthSourceControlWriteScope,
+  );
+  const canOperateThread = useEnvironmentScope(
+    input.thread?.environmentId ?? null,
+    AuthOrchestrationOperateScope,
   );
   const { thread, gitStatus } = input;
   const kind = resolveShipAction(gitStatus, input.hadChanges);
@@ -71,6 +81,10 @@ export function useShipAction(input: {
         setPending(true);
         void input
           .onRunAction({ action: kind === "merge" ? mergeAction : "commit" })
+          .then((result) => {
+            // The server settles the thread itself; this leaves it like the Settle step does.
+            if (kind === "merge" && settleAfterMerge && canOperateThread && result?.merge) goBack();
+          })
           .finally(() => setPending(false));
       }
     },

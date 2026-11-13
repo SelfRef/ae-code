@@ -1529,7 +1529,7 @@ merged into the default branch.
   the merged glyph when no pull request is shown, and the Default branch section's disabled Merge reads "Merged".
 - **Settle after merge.** A project setting `settleAfterMerge` (off by default; Settings → Source control, web and
   Android) settles the thread after a successful merge from its Default branch button (`ws.ts`, after the action, for a
-  session that may operate threads). It reuses the manual settle command, so the settle script and cleanup rules apply.
+  session that may operate threads). It reuses the manual settle command, so the settle script and cleanup rules apply. The Android ship button also leaves the thread's screen after such a merge, like its Settle step.
 - **Agents can merge.** An MCP tool `t3_worktree_merge` (`WorktreeMcpService.merge`, the `worktree` capability, acts as the
   calling thread) runs the same `merge`, `merge_push` or `push_default` stacked action as the Default branch button, in
   the thread's checkout (the project root once its worktree is gone). A failure comes back as the tool result instead of

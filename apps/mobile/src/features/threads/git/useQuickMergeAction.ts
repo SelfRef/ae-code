@@ -26,3 +26,8 @@ export function useQuickMergeAction(): QuickMergeAction {
 export function useCurrentBranchAction(): CurrentBranchAction {
   return useThreadProjectSettings().currentBranchAction;
 }
+
+/** The selected thread's project setting that settles a thread after its merge. */
+export function useSettleAfterMerge(): boolean {
+  return useThreadProjectSettings().settleAfterMerge;
+}
