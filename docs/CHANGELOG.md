@@ -8,6 +8,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+## [v2026.11.13.9] - 2026-11-13
+
 - Android: swiping a chat right slides it away once and the list eases in, instead of the chat sliding off, coming back and animating away a second time.
 
 ## [v2026.11.13.8] - 2026-11-13
