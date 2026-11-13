@@ -634,7 +634,8 @@ jobs:
       # it the reason for a failure.
       - name: Show the Gradle failure
         if: failure()
-        run: grep -n -B2 -A30 -E 'FAILURE: Build failed|What went wrong' "$RUNNER_TEMP/gradle.log" || tail -n 60 "$RUNNER_TEMP/gradle.log"
+        run: |
+          grep -n -B2 -A30 -E 'FAILURE: Build failed|What went wrong' "$RUNNER_TEMP/gradle.log" || tail -n 60 "$RUNNER_TEMP/gradle.log"
 
       # Expo's template signs release builds with the public debug key; replace it.
       - name: Sign the APK
