@@ -12,6 +12,7 @@ import {
 import {
   type GitActionRequestInput,
   formatQuickActionLabel,
+  confirmedActionIncludesCommit,
   requiresDefaultBranchConfirmation,
   resolveDefaultBranchActionDialogCopy,
   resolveDefaultBranchActions,
@@ -214,7 +215,10 @@ function useThreadGitControlModel(props: ThreadGitMenuProps) {
         const copy = resolveDefaultBranchActionDialogCopy({
           action: confirmableAction,
           branchName,
-          includesCommit: input.action === "commit_push" || input.action === "commit_push_pr",
+          includesCommit: confirmedActionIncludesCommit(
+            input.action,
+            gitStatus?.hasWorkingTreeChanges === true,
+          ),
           terminology: sourceControlClients.get(gitStatus?.sourceControlProvider?.kind)
             .changeRequest,
         });
@@ -231,7 +235,9 @@ function useThreadGitControlModel(props: ThreadGitMenuProps) {
         threadId: String(threadId),
         confirmAction: confirmableAction,
         branchName,
-        includesCommit: String(input.action === "commit_push" || input.action === "commit_push_pr"),
+        includesCommit: String(
+          confirmedActionIncludesCommit(input.action, gitStatus?.hasWorkingTreeChanges === true),
+        ),
       });
       return;
     }

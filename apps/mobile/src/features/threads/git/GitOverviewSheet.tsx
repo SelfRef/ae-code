@@ -5,6 +5,7 @@ import {
   type GitActionRequestInput,
   buildMenuItems,
   getGitActionDisabledReason,
+  confirmedActionIncludesCommit,
   requiresDefaultBranchConfirmation,
   resolveDefaultBranchActions,
 } from "@t3tools/client-runtime/state/vcs";
@@ -179,7 +180,10 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
           confirmAction: confirmableAction,
           branchName,
           includesCommit: String(
-            input.action === "commit_push" || input.action === "commit_push_pr",
+            confirmedActionIncludesCommit(
+              input.action,
+              gitStatus.data?.hasWorkingTreeChanges === true,
+            ),
           ),
         }),
       );
