@@ -9,6 +9,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 ## [Unreleased]
 
 - Android: an expanded tool call or command row now indents its details under the row label, with a little vertical padding.
+- Android: Settings → Providers no longer lists providers that are not installed on the environment.
 
 ## [v2026.11.13.7] - 2026-11-13
 
