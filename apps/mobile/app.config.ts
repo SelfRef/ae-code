@@ -286,7 +286,11 @@ const config: ExpoConfig = {
     // JS back dispatch needs RN's Android 16 shim and withAndroidPredictiveBackCompat on Android 13-15.
     predictiveBackGestureEnabled: true,
     // expo-sensors declares this for its pedometer, which the app does not use.
-    blockedPermissions: ["android.permission.ACTIVITY_RECOGNITION"],
+    // expo-media-library declares write access for saving media, which the app never does.
+    blockedPermissions: [
+      "android.permission.ACTIVITY_RECOGNITION",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+    ],
     intentFilters: [
       {
         action: "VIEW",
@@ -379,6 +383,15 @@ const config: ExpoConfig = {
         photosPermission: false,
         // `false` makes this plugin add RECORD_AUDIO to blockedPermissions, breaking Android dictation.
         microphonePermission: "Allow AE Code to use your microphone for voice input.",
+      },
+    ],
+    [
+      // Android's attach drawer lists recent photos; images only, and iOS keeps the system picker.
+      "expo-media-library",
+      {
+        photosPermission: false,
+        savePhotosPermission: "Allow AE Code to save images to your photo library.",
+        granularPermissions: ["photo"],
       },
     ],
     [

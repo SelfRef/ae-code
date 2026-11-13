@@ -10,6 +10,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Added
 
+- Android: the composer's **+** button opens a drawer with your recent photos and **Gallery** and **File** buttons, instead of a two-item menu. Tap photos to select several, then **Attach**. The photos need the photo permission, asked only when you tap **Show recent photos**; without it, the buttons still work. Needs a new app build.
 - Thread list (web and Android): when only snoozed or settled threads are left, the list says **No active threads** instead of leaving the space above the shelves empty.
 - Android: a draft chat has a terminal button in its header, opening a shell in the draft's workspace.
 - Work log (web and Android): the memory tools (recall, save, forget) get their own bookmark icon instead of the AE glyph, which stays the fallback for other T3 tools.
