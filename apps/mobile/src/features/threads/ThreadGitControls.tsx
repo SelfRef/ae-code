@@ -309,6 +309,7 @@ export function threadTerminalMenu(props: ThreadGitControlsProps): AppBarMenu | 
   return {
     title: "Terminal",
     icon: "terminal",
+    badge: props.terminalSessions.filter((session) => session.hasRunningSubprocess).length,
     separateBackground: false,
     items: [
       ...(props.projectScripts.length > 0

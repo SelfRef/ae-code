@@ -1,5 +1,6 @@
 import { type RefObject, use, useRef, useState } from "react";
 import { Keyboard, type TextInputInstance, View } from "react-native";
+import { AppText } from "./AppText";
 import { useHardwareBack } from "../../lib/backHandler";
 import { useToolbarLayout } from "./useToolbarLayout";
 import { RoutedFormSheetContext } from "./RoutedFormSheetContext";
@@ -151,7 +152,16 @@ function AppBarView(props: AppBarProps & { readonly searchState?: SearchState })
       title={menu.status ?? menu.title}
       onPressAction={({ nativeEvent }) => selectMenuItem(menu.items, nativeEvent.event)}
     >
-      <ScreenHeaderButton accessibilityLabel={menu.title} icon={menu.icon} />
+      <View>
+        <ScreenHeaderButton accessibilityLabel={menu.title} icon={menu.icon} />
+        {menu.badge ? (
+          <View className="absolute right-1.5 top-1.5 min-w-4 items-center rounded-full bg-primary px-1">
+            <AppText className="text-2xs font-t3-bold text-primary-foreground">
+              {menu.badge}
+            </AppText>
+          </View>
+        ) : null}
+      </View>
     </Menu>
   ));
   const confirmButton = props.confirm ? (

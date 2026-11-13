@@ -44,6 +44,8 @@ export interface AppBarMenu {
   readonly title: string;
   readonly icon: AppSymbolName;
   readonly status?: string;
+  /** Android: a count on the button; hidden at 0. */
+  readonly badge?: number;
   readonly separateBackground?: boolean;
   readonly items: ReadonlyArray<AppBarMenuItem>;
 }
