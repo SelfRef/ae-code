@@ -238,6 +238,7 @@ jobs:
   # the installer without wine (patches/app-builder-lib). Unsigned, and the desktop has no
   # WSL runtime. The binaries cannot run here, so `windows-check` runs the server on Windows.
   # The installer's feed (latest.yml and the blockmap) is attached so the desktop app updates itself.
+  # Not part of the release's needs: `windows-attach` adds it to the release afterwards.
   windows:
     name: Windows x64 server and desktop
     needs: [prepare]
@@ -396,7 +397,7 @@ jobs:
 
   release:
     name: Publish GitHub Release
-    needs: [prepare, cli, desktop, windows, windows-check]
+    needs: [prepare, cli, desktop]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -412,7 +413,7 @@ jobs:
       - name: Download the archives
         uses: actions/download-artifact@v8
         with:
-          pattern: "{cli-linux-x64,desktop-linux-x64,windows-x64}"
+          pattern: "{cli-linux-x64,desktop-linux-x64}"
           path: release-assets
           merge-multiple: true
 
@@ -493,11 +494,34 @@ jobs:
             --notes-file release-notes.md \
             --latest \
             release-assets/ae-code-linux-x64.tar.gz \
-            release-assets/ae-code-desktop-linux-x64.tar.gz \
-            release-assets/ae-code-windows-x64.zip \
-            release-assets/AE-Code-*-x64.exe \
-            release-assets/AE-Code-*-x64.exe.blockmap \
-            release-assets/latest.yml
+            release-assets/ae-code-desktop-linux-x64.tar.gz
+
+  # The Windows build is the slowest, so the release does not wait for it: the
+  # assets are attached once it is built and checked. latest.yml goes last, so
+  # the installer's updater never sees a feed whose files are missing. A failure
+  # leaves the release without Windows; run the job again.
+  windows-attach:
+    name: Attach the Windows assets
+    needs: [prepare, release, windows-check]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Download the assets
+        uses: actions/download-artifact@v8
+        with:
+          name: windows-x64
+          path: release-assets
+
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" release-assets/ae-code-windows-x64.zip release-assets/AE-Code-*-x64.exe release-assets/AE-Code-*-x64.exe.blockmap
+          gh release upload "$TAG" release-assets/latest.yml
 
   # Built after the release exists and attached to it, so an Android failure
   # never withholds the server archive. Signed with the fork's own key
