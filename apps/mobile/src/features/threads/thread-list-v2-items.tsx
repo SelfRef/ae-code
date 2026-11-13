@@ -1312,7 +1312,9 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
                   />
                 ) : status === "waiting" ? (
                   <ThreadListV2Duration
-                    startedAt={thread.latestRun?.completedAt ?? null}
+                    startedAt={
+                      thread.latestRun?.completedAt ?? resolveThreadWorkingStartedAt(thread)
+                    }
                     leadingSpace={statusLabel.label !== null}
                   />
                 ) : null}
