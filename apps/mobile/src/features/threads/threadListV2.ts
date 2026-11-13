@@ -494,6 +494,19 @@ export function isThreadListV2ListItem(value: {
   );
 }
 
+/** Only shelves (snoozed, settled) are listed: no pinned, active, working or pending thread. */
+export function hasNoActiveThreadListV2Items(items: ReadonlyArray<ThreadListV2ListItem>): boolean {
+  return (
+    items.length > 0 &&
+    items.every(
+      (item) =>
+        item.type === "v2-snoozed-shelf" ||
+        item.type === "v2-settled-shelf" ||
+        (item.type === "v2-thread" && item.item.variant === "slim"),
+    )
+  );
+}
+
 /** Compare rebuilt items by content so minute ticks and partition runs do not re-render every mounted row. */
 export function threadListV2ListItemsAreEqual(
   previous: ThreadListV2ListItem,

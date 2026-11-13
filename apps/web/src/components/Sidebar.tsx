@@ -3558,6 +3558,23 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                                 isDropTarget={dragTargetSection === "active"}
                               />,
                             );
+                            if (
+                              from === null &&
+                              !hasProjectFolders &&
+                              pinnedThreads.length +
+                                activeThreads.length +
+                                workingThreads.length ===
+                                0
+                            ) {
+                              items.push(
+                                <li
+                                  key="no-active-threads"
+                                  className="list-none px-2.5 py-4 text-center text-xs text-muted-foreground/60"
+                                >
+                                  No active threads
+                                </li>,
+                              );
+                            }
                             break;
                           case "working-header":
                             items.push(

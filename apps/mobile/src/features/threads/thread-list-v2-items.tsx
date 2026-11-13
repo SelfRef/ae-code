@@ -338,6 +338,19 @@ export const ThreadListV2SettledShelfHeader = memo(function ThreadListV2SettledS
   return <ThreadListV2ShelfHeader {...props} kind="settled" />;
 });
 
+export function ThreadListV2NoActiveRow(props: { readonly pane?: "screen" | "sidebar" }) {
+  return (
+    <Text
+      className={cn(
+        "px-4 py-6 text-center text-sm",
+        props.pane === "sidebar" ? "text-drawer-foreground-muted" : "text-foreground-muted",
+      )}
+    >
+      No active threads
+    </Text>
+  );
+}
+
 export const ThreadListV2ShowMoreRow = memo(function ThreadListV2ShowMoreRow(props: {
   readonly pane?: "screen" | "sidebar";
   readonly hiddenCount: number;

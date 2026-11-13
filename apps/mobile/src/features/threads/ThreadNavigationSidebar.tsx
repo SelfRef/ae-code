@@ -59,6 +59,7 @@ import { WorkspaceSidebarColumn } from "../layout/workspace/WorkspaceSidebarColu
 import {
   ThreadListV2PendingRow,
   ThreadListV2Row,
+  ThreadListV2NoActiveRow,
   ThreadListV2SettledShelfHeader,
   ThreadListV2ShowMoreRow,
   ThreadListV2SnoozedShelfHeader,
@@ -68,6 +69,7 @@ import { useThreadRowProviderInstanceResolver } from "./thread-provider-instance
 import type { ThreadPrPresentation } from "../../state/thread-pr-presentation";
 import { ThreadPrDemandProvider } from "../../state/thread-pr-demand";
 import {
+  hasNoActiveThreadListV2Items,
   isThreadListV2ListItem,
   threadListV2ListItemsAreEqual,
   THREAD_LIST_V2_SETTLED_INITIAL_COUNT,
@@ -529,6 +531,10 @@ function ThreadNavigationSidebarPane(props: ThreadNavigationSidebarProps) {
         );
     }
   };
+  const noActiveRow =
+    props.searchQuery.trim().length === 0 && hasNoActiveThreadListV2Items(threadListV2Items) ? (
+      <ThreadListV2NoActiveRow pane="sidebar" />
+    ) : null;
   const header = (
     <WorkspaceListHeader
       accessibilityLabel="AE Code, Threads"
@@ -632,6 +638,7 @@ function ThreadNavigationSidebarPane(props: ThreadNavigationSidebarProps) {
                 scrollEventThrottle={16}
                 showsVerticalScrollIndicator={false}
                 style={styles.threadList}
+                ListHeaderComponent={noActiveRow}
                 ListEmptyComponent={listEmpty}
               />
             </GestureDetector>
@@ -685,6 +692,7 @@ function ThreadNavigationSidebarPane(props: ThreadNavigationSidebarProps) {
                 scrollEventThrottle={16}
                 showsVerticalScrollIndicator={false}
                 style={styles.threadList}
+                ListHeaderComponent={noActiveRow}
                 ListEmptyComponent={listEmpty}
               />
             </GestureDetector>
