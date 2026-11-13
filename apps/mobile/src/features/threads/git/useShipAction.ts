@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AuthSourceControlWriteScope, type VcsStatusResult } from "@t3tools/contracts";
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell";
 import {
@@ -16,6 +17,8 @@ export interface ShipButton {
   readonly kind: ShipAction;
   readonly label: string;
   readonly disabled: boolean;
+  /** The step is running: the button shows a spinner and ignores presses. */
+  readonly loading: boolean;
   readonly onPress: () => void;
 }
 
@@ -38,6 +41,7 @@ export function useShipAction(input: {
   const quickMergeAction = useQuickMergeAction();
   const { settleThread } = useThreadListActions();
   const goBack = useWorkspaceBackNavigation("threads");
+  const [settling, setSettling] = useState(false);
   const canWriteSourceControl = useEnvironmentScope(
     input.thread?.environmentId ?? null,
     AuthSourceControlWriteScope,
@@ -52,12 +56,16 @@ export function useShipAction(input: {
   return {
     kind,
     label: LABELS[kind],
-    disabled: input.busy || (kind !== "settle" && !canWriteSourceControl),
+    loading: input.busy || settling,
+    disabled: input.busy || settling || (kind !== "settle" && !canWriteSourceControl),
     onPress: () => {
       if (kind === "settle") {
-        void settleThread(thread).then((settled) => {
-          if (settled) goBack();
-        });
+        setSettling(true);
+        void settleThread(thread)
+          .then((settled) => {
+            if (settled) goBack();
+          })
+          .finally(() => setSettling(false));
       } else void input.onRunAction({ action: kind === "merge" ? mergeAction : "commit" });
     },
   };

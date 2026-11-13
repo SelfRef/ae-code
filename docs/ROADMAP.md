@@ -1190,7 +1190,8 @@ and `merge_push` (both commit pending changes first), plus a project-scoped sett
   while commits are missing from the default branch, settle once merged. Git cannot tell a merged branch from an untouched
   one, so Settle also needs a ready checkpoint with changed files. The device preference `shipButtonEnabled` (unset = on)
   hides it; no data migration. iOS has no button. Settle also leaves the thread, and the button only rises above
-  the status capsule, not the centred scroll-to-end button.
+  the status capsule, not the centred scroll-to-end button. It is coloured per step and shows a spinner (and is
+  disabled) while the step runs.
 
 ## Saved environments shared through the server (change 33)
 
