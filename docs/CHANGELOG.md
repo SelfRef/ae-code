@@ -8,6 +8,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+## [v2026.11.13.1] - 2026-11-13
+
 ### Fixed
 
 - Check for updates (mobile and `ae-code update`) offered no new release: it compared a release's date tag, such as `v2026.11.13`, with the installed `2026.1111.2` as plain numbers and found the installed version newer.
