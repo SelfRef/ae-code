@@ -121,6 +121,7 @@ type WorkContentIcon =
   | "browser"
   | "computer"
   | "device"
+  | "memory"
   | "t3-code"
   | "pull-request";
 
@@ -153,7 +154,9 @@ function WorkLogIcon(props: {
             ? { ios: "globe", android: "public" }
             : props.icon === "device"
               ? { ios: "iphone", android: "smartphone" }
-              : props.icon
+              : props.icon === "memory"
+                ? { ios: "bookmark", android: "bookmark" }
+                : props.icon
       }
       size={14}
       weight="medium"
@@ -1322,7 +1325,7 @@ export function ThreadWorkGroupToggle(props: {
   readonly iconSubtleColor: import("react-native").ColorValue;
   readonly summary: string;
   readonly summaryKind: ToolGroupSummaryKind;
-  readonly summaryToolIcon?: "browser" | "device" | "t3-code" | "pull-request" | "brain";
+  readonly summaryToolIcon?: "browser" | "device" | "t3-code" | "pull-request" | "memory" | "brain";
   readonly themeAppearance: "light" | "dark";
   readonly toolSurface?: import("@t3tools/contracts").ToolActivitySurface;
   readonly toolIcon?: ToolActivityIcon;
@@ -1553,6 +1556,8 @@ function toolGroupSummarySymbolName(kind: ToolGroupSummaryKind): AppSymbolName {
     case "watch-pr":
     case "unwatch-pr":
       return PullRequestGlyph.pullRequest;
+    case "memory":
+      return { ios: "bookmark", android: "bookmark" };
     case "read":
       return { ios: "eye", android: "visibility" };
     case "edit":

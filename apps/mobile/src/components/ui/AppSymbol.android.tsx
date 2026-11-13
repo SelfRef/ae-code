@@ -24,6 +24,7 @@ import IconArrowsMinimize from "@tabler/icons-react-native/IconArrowsMinimize";
 import IconBan from "@tabler/icons-react-native/IconBan";
 import IconBellRinging from "@tabler/icons-react-native/IconBellRinging";
 import IconBolt from "@tabler/icons-react-native/IconBolt";
+import IconBookmark from "@tabler/icons-react-native/IconBookmark";
 import IconBox from "@tabler/icons-react-native/IconBox";
 import IconBrain from "@tabler/icons-react-native/IconBrain";
 import IconCamera from "@tabler/icons-react-native/IconCamera";
@@ -322,6 +323,7 @@ const SF_ICON_LOOKUP: Partial<
 
 const ANDROID_ICON_BY_MATERIAL_NAME = {
   bolt: IconBolt,
+  bookmark: IconBookmark,
   build: IconTool,
   chat: IconMessage,
   chat_bubble: IconMessage,

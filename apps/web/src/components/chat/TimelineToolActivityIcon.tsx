@@ -5,6 +5,7 @@ import { getProjectFaviconCacheKey } from "@t3tools/shared/projectFavicon";
 import { use, useState } from "react";
 import { T3Wordmark } from "../T3Wordmark";
 import {
+  BookmarkIcon,
   BotIcon,
   BrainIcon,
   CheckIcon,
@@ -46,6 +47,7 @@ export type WorkEntryIconName =
   | "eye"
   | "globe"
   | "hammer"
+  | "memory"
   | "message-circle"
   | "search"
   | "square-pen"
@@ -260,6 +262,8 @@ function WorkEntryIcon({ name, className }: { name: WorkEntryIconName; className
       return <HammerIcon className={className} aria-hidden />;
     case "search":
       return <SearchIcon className={className} aria-hidden />;
+    case "memory":
+      return <BookmarkIcon className={className} aria-hidden />;
     case "message-circle":
       return <MessageCircleIcon className={className} aria-hidden />;
     case "square-pen":

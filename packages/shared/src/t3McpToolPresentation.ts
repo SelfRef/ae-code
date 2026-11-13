@@ -82,7 +82,7 @@ export type T3McpToolSummaryAction =
 export interface T3McpToolDefinition {
   readonly displayName: string;
   readonly labels: readonly [action: string, running: string, completed: string, detail: string];
-  readonly icon: "t3-code" | "browser" | "device" | "pull-request";
+  readonly icon: "t3-code" | "browser" | "device" | "pull-request" | "memory";
   readonly summaryAction: T3McpToolSummaryAction;
 }
 
@@ -410,9 +410,13 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
     "environment-update",
   ),
   t3_thread_launch: tool(["Launch", "Launching", "Launched", "a project thread"], "thread-create"),
-  t3_memory_recall: tool(["Recall", "Recalling", "Recalled", "saved memory"], "memory-recall"),
-  t3_memory_remember: tool(["Save", "Saving", "Saved", "a memory"], "memory-remember"),
-  t3_memory_forget: tool(["Forget", "Forgetting", "Forgot", "a memory"], "memory-forget"),
+  t3_memory_recall: tool(
+    ["Recall", "Recalling", "Recalled", "saved memory"],
+    "memory-recall",
+    "memory",
+  ),
+  t3_memory_remember: tool(["Save", "Saving", "Saved", "a memory"], "memory-remember", "memory"),
+  t3_memory_forget: tool(["Forget", "Forgetting", "Forgot", "a memory"], "memory-forget", "memory"),
   t3_skill_list: tool(["List", "Listing", "Listed", "skills"], "skill-list"),
   t3_skill_read: tool(["Read", "Reading", "Read", "a skill"], "skill-read"),
   t3_skill_write: tool(["Write", "Writing", "Wrote", "a skill"], "skill-write"),

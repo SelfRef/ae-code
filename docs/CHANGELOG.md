@@ -12,6 +12,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 - Thread list (web and Android): when only snoozed or settled threads are left, the list says **No active threads** instead of leaving the space above the shelves empty.
 - Android: a draft chat has a terminal button in its header, opening a shell in the draft's workspace.
+- Work log (web and Android): the memory tools (recall, save, forget) get their own bookmark icon instead of the AE glyph, which stays the fallback for other T3 tools.
 
 ### Fixed
 
