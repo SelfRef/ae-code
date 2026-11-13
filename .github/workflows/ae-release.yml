@@ -286,6 +286,10 @@ jobs:
       - name: Align package versions to the release version
         run: node scripts/update-release-package-versions.ts "$VERSION"
 
+      # The desktop build compiles the Linux browser secret helper on this Linux host, even for the Windows target.
+      - name: Install the browser secret helper build libraries
+        run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev pkg-config
+
       # The server bundle and web client (apps/server/dist) and the Electron main.
       - name: Build the bundles
         run: vp run build:desktop
