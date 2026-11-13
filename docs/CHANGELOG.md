@@ -12,6 +12,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Added
 
+- The thread details card shows, under the branch picker, whether the branch is up to date with the default branch. When it is behind, an amber row ("3 commits behind main") has an **Update** button that rebases the branch onto it.
 - Devices (web and Android): every device has an **Input** choice, **View only** or **Take control** (the pointer button in the web toolbar, the **Input** group in the Android device menu). View only keeps the screen live but drops your own touches, keys and buttons, so you can watch an agent without nudging the device; a device an agent opened starts in View only. It does not stop the agent. Needs a new app build on Android.
 - Android: the composer's **+** button opens a drawer with your recent photos and **Gallery** and **File** buttons, instead of a two-item menu. Tap photos to select several, then **Attach**. The photos need the photo permission, asked only when you tap **Show recent photos**; without it, the buttons still work. Needs a new app build.
 - Thread list (web and Android): when only snoozed or settled threads are left, the list says **No active threads** instead of leaving the space above the shelves empty.

@@ -35,6 +35,7 @@ import { useClientSettings } from "../../hooks/useSettings";
 import { cn } from "../../lib/utils";
 import { SlidersHorizontalIcon } from "lucide-react";
 import { ThreadDetailsActions } from "./ThreadDetailsActions";
+import { ThreadDetailsBranchSync } from "./ThreadDetailsBranchSync";
 import { ThreadDetailsControl } from "./ThreadDetailsControl";
 import {
   THREAD_DETAILS_PANEL_ICON_CLASS,
@@ -238,6 +239,9 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
                   <div className="flex flex-col">
                     {show.branch ? (
                       <BranchToolbar layout="panel" panelSection="branch" {...branchToolbarProps} />
+                    ) : null}
+                    {show.branch && density === "full" && props.isServerThread ? (
+                      <ThreadDetailsBranchSync threadRef={activeThreadRef} gitCwd={props.gitCwd} />
                     ) : null}
                     {show.git ? (
                       <GitActionsControl
