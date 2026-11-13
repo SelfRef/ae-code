@@ -1185,13 +1185,14 @@ and `merge_push` (both commit pending changes first), plus a project-scoped sett
   sheet a **Default branch** list (Merge, Merge & push, Push n commits). Its project setting lost the pull request choice too.
   Older servers do not know the actions, and the result's `merge` field is optional for the same reason.
 - No data migration: a new setting with a default, and a new key in the sparse `threadDetailsItems` setting.
-- Android ship button: a floating button above the composer (`ship-fab.tsx`, `useShipAction`) runs the next step from the
-  shared `resolveShipAction`: commit with a dirty tree, merge (or merge & push per the project's default branch action)
-  while commits are missing from the default branch, settle once merged. Git cannot tell a merged branch from an untouched
-  one, so Settle also needs a ready checkpoint with changed files. The device preference `shipButtonEnabled` (unset = on)
-  hides it; no data migration. iOS has no button. Settle also leaves the thread, and the button only rises above
-  the status capsule, not the centred scroll-to-end button. It is coloured per step and shows a spinner (and is
-  disabled) while the step runs.
+- Android ship button: the status capsule above the composer turns into the next step (`useShipAction`, a `ship` status in
+  `floating-working-control.tsx`) once the agent stops working: the same centred capsule that reads "Working 2m 55s", cross-fading
+  to Commit, Merge or Settle. The step comes from the shared `resolveShipAction`: commit with a dirty tree, merge (or
+  merge & push per the project's default branch action) while commits are missing from the default branch, settle once merged.
+  Git cannot tell a merged branch from an untouched one, so Settle also needs a ready checkpoint with changed files. It ranks
+  below the working, background-work and snooze/settled statuses and above the goal and Pi extension ones. The device
+  preference `shipButtonEnabled` (unset = on) hides it; no data migration. iOS has no button. Settle also leaves the thread.
+  The capsule shows a spinner (and ignores presses) while the step runs.
 
 ## Saved environments shared through the server (change 33)
 

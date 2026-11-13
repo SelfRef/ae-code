@@ -1,5 +1,7 @@
 import type { EnvironmentConnectionPhase } from "@t3tools/client-runtime/connection";
 
+import type { ShipButton } from "./git/useShipAction";
+
 export interface FloatingStatusAction {
   readonly label: string;
   readonly accessibilityLabel: string;
@@ -37,6 +39,7 @@ export type FloatingWorkingStatus =
       readonly unresponsive: boolean;
       readonly action: FloatingStatusAction | null;
     }
+  | ({ readonly kind: "ship" } & Omit<ShipButton, "kind"> & { readonly step: ShipButton["kind"] })
   | { readonly kind: "goal"; readonly label: string; readonly accessibilityLabel: string }
   | { readonly kind: "extension"; readonly label: string; readonly onPress: () => void }
   | { readonly kind: "preparing"; readonly label: string }

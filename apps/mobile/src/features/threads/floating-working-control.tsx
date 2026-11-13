@@ -25,6 +25,7 @@ import { withUniwind } from "uniwind";
 import { AppActivityIndicator } from "../../components/ui/AppActivityIndicator";
 import { AppText as Text } from "../../components/ui/AppText";
 import { SymbolView } from "../../components/ui/AppSymbol";
+import { PullRequestGlyph } from "../pull-requests/pullRequestGlyphs";
 import { ControlPill } from "../../components/ui/ControlPill";
 import { NATIVE_LIQUID_GLASS_SUPPORTED } from "../../native/native-glass";
 import { BrowserPreviewButton } from "../browser/browser-preview-button";
@@ -64,7 +65,6 @@ function settleWidth(next: number) {
 }
 
 const CONTROL_OVERLAY_OFFSET = CONTROL_HEIGHT + CONTROL_GAP - COMPOSER_CAPSULE_INSET;
-export const FLOATING_WORKING_CONTROL_OFFSET = CONTROL_OVERLAY_OFFSET;
 export const FLOATING_WORKING_CONTROL_COVERAGE = CONTROL_OVERLAY_OFFSET + CONTROL_GAP;
 
 export function FloatingWorkingControl(props: {
@@ -176,7 +176,8 @@ export function FloatingWorkingControl(props: {
     props.status?.kind === "connection" ||
     props.status?.kind === "extension" ||
     props.status?.kind === "child-input" ||
-    props.status?.kind === "background";
+    props.status?.kind === "background" ||
+    props.status?.kind === "ship";
   const capsuleInteractive =
     statusInteractive ||
     extensionStatus !== null ||
@@ -391,6 +392,12 @@ export function FloatingWorkingControl(props: {
   );
 }
 
+const SHIP_ICONS = {
+  commit: "git.commit",
+  merge: PullRequestGlyph.merged,
+  settle: "checkmark.circle",
+} as const;
+
 function CompactingLabel(props: { readonly onLayout: (event: LayoutChangeEvent) => void }) {
   return (
     <StatusLabelRow accessibilityLabel="Compacting" className="gap-1.5" onLayout={props.onLayout}>
@@ -551,6 +558,33 @@ function FloatingStatusLabel(props: {
       </StatusLabelRow>
     );
   }
+  if (props.status.kind === "ship") {
+    return (
+      <StatusLabelRow
+        key="ship"
+        accessibilityLabel={props.status.label}
+        accessibilityRole="button"
+        disabled={props.status.disabled}
+        onPress={props.status.onPress}
+        className={`gap-2 ${props.status.loading ? "opacity-60" : ""}`}
+        onLayout={props.onLayout}
+      >
+        {props.status.loading ? (
+          <AppActivityIndicator size="small" colorClassName="accent-icon-muted" />
+        ) : (
+          <SymbolView
+            name={SHIP_ICONS[props.status.step]}
+            size={13}
+            tintColorClassName="accent-foreground"
+            type="monochrome"
+          />
+        )}
+        <Text className="shrink font-t3-bold text-xs text-foreground" numberOfLines={1}>
+          {props.status.label}
+        </Text>
+      </StatusLabelRow>
+    );
+  }
   if (props.status.kind === "goal") {
     return (
       <StatusLabelRow
@@ -609,6 +643,7 @@ function StatusLabelRow(props: {
   readonly className?: string;
   readonly children: ReactNode;
   readonly onLayout: (event: LayoutChangeEvent) => void;
+  readonly disabled?: boolean;
   readonly onPress?: () => void;
 }) {
   const reducedMotion = useReducedMotion();
@@ -624,7 +659,9 @@ function StatusLabelRow(props: {
         <Pressable
           accessibilityLabel={props.accessibilityLabel}
           accessibilityRole={props.accessibilityRole}
+          accessibilityState={{ disabled: props.disabled === true }}
           className={`${rowClassName} active:opacity-70`}
+          disabled={props.disabled}
           onPress={props.onPress}
         >
           {props.children}
