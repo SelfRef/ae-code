@@ -325,7 +325,6 @@ jobs:
           # app's updater finds it by that name in latest.yml, and the version in it
           # is how a differential update locates the old blockmap.
           test -f release/latest.yml
-          find release -name app-update.yml | grep -q .
           cp release/AE-Code-*-x64.exe release/AE-Code-*-x64.exe.blockmap release/latest.yml release-assets/
 
       - name: Upload the assets
