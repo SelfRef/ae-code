@@ -8,6 +8,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+## [v2026.11.13.3] - 2026-11-13
+
 ### Added
 
 - A push that the remote rejects (it moved on, for example after a release commit) is handed to the thread's agent, like a failed merge: **Push**, **Push n commits** and the Commit & push actions now fall back to it. The agent commits pending work, rebases onto the remote keeping every change and pushes again, with no force-push. The Merge by agent setting covers it and can still turn it off.
