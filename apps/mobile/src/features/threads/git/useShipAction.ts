@@ -41,7 +41,8 @@ export function useShipAction(input: {
   const quickMergeAction = useQuickMergeAction();
   const { settleThread } = useThreadListActions();
   const goBack = useWorkspaceBackNavigation("threads");
-  const [settling, setSettling] = useState(false);
+  // Covers the gap after the action's own busy state clears and before the status refresh lands.
+  const [pending, setPending] = useState(false);
   const canWriteSourceControl = useEnvironmentScope(
     input.thread?.environmentId ?? null,
     AuthSourceControlWriteScope,
@@ -56,17 +57,22 @@ export function useShipAction(input: {
   return {
     kind,
     label: LABELS[kind],
-    loading: input.busy || settling,
-    disabled: input.busy || settling || (kind !== "settle" && !canWriteSourceControl),
+    loading: input.busy || pending,
+    disabled: input.busy || pending || (kind !== "settle" && !canWriteSourceControl),
     onPress: () => {
       if (kind === "settle") {
-        setSettling(true);
+        setPending(true);
         void settleThread(thread)
           .then((settled) => {
             if (settled) goBack();
           })
-          .finally(() => setSettling(false));
-      } else void input.onRunAction({ action: kind === "merge" ? mergeAction : "commit" });
+          .finally(() => setPending(false));
+      } else {
+        setPending(true);
+        void input
+          .onRunAction({ action: kind === "merge" ? mergeAction : "commit" })
+          .finally(() => setPending(false));
+      }
     },
   };
 }
