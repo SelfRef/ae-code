@@ -214,6 +214,10 @@ While the default branch has commits your branch lacks, **Rebase onto the defaul
 under the button's arrow. It needs a checkout without uncommitted changes and stops, changing
 nothing, if the rebase hits conflicts.
 
+Under the branch picker, the thread details card says whether the branch has the default branch's
+new commits. When it is behind, the row turns amber, reads "3 commits behind main" and its **Update**
+button does the same rebase. Otherwise it reads "Up to date with main".
+
 A thread whose branch was merged shows a merged icon in the sidebar (when it has no pull
 request) and its Merge button reads **Merged** until the branch gets new commits. Turn on
 **Settings → Source control → Settle thread after merge** to settle the thread right after a merge.

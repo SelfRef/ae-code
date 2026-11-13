@@ -1534,6 +1534,7 @@ merged into the default branch.
   the stacked action `rebase_default`: `mergeIntoDefault` with `rebaseOnly`, under the same repository lock, refusing a
   checkout with uncommitted changes and aborting a conflicting rebase. A pushed branch's upstream is re-synced as in a
   merge. A conflict is not handed to the agent (only a merge is).
+  The thread details card also shows the state under the branch picker (`ThreadDetailsBranchSync`): "Up to date with main", or an amber "n commits behind main" row whose **Update** button runs `rebase_default`.
 - **Delete merged branches.** Merged branches are never deleted by cleanup, so they pile up. The Branches page, the
   right-panel tab and the Android tab show **Delete merged (n)** for the plain local branches the default branch already
   contains (not the default branch, a checked-out branch, a branch in a worktree or a remote-only one), after a confirmation

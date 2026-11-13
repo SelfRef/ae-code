@@ -20,6 +20,7 @@ import { stackedThreadToast, toastManager } from "../ui/toast";
 import { canShareWithGuestAtom } from "./guestShareAvailability";
 import { ThreadDetailsControl } from "./ThreadDetailsControl";
 import { hasUnmergedChanges } from "./threadDetailsActions.logic";
+import { useDefaultBranchName } from "./useDefaultBranchName";
 import {
   THREAD_DETAILS_PANEL_CHEVRON_CLASS,
   THREAD_DETAILS_PANEL_ICON_CLASS,
@@ -65,15 +66,7 @@ export function ThreadDetailsActions(props: {
       : null,
   ).data;
   const blocked = !settled && hasUnmergedChanges(gitStatus);
-  // The current branch comes first and the default one next, so two refs always include it.
-  const defaultBranchName = useEnvironmentQuery(
-    props.gitCwd !== null && blocked
-      ? vcsEnvironment.listRefs({
-          environmentId: threadRef.environmentId,
-          input: { cwd: props.gitCwd, refKind: "local", limit: 2 },
-        })
-      : null,
-  ).data?.refs.find((ref) => ref.isDefault)?.name;
+  const defaultBranchName = useDefaultBranchName(threadRef.environmentId, props.gitCwd, blocked);
   const { openMenu } = useThreadActionMenu({
     threadRef,
     projectCwd: props.projectCwd,

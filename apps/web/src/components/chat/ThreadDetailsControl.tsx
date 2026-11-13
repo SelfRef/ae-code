@@ -45,7 +45,7 @@ export function ThreadDetailsControl({
   panel?: boolean;
   part?: keyof typeof parts;
   multiline?: boolean;
-  tone?: "default" | "muted" | "primary" | "destructive";
+  tone?: "default" | "muted" | "primary" | "destructive" | "warning";
 }) {
   const control = useRender({
     defaultTagName: "button",
@@ -63,6 +63,9 @@ export function ThreadDetailsControl({
             "bg-primary text-primary-foreground hover:text-primary-foreground hover:!bg-primary/85 data-pressed:!bg-primary/85 dark:hover:!bg-primary/85 dark:data-pressed:!bg-primary/85",
           tone === "destructive" &&
             "text-destructive hover:text-destructive data-pressed:text-destructive",
+          // A tinted row that asks for attention; the row surface forces its own hover fill.
+          tone === "warning" &&
+            "bg-warning/10 hover:!bg-warning/16 data-pressed:!bg-warning/16 dark:hover:!bg-warning/16 dark:data-pressed:!bg-warning/16",
           // PR row actions share one 20px pill with a 1px inset focus ring that stays clear of the
           // label. The solid pill draws it in the canvas color so it shows against the fill.
           part === "meta" &&
