@@ -64,6 +64,7 @@ import { useQueuedThreadKeys } from "../../state/use-thread-outbox";
 import {
   ThreadListV2PendingRow,
   ThreadListV2Row,
+  ThreadListV2NoActiveRow,
   ThreadListV2SettledShelfHeader,
   ThreadListV2ShowMoreRow,
   ThreadListV2SnoozedShelfHeader,
@@ -73,6 +74,7 @@ import { useThreadRowProviderInstanceResolver } from "../threads/thread-provider
 import { useOpenThreadPullRequests } from "../threads/use-open-thread-pull-requests";
 import type { ThreadPrPresentation } from "../../state/thread-pr-presentation";
 import {
+  hasNoActiveThreadListV2Items,
   threadListV2ListItemsAreEqual,
   THREAD_LIST_V2_SETTLED_INITIAL_COUNT,
   THREAD_LIST_V2_SETTLED_PAGE_COUNT,
@@ -743,6 +745,9 @@ export function HomeScreen(props: HomeScreenProps) {
           onEnvironmentChange={props.onEnvironmentChange}
           onProjectChange={props.onProjectChange}
         />
+      ) : null}
+      {!hasSearchQuery && hasNoActiveThreadListV2Items(threadListV2Items) ? (
+        <ThreadListV2NoActiveRow pane={sidebarSurface ? "sidebar" : "screen"} />
       ) : null}
     </>
   );

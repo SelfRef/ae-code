@@ -8,6 +8,10 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+### Added
+
+- Thread list (web and Android): when only snoozed or settled threads are left, the list says **No active threads** instead of leaving the space above the shelves empty.
+
 ## [v2026.11.13.1] - 2026-11-13
 
 ### Fixed

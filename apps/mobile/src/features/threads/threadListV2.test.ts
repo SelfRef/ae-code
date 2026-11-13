@@ -35,6 +35,7 @@ import { threadJumpTarget } from "../keyboard/threadKeyboardShortcuts";
 import {
   buildThreadListV2Items,
   buildThreadListV2ListItems,
+  hasNoActiveThreadListV2Items,
   getThreadListV2OrderedSection,
   layoutThreadListV2RowMenuActions,
   resolveThreadListV2SnoozeMenuSelection,
@@ -884,6 +885,35 @@ describe("buildThreadListV2ListItems", () => {
     expect(threadJumpTarget(items, "thread.jump.1")?.id).toBe("active");
     expect(threadJumpTarget(items, "thread.jump.2")?.id).toBe("settled");
     expect(threadJumpTarget(items, "thread.jump.3")).toBeNull();
+    expect(hasNoActiveThreadListV2Items(items)).toBe(false);
+  });
+
+  it("reports no active threads when only shelves are listed", () => {
+    const settledOnly = buildThreadListV2Items({
+      threads: [
+        makeThread({
+          id: ThreadId.make("settled"),
+          title: "settled",
+          settledOverride: "settled",
+          settledAt: NOW,
+        }),
+      ],
+      environmentId: null,
+      searchQuery: "",
+      now: NOW,
+    });
+    const build = (settledShelfExpanded: boolean) =>
+      buildThreadListV2ListItems({
+        items: settledOnly.items,
+        pendingTasks: [],
+        settledCount: settledOnly.settledCount,
+        settledShelfExpanded,
+        settledShelfHeaderIndex: settledOnly.settledShelfHeaderIndex,
+      });
+
+    expect(hasNoActiveThreadListV2Items(build(false))).toBe(true);
+    expect(hasNoActiveThreadListV2Items(build(true))).toBe(true);
+    expect(hasNoActiveThreadListV2Items([])).toBe(false);
   });
 });
 
