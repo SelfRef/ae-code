@@ -378,7 +378,7 @@ export function SettingsVoiceRouteScreen() {
         <Text className="px-2 text-sm text-foreground-muted">
           Voice input uses the first connected microphone in this list. A wired or Bluetooth
           microphone is added by name the first time you dictate with it connected; until then it
-          falls under Other. Swipe left on a named microphone to forget it.
+          falls under Other. Swipe right on a named microphone to forget it.
           {Platform.OS === "android"
             ? " Android may still use a different microphone if the preferred one can’t be routed."
             : null}

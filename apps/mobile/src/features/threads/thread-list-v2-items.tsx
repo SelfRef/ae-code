@@ -634,8 +634,8 @@ export const ThreadListV2PendingRow = memo(function ThreadListV2PendingRow(props
             <RowPressable
               accessibilityHint={
                 isDraft
-                  ? `Opens the draft in the new task composer. Swipe left to ${deleteLabel.toLowerCase()}.`
-                  : `Sends when the environment reconnects. Opens the task for editing. Swipe left to ${deleteLabel.toLowerCase()}.`
+                  ? `Opens the draft in the new task composer. Swipe right to ${deleteLabel.toLowerCase()}.`
+                  : `Sends when the environment reconnects. Opens the task for editing. Swipe right to ${deleteLabel.toLowerCase()}.`
               }
               accessibilityLabel={pendingTask.title}
               accessibilityRole="button"
@@ -1204,8 +1204,8 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
   const swipeAccessibilityHint = !canOperateThread
     ? "Opens the thread"
     : secondaryAction === null
-      ? `Opens the thread. Swipe left to ${primaryAction.label.toLowerCase()}.`
-      : `Opens the thread. Swipe left for ${primaryAction.label.toLowerCase()} and snooze actions.`;
+      ? `Opens the thread. Swipe right to ${primaryAction.label.toLowerCase()}.`
+      : `Opens the thread. Swipe right for ${primaryAction.label.toLowerCase()} and snooze actions.`;
 
   const titleTextInset = props.project ? projectIconSize + 8 : 0;
   const cardContent = (
