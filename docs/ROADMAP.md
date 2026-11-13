@@ -202,7 +202,16 @@ Built differently from the plan below, to stay small:
   `comment_on_pull_request`, `review_pull_request`, `update_pull_request` and `act_on_pull_request`. They default to the calling
   thread's project; labels and assignees on an issue replace the whole set. Not exposed: pull request diffs (git has them),
   creating a pull request (`gh pr create`, which the thread links), reactions and editing comments, releases.
-- Not built: the UI writes (phase B), threads from issues (D), iOS.
+- **Work on this** (web page, right-panel tab and Android; part of D, without the link between thread and issue): the issue
+  detail opens a new thread whose composer holds "Work on issue #N." (Android: "Work on this issue.") and an issue chip, a
+  `ReviewCommentContext` with sectionId `issue:N` (so no new wire type) carrying the description and comments as untrusted
+  data, up to 6000 characters. Nothing is sent until the user sends it. The chip text comes from
+  `packages/shared/src/issueContext.ts`, so every client attaches the same words; Android's chip shows as a generic
+  review-comment chip labelled `#N`.
+- **`#` in the chat composer** (web and Android) lists the project's issues after its pull requests (`issues.list`, state
+  `all`, newest update first; text goes to GitHub's search, a number matches the 50 most recent) and inserts the same chip
+  without a body, which tells the agent to read the issue with `read_issue` or from its URL.
+- Not built: the UI writes (phase B), the thread-to-issue link (D), iOS.
 
 ### Findings in the source (`f26623febe`)
 

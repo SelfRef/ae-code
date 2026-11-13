@@ -26,6 +26,7 @@ import { ChoiceChip } from "../layout/workspace/ChoiceChip";
 import { SettingsScreen } from "../settings/components/SettingsScreen";
 import { PullRequestMarkdown } from "../pull-requests/PullRequestMarkdown";
 import { issueStateLabel } from "./issueStateLabel";
+import { useStartIssueThread } from "./useStartIssueThread";
 
 const STATE_OPTIONS = [
   { value: "open", label: "Open" },
@@ -155,6 +156,7 @@ function IssueDetail(props: { readonly target: Target; readonly number: number }
     }),
   );
   const issue = result.data;
+  const thread = useStartIssueThread(props.target);
   if (issue === null) {
     return result.error !== null ? (
       <Failure message={result.error} onRetry={result.refresh} />
@@ -191,6 +193,13 @@ function IssueDetail(props: { readonly target: Target; readonly number: number }
           </Text>
         ) : null}
       </View>
+      {thread.canStart ? (
+        <Button
+          label="Work on this"
+          disabled={thread.busy}
+          onPress={() => void thread.start(issue)}
+        />
+      ) : null}
       {issue.body.trim() ? (
         <PullRequestMarkdown markdown={issue.body} />
       ) : (
