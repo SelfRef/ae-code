@@ -14,6 +14,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 - Android: Settings → Providers no longer lists providers that are not installed on the environment.
 - Usage → Limits (web and Android) lists the provider with the least remaining quota first.
 - Android: the "Settled thread" undo notice on the thread list now sits above the New thread button instead of covering it.
+- Android: the full-screen device preview keeps the status bar visible instead of hiding it.
 
 ## [v2026.11.13.7] - 2026-11-13
 
