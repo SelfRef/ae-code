@@ -539,15 +539,17 @@ export function ThreadWorkLog(props: ThreadWorkLogProps) {
   return (
     <WorkLogBlock continues={props.continuesWorkLog}>
       {props.activities[0]?.groupedToolDetail ? (
-        <ThreadWorkGroupList
-          activities={props.activities}
-          edgeFadeColor={props.edgeFadeColor}
-          expandedRows={props.expandedRows}
-          groupId={props.anchorKey}
-          rowSizing={props.rowSizing}
-          scrollPositions={props.scrollPositions}
-          renderRow={renderRow}
-        />
+        <View className="ml-7">
+          <ThreadWorkGroupList
+            activities={props.activities}
+            edgeFadeColor={props.edgeFadeColor}
+            expandedRows={props.expandedRows}
+            groupId={props.anchorKey}
+            rowSizing={props.rowSizing}
+            scrollPositions={props.scrollPositions}
+            renderRow={renderRow}
+          />
+        </View>
       ) : (
         <WorkLogRows>{props.activities.map(renderRow)}</WorkLogRows>
       )}
