@@ -98,6 +98,7 @@ export function DevicePreviewScreen({
   const foreground = useAppForeground();
   const [selectedKey, setSelectedKey] = useState<string | null>(initialDeviceKey ?? null);
   const [inputConnected, setInputConnected] = useState(false);
+  const [viewOnlyByKey, setViewOnlyByKey] = useState<Record<string, boolean>>({});
   const [streamAttempt, setStreamAttempt] = useState(0);
   const [shuttingDown, setShuttingDown] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -109,6 +110,11 @@ export function DevicePreviewScreen({
   const preview = selectedThreadDevicePreview(previews, selectedKey);
   // A GNOME desktop has no hardware buttons.
   const desktop = preview?.session.platform === "linux";
+  // A device an agent opened starts view only.
+  const viewOnly = (preview && viewOnlyByKey[preview.key]) ?? preview?.session.agent === true;
+  const setViewOnly = (value: boolean) =>
+    preview && setViewOnlyByKey((current) => ({ ...current, [preview.key]: value }));
+  const inputEnabled = inputConnected && !viewOnly;
   const onInputConnected = async (connected: boolean) => {
     setInputConnected(connected);
     if (!connected) setControlsVisible(true);
@@ -215,7 +221,7 @@ export function DevicePreviewScreen({
             id: "back",
             title: "Back",
             icon: "arrow.left",
-            disabled: !inputConnected,
+            disabled: !inputEnabled,
             onPress: () => streamRef.current?.back(),
           },
         ]
@@ -227,7 +233,7 @@ export function DevicePreviewScreen({
             id: "app-switcher",
             title: "App switcher",
             icon: "square.on.square" as const,
-            disabled: !inputConnected,
+            disabled: !inputEnabled,
             onPress: () => streamRef.current?.appSwitcher(),
           },
         ]),
@@ -237,7 +243,7 @@ export function DevicePreviewScreen({
             id: "rotate",
             title: "Rotate device",
             icon: "arrow.clockwise" as const,
-            disabled: !inputConnected,
+            disabled: !inputEnabled,
             onPress: () => streamRef.current?.rotate(),
           },
         ]
@@ -268,6 +274,15 @@ export function DevicePreviewScreen({
           },
         ]
       : []),
+    {
+      id: "input",
+      title: "Input",
+      inline: true,
+      items: [
+        { id: "input-view", title: "View only", selected: viewOnly },
+        { id: "input-control", title: "Take control", selected: !viewOnly },
+      ].map((item) => ({ ...item, onPress: () => setViewOnly(item.id === "input-view") })),
+    },
     ...controls,
   ];
   return (
@@ -294,6 +309,7 @@ export function DevicePreviewScreen({
           environmentId={environmentId}
           preview={preview}
           streamRef={streamRef}
+          viewOnly={viewOnly}
           onInputConnected={onInputConnected}
         />
       ) : (
@@ -321,7 +337,7 @@ export function DevicePreviewScreen({
             <ControlPill
               accessibilityLabel="Home"
               icon="house"
-              disabled={!inputConnected}
+              disabled={!inputEnabled}
               onPress={pressHome}
             />
           )}
@@ -351,7 +367,7 @@ export function DevicePreviewScreen({
                 <ControlPill
                   accessibilityLabel="Home"
                   icon="house"
-                  disabled={!inputConnected}
+                  disabled={!inputEnabled}
                   onPress={pressHome}
                 />
               )}
@@ -402,11 +418,13 @@ function OpenDevicePreview({
   environmentId,
   preview,
   streamRef,
+  viewOnly,
   onInputConnected,
 }: {
   readonly environmentId: EnvironmentId;
   readonly preview: ThreadDevicePreview;
   readonly streamRef: RefObject<DeviceStreamRef | null>;
+  readonly viewOnly: boolean;
   readonly onInputConnected: (connected: boolean) => Promise<void>;
 }) {
   const { session } = preview;
@@ -421,6 +439,7 @@ function OpenDevicePreview({
       platform={session.platform}
       deviceId={session.deviceId}
       serveSimOnly={preview.serveSimOnly}
+      viewOnly={viewOnly}
       colors={{
         background: themeVariables["--color-sheet-solid"],
         foreground: themeVariables["--color-foreground"],

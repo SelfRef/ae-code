@@ -247,6 +247,8 @@ export const DeviceSession = Schema.Struct({
   deviceId: DeviceId,
   platform: DevicePlatform,
   openedAt: Schema.String,
+  /** Opened by an agent's `device_open`, not from the Device panel. */
+  agent: Schema.optional(Schema.Boolean),
 });
 export type DeviceSession = typeof DeviceSession.Type;
 

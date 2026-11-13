@@ -74,6 +74,9 @@ export interface DeviceViewControls {
   readonly resetView: () => void;
   readonly foldingControls?: ReactNode;
   readonly keyboard: { readonly attached: boolean; readonly toggle: () => void } | null;
+  /** Your own input is off: the screen stays live but nothing you do reaches the device. */
+  readonly viewOnly: boolean;
+  readonly setViewOnly: (viewOnly: boolean) => void;
   readonly handle: DeviceStreamHandle | null;
 }
 
@@ -98,6 +101,8 @@ export function DeviceStreamView(props: {
   readonly viewId?: string;
   /** The host serves only serve-sim's stream and input socket (Simlock). */
   readonly serveSimOnly?: boolean;
+  /** Start with your own input off, as for a device an agent opened. */
+  readonly defaultViewOnly?: boolean;
 }) {
   const desktop = props.platform === "linux";
   const model = deviceModel(props.platform, props.deviceName ?? "");
@@ -108,6 +113,7 @@ export function DeviceStreamView(props: {
     PresentationSchema,
   );
   const [keyboardAttached, setKeyboardAttached] = useState(false);
+  const [viewOnly, setViewOnly] = useState(props.defaultViewOnly === true);
   const cancelPhoneInputRef = useRef<(() => void) | null>(null);
   const cancelPhoneInput = () => cancelPhoneInputRef.current?.();
   const resetViewRef = useRef<(() => void) | null>(null);
@@ -209,6 +215,8 @@ export function DeviceStreamView(props: {
   );
   const axElements = AsyncResult.getOrElse(axResult, () => NO_AX_ELEMENTS);
 
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- pushes the view-only choice into the stream client, which owns the input socket
+  useEffect(() => client?.setInputEnabled(!viewOnly), [client, viewOnly]);
   const activePointer = useRef<{ id: number; x: number; y: number } | null>(null);
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- clears pointer ownership when its device input connection disconnects or is replaced
   useEffect(() => {
@@ -293,7 +301,7 @@ export function DeviceStreamView(props: {
                   access={access}
                   deviceId={props.deviceId}
                   visible={props.visible}
-                  enabled={status === "streaming"}
+                  enabled={status === "streaming" && !viewOnly}
                   screenWidth={screen?.width}
                   screenHeight={screen?.height}
                   deviceKey={deviceScreenKey(props.environmentId, props.hostId, props.deviceId)}
@@ -303,7 +311,7 @@ export function DeviceStreamView(props: {
                 <DeviceDuoControls
                   screen={screen}
                   state={duoControl}
-                  enabled={inputState.connected}
+                  enabled={inputState.connected && !viewOnly}
                   onCommand={(command) => {
                     cancelPhoneInput();
                     client?.controlDuo(command);
@@ -322,6 +330,8 @@ export function DeviceStreamView(props: {
                     },
                   }
                 : null,
+            viewOnly,
+            setViewOnly,
             showPhone: () => setPresentation("phone"),
             showFlat: () => setPresentation("flat"),
             handle: client
