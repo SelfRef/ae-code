@@ -47,6 +47,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ### Fixed
 
+- A run that failed with a provider error (a Cloudflare 403, a dropped connection, ...) can now be retried on the web and Android: the composer's Resume button appears for it, as it already did for interrupted runs and usage limits, instead of leaving only a retyped message.
 - A thread branch that was already pushed no longer ends up diverged from its upstream after a merge into the default branch rebases it: the merge updates the upstream to match (only if nobody pushed to it meanwhile).
 - Merging several threads of one project into the default branch at the same time no longer fails for the slower ones: the merges now run one after another, and a merge rebases once more if the default branch moved meanwhile.
 - Merging into the default branch no longer fails because you have uncommitted edits in that branch's checkout: only edits to files the merge changes, or untracked files in its way, stop it.

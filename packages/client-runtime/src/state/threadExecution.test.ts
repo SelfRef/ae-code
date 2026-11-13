@@ -1,4 +1,5 @@
 import {
+  ORCHESTRATION_V2_WORKSPACE_PREPARATION_FAILURE_CODE,
   TurnItemId,
   NodeId,
   MessageId,
@@ -252,6 +253,22 @@ describe("thread execution presentation", () => {
       lastErrorClass: null,
     });
     expect(deriveResumableRunId(providerError, deriveThreadRuntime(providerError))).toBeNull();
+    const retryable = { ...providerError, runs: [failed] };
+    expect(deriveThreadRuntime(retryable)).toMatchObject({ lastErrorClass: "provider_error" });
+    expect(deriveResumableRunId(retryable, deriveThreadRuntime(retryable))).toBe(failed.id);
+    const workspace = {
+      ...retryable,
+      turnItems: [
+        {
+          ...retryable.turnItems[0]!,
+          failure: {
+            ...retryable.turnItems[0]!.failure,
+            code: ORCHESTRATION_V2_WORKSPACE_PREPARATION_FAILURE_CODE,
+          },
+        },
+      ],
+    };
+    expect(deriveResumableRunId(workspace, deriveThreadRuntime(workspace))).toBeNull();
   });
 
   it("keeps live activity attached to an executing run when a newer run is queued", () => {
