@@ -594,9 +594,9 @@ function AdaptiveWorkspaceLayoutContent(
   const handleOpenSettings = () => openWorkspaceTab("settings");
 
   /** The one way to show a page in the detail column; see `selectWorkspaceDetail`. */
-  const lastChat = useRef<ReactNavigation.RootParamList["Thread"] | null>(null);
+  const [lastChat, setLastChat] = useState<ReactNavigation.RootParamList["Thread"] | null>(null);
   function handleSelectDetail(detail: WorkspaceDetail, sheet?: WorkspaceDetailSheet) {
-    if (detail.name === "Thread") lastChat.current = detail.params;
+    if (detail.name === "Thread") setLastChat(detail.params);
     threadSelectionDeferral.run(() => {
       if (Platform.OS === "android") Keyboard.dismiss();
       setFileInspectorPreferredVisible(false);
@@ -1154,8 +1154,9 @@ function AdaptiveWorkspaceLayoutContent(
                     !androidSettingsOpen &&
                     workspace?.state.selectedTab === "threads"
                   }
+                  canOpenLastChat={lastChat !== null}
                   onOpenLastChat={() => {
-                    if (lastChat.current) handleSelectThreadRoute(lastChat.current);
+                    if (lastChat) handleSelectThreadRoute(lastChat);
                   }}
                 >
                   <View className="flex-1">

@@ -495,6 +495,7 @@ export function ThreadSwipeable(props: ThreadSwipeableProps) {
           animationOptions={THREAD_SWIPE_SPRING}
           childrenContainerStyle={childrenContainerStyle}
           containerStyle={swipeableContainerStyle}
+          dragOffsetFromLeft={40}
           dragOffsetFromRight={-8}
           enabled={!props.dormant && !isDismissing && props.enabled !== false && gateEnabled}
           enableTrackpadTwoFingerGesture={props.enableTrackpadSwipe ?? true}
