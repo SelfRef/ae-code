@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, type ReactNode } from "react";
+import { useEffect, useEffectEvent, useSyncExternalStore, type ReactNode } from "react";
 import { useWindowDimensions } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -19,8 +19,25 @@ const COMMIT_DISTANCE = 40;
 const COMMIT_VELOCITY = 600;
 const EXIT_MS = 120;
 
+let swipeActive = false;
+const swipeListeners = new Set<() => void>();
+
+function setSwipeActive(active: boolean) {
+  if (swipeActive === active) return;
+  swipeActive = active;
+  swipeListeners.forEach((listener) => listener());
+}
+
 /** True while a swipe finishes a navigation: the screen has already slid away, so the stack must not animate again. */
-export const swipeNavigation = { active: false };
+export function useSwipeNavigationActive() {
+  return useSyncExternalStore(
+    (listener) => {
+      swipeListeners.add(listener);
+      return () => swipeListeners.delete(listener);
+    },
+    () => swipeActive,
+  );
+}
 
 function swipeGesture(
   enabled: boolean,
@@ -75,12 +92,16 @@ export function CompactSwipeNavigation(props: {
   const start = useSharedValue(0);
 
   const commit = useEffectEvent(() => {
-    swipeNavigation.active = true;
-    if (props.inChat) goToList();
-    else props.onOpenLastChat();
+    setSwipeActive(true);
+    // The stack reads the flag when a screen renders, and a screen that is popped can no longer
+    // re-render: let it render with no animation before navigating.
+    setTimeout(() => {
+      if (props.inChat) goToList();
+      else props.onOpenLastChat();
+    }, 0);
     // The screen swap resets the offset below; this only rescues a navigation that did not happen.
     setTimeout(() => {
-      swipeNavigation.active = false;
+      setSwipeActive(false);
       offset.set(withTiming(0));
     }, 600);
   });
@@ -88,8 +109,8 @@ export function CompactSwipeNavigation(props: {
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- brings the new screen back to rest once the swipe's navigation has swapped it in
   useEffect(() => {
     // The list returning from a chat that slid off to the right eases in from the left, as if uncovered.
-    const uncovered = swipeNavigation.active && props.inList;
-    swipeNavigation.active = false;
+    const uncovered = swipeActive && props.inList;
+    setSwipeActive(false);
     if (uncovered) {
       offset.set(-width * 0.25);
       offset.set(withTiming(0, { duration: 200 }));

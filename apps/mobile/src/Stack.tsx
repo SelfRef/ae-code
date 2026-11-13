@@ -18,7 +18,7 @@ import { useResolveClassNames } from "uniwind";
 
 import { AppText as Text } from "./components/ui/AppText";
 import { androidWorkspaceDestinationAnimation } from "./lib/android-workspace-navigation";
-import { swipeNavigation } from "./features/layout/compact-swipe-navigation";
+import { useSwipeNavigationActive } from "./features/layout/compact-swipe-navigation";
 import { getCompactBrandHeaderOptions } from "./features/layout/workspace/brand-header-options";
 import { WorkspaceConnectionStatusProvider } from "./features/home/WorkspaceConnectionTitle";
 import { WorkspaceRootScreen } from "./features/layout/workspace/WorkspaceRootScreen";
@@ -778,6 +778,7 @@ export const RootStack = RootStackConfig.with(function AdaptiveRootStack({ Navig
   const { width, height } = useWindowDimensions();
   const nativeMetrics = useNativeLayoutMetrics();
   const usesSplitView = deriveLayout({ width, height, nativeMetrics }).usesSplitView;
+  const swipeActive = useSwipeNavigationActive();
 
   /* oxlint-disable react/no-unstable-nested-components -- React Navigation invokes screenLayout as a render callback. */
   return (
@@ -786,7 +787,7 @@ export const RootStack = RootStackConfig.with(function AdaptiveRootStack({ Navig
       screenOptions={({ route, navigation }) =>
         Platform.OS === "android"
           ? {
-              animation: swipeNavigation.active
+              animation: swipeActive
                 ? "none"
                 : androidWorkspaceDestinationAnimation(
                     route,
