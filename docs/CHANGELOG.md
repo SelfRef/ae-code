@@ -20,6 +20,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 - Android: the swipe from the list to the last chat did nothing, because the rows' own swipe took the gesture; the screen now also follows your finger and slides away instead of switching on release. An open row closes by tap, no longer by a swipe to the right.
 - Thread list (Android): a thread waiting on another thread now shows how long it has been running, like a working one, instead of a bare icon.
+- Android: the thread header's git menu icon for a worktree is a folder with a branch badge, the same as "New worktree", instead of a fork that looked like the branch icon.
 - Release: the Windows installer job always failed on a check that could not pass, so no release carried the Windows assets.
 
 ## [v2026.11.13.1] - 2026-11-13
