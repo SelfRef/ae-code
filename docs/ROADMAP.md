@@ -413,10 +413,11 @@ disabled.
     `.blockmap` beside the installer, so the installer keeps electron-builder's versioned name, which `latest.yml` and the
     differential download look up. The job fails when `latest.yml` or `app-update.yml` is missing. Updates stay manual
     (check, download, then restart), as upstream's updater does; Linux and the server are unchanged.
-- **Android (change 9):** the `android` job runs after the release exists and attaches `ae-code-<tag>-arm64-v8a.apk` (phones) and
-  `ae-code-<tag>-x86_64.apk` (emulators) to it, so an Android failure never withholds the rest. The two are matrix
-  jobs, built independently and in parallel (a cold build of both together took about 40 minutes), and one failing
-  leaves the other attached. Each runs `expo prebuild` and `gradlew assembleRelease` with `APP_VARIANT=production` for
+- **Android (change 9):** the `android` jobs build beside the other jobs and `android-attach` adds `ae-code-<tag>-arm64-v8a.apk` (phones) and
+  `ae-code-<tag>-x86_64.apk` (emulators) to the release once it exists, so an Android failure never withholds the rest. The two are matrix
+  jobs, built independently and in parallel, and one failing
+  leaves the other attached. The native libraries are recompiled every run (`expo prebuild --clean`), about half of the
+  Gradle time, so `ccache` (a cache keyed per ABI) serves them as CMake's compiler launcher, and lint vital is skipped. Each runs `expo prebuild` and `gradlew assembleRelease` with `APP_VARIANT=production` for
   its one ABI, with Gradle's dependency cache kept between runs and Expo's cloud updates off. Native libraries are
   stored deflated (`useLegacyPackaging`): the download shrinks, the install is extracted. Then the APK is re-signed
   with the fork's key
