@@ -1,1 +1,0 @@
-Android: the device and browser previews share one bar. A hand button switches between view only and controlling alongside the agent (the browser's separate "Take control" strip is gone); the browser bar holds close, back, address and the menu, with forward, reload and tabs moved into the menu; the device's Home button moved into its menu next to Back and App switcher.

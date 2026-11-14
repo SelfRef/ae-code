@@ -1,1 +1,0 @@
-Android: the device menu of a foldable emulator in the Device preview has a Fold device / Unfold device item, like the web's fold buttons. Agents are told in `device_open`'s guide that `agent-device fold closed|open` does the same.

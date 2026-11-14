@@ -10,6 +10,29 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 Notes for the next release are the files in [changes/](changes/), one per change.
 
+## [v2026.11.14] - 2026-11-14
+
+- Android: a Board tab with the same columns and steps as the web board: columns side by side on tablets and unfolded phones, one at a time on phones. It starts last in the tab order; move it up in Settings → Navigation tabs.
+- Android: a new thread started in a chosen project keeps that project after you type and go back to the list, instead of showing up under another one.
+- Android: the device and browser previews share one bar. A hand button switches between view only and controlling alongside the agent (the browser's separate "Take control" strip is gone); the browser bar holds close, back, address and the menu, with forward, reload and tabs moved into the menu; the device's Home button moved into its menu next to Back and App switcher.
+- Android: the device and browser buttons sit in their own pill beside the Merge, Commit and other idle status buttons, instead of inside the same pill.
+- Android: every project picker shows the project icons: the Issues, Branches and Releases chips and their menus, the scheduled task project row, the New thread long-press menu, the project in the new chat heading, and the Board's project filter.
+- Android: a running source control action (merge, commit, pull request) shows in the status pill above the composer instead of a second pill at the top of the screen.
+- Android: source control errors show in full with a dismiss button and stay for 20 seconds, instead of being cut to one line after 5.
+- Android tablets: a navigation tab past the rail's first five now opens from the top of Settings, as on phones, instead of being unreachable.
+- Android: the tool calls and reasoning listed under an expanded work group are indented less.
+- Automatic pull no longer skips a default-branch checkout that has unpushed local commits: it rebases them onto the new upstream commits (and aborts, leaving the checkout as it was, on a conflict). A skipped pull is now logged with its reason.
+- Board (web and desktop): your threads as cards in Draft, Working, Review, In PR, Done and Parked columns, with buttons (and drag) to move each one on: merge into the default branch or open a pull request, settle, un-settle, wake. Open it from the sidebar, the command palette or Ctrl+Alt+K.
+- Merging into the default branch no longer fails with "Could not run the pre-merge action: Project was not found" when no project overrides a setting.
+- Merges into the default branch queue per repository until a merge being finished by the agent is done too, and a waiting merge says whose merge it is waiting for. The agent's turn holds the queue for at most 20 minutes.
+- A failed rebase onto the default branch now lists the conflicting files, or git's own message when it was not a conflict.
+- Delete a worktree and its branch from a row on the Branches page, web and Android; the default branch and the one checked out in the project root can't be deleted.
+- Android: the device menu of a foldable emulator in the Device preview has a Fold device / Unfold device item, like the web's fold buttons. Agents are told in `device_open`'s guide that `agent-device fold closed|open` does the same.
+- Android: swiping a chat to the right now slides it off like a card on top of the thread list and uncovers the list underneath, instead of a blank page.
+- Opening a device in a thread now releases the claim of a finished thread that still held it, instead of failing with the other thread's session name; a thread that is still working keeps its device.
+- Memory: a third scope, This environment, next to Global and One project; project memories follow the repository, global and project memories sync with linked environments over full-access links, memories can be moved between scopes, and Android has a Memory page in Settings.
+- Android: a Branches row opens its actions with a swipe to the right, like a thread row (Commits, then Merge and Delete, behind a More button when both apply), and a long press opens the same menu. The row's three-dots button is gone.
+
 ## [v2026.11.13.9] - 2026-11-13
 
 - Android: swiping a chat right slides it away once and the list eases in, instead of the chat sliding off, coming back and animating away a second time.
