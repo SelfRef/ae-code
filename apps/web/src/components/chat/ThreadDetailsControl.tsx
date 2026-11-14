@@ -30,6 +30,10 @@ const parts = {
   meta: THREAD_DETAILS_PANEL_META_ACTION_CLASS,
 };
 
+// Violet is the merged colour of the pull request icons, which spell it as a raw palette class too.
+const MERGE_TONE_CLASS =
+  "bg-violet-600/10 text-violet-700 hover:!bg-violet-600/16 data-pressed:!bg-violet-600/16 dark:text-violet-300 dark:hover:!bg-violet-600/16 dark:data-pressed:!bg-violet-600/16";
+
 export function ThreadDetailsControl({
   panel = true,
   part = "row",
@@ -45,7 +49,7 @@ export function ThreadDetailsControl({
   panel?: boolean;
   part?: keyof typeof parts;
   multiline?: boolean;
-  tone?: "default" | "muted" | "primary" | "destructive" | "warning";
+  tone?: "default" | "muted" | "primary" | "destructive" | "warning" | "merge" | "settle";
 }) {
   const control = useRender({
     defaultTagName: "button",
@@ -66,6 +70,10 @@ export function ThreadDetailsControl({
           // A tinted row that asks for attention; the row surface forces its own hover fill.
           tone === "warning" &&
             "bg-warning/10 hover:!bg-warning/16 data-pressed:!bg-warning/16 dark:hover:!bg-warning/16 dark:data-pressed:!bg-warning/16",
+          // The merge and settle steps keep the colours of the Android ship button.
+          tone === "merge" && MERGE_TONE_CLASS,
+          tone === "settle" &&
+            "bg-success/10 text-success-foreground hover:!bg-success/16 data-pressed:!bg-success/16 dark:hover:!bg-success/16 dark:data-pressed:!bg-success/16",
           // PR row actions share one 20px pill with a 1px inset focus ring that stays clear of the
           // label. The solid pill draws it in the canvas color so it shows against the fill.
           part === "meta" &&
