@@ -97,6 +97,7 @@ import { SettingsAuthRouteScreen } from "./features/settings/SettingsAuthRouteSc
 import { SettingsEnvironmentDetailRouteScreen } from "./features/settings/SettingsEnvironmentDetailRouteScreen";
 import { SettingsEnvironmentsRouteScreen } from "./features/settings/SettingsEnvironmentsRouteScreen";
 import { SettingsFollowUpRouteScreen } from "./features/settings/SettingsFollowUpRouteScreen";
+import { SettingsMemoryRouteScreen } from "./features/settings/SettingsMemoryRouteScreen";
 import {
   SettingsEnvironmentMaintenanceRouteScreen,
   SettingsThreadsRouteScreen,
@@ -281,6 +282,11 @@ const SETTINGS_SCREENS = {
     screen: SettingsFollowUpRouteScreen,
     linking: "settings/follow-ups",
     options: settingsPage("Chat"),
+  }),
+  SettingsMemory: createNativeStackScreen({
+    screen: SettingsMemoryRouteScreen,
+    linking: "settings/memory",
+    options: settingsPage("Memory"),
   }),
   SettingsScheduledTasks: createNativeStackScreen({
     screen: SettingsScheduledTasksRouteScreen,

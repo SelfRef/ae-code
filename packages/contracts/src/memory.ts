@@ -1,12 +1,21 @@
 import * as Schema from "effect/Schema";
 
-import { IsoDateTime, ProjectId, ThreadId, TrimmedNonEmptyString } from "./baseSchemas.ts";
+import {
+  EnvironmentId,
+  IsoDateTime,
+  ProjectId,
+  ThreadId,
+  TrimmedNonEmptyString,
+} from "./baseSchemas.ts";
 
 export const MemoryId = TrimmedNonEmptyString.pipe(Schema.brand("MemoryId"));
 export type MemoryId = typeof MemoryId.Type;
 
-/** `user` reaches every project; `project` only threads of one project. */
-export const MemoryScope = Schema.Literals(["user", "project"]);
+/**
+ * `user` reaches every project of every linked environment; `environment` every project of this
+ * one only; `project` threads of one project (in every environment that has its repository).
+ */
+export const MemoryScope = Schema.Literals(["user", "environment", "project"]);
 export type MemoryScope = typeof MemoryScope.Type;
 
 export const MemorySource = Schema.Literals(["user", "agent"]);
@@ -25,7 +34,13 @@ const MemoryText = Schema.String.check(
 export const Memory = Schema.Struct({
   id: MemoryId,
   scope: MemoryScope,
+  /** A project here whose key matches; null for other scopes or a project this environment lacks. */
   projectId: Schema.NullOr(ProjectId),
+  /** The repository's grouping key, or `local:<projectId>` for a project without a remote (never synced). */
+  projectKey: Schema.NullOr(Schema.String),
+  projectLabel: Schema.NullOr(Schema.String),
+  /** The environment that saved it; null for this one. */
+  originEnvironmentId: Schema.NullOr(EnvironmentId),
   text: Schema.String,
   source: MemorySource,
   sourceThreadId: Schema.NullOr(ThreadId),
@@ -46,27 +61,44 @@ export const MemorySettings = Schema.Struct({
   enabled: Schema.Boolean,
   /** On while memory is on: new sessions of a provider with its own memory (Claude) run without it. */
   disableNativeMemory: Schema.Boolean,
+  /** Global and project memories sync with linked environments over full-access links. */
+  sync: Schema.Boolean,
 });
 export type MemorySettings = typeof MemorySettings.Type;
 
-export const DEFAULT_MEMORY_SETTINGS: MemorySettings = { enabled: true, disableNativeMemory: true };
+export const DEFAULT_MEMORY_SETTINGS: MemorySettings = {
+  enabled: true,
+  disableNativeMemory: true,
+  sync: true,
+};
+
+/** One environment this one syncs memory with, by a link from either side. */
+export const MemorySyncPeer = Schema.Struct({
+  environmentId: EnvironmentId,
+  label: Schema.String,
+  lastSyncedAt: Schema.NullOr(IsoDateTime),
+  lastError: Schema.NullOr(Schema.String),
+});
+export type MemorySyncPeer = typeof MemorySyncPeer.Type;
 
 export const MemoryListResult = Schema.Struct({
   memories: Schema.Array(Memory),
   settings: MemorySettings,
+  peers: Schema.Array(MemorySyncPeer),
 });
 export type MemoryListResult = typeof MemoryListResult.Type;
 
 export const MemorySetSettingsInput = Schema.Struct({
   enabled: Schema.optional(Schema.Boolean),
   disableNativeMemory: Schema.optional(Schema.Boolean),
+  sync: Schema.optional(Schema.Boolean),
 });
 export type MemorySetSettingsInput = typeof MemorySetSettingsInput.Type;
 
 export const MemorySetSettingsResult = Schema.Struct({ settings: MemorySettings });
 export type MemorySetSettingsResult = typeof MemorySetSettingsResult.Type;
 
-/** Without `id`, creates; with it, replaces the text of that memory and keeps its scope. */
+/** Without `id`, creates; with it, replaces the text of that memory and moves it to `scope`. */
 export const MemorySaveInput = Schema.Struct({
   id: Schema.optional(MemoryId),
   scope: MemoryScope,
@@ -110,6 +142,21 @@ export const MemoryImportScanResult = Schema.Struct({
   groups: Schema.Array(MemoryImportGroup),
 });
 export type MemoryImportScanResult = typeof MemoryImportScanResult.Type;
+
+/** What one environment sends another; `environment` scope and `local:` project keys never leave. */
+export const MemorySyncRecord = Schema.Struct({
+  id: MemoryId,
+  scope: Schema.Literals(["user", "project"]),
+  projectKey: Schema.NullOr(Schema.String),
+  projectLabel: Schema.NullOr(Schema.String),
+  originEnvironmentId: EnvironmentId,
+  text: Schema.String,
+  source: MemorySource,
+  createdAt: IsoDateTime,
+  updatedAt: IsoDateTime,
+  deletedAt: Schema.NullOr(IsoDateTime),
+});
+export type MemorySyncRecord = typeof MemorySyncRecord.Type;
 
 export class MemoryError extends Schema.TaggedError<MemoryError>()("MemoryError", {
   code: Schema.Literals(["invalid", "not_found", "limit", "unavailable", "disabled"]),

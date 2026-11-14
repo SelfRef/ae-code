@@ -31,11 +31,16 @@ import { Switch } from "../ui/switch";
 import { Textarea } from "../ui/textarea";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import {
+  MEMORY_SCOPE_DESCRIPTIONS,
+  MEMORY_SCOPE_NAMES,
   filterMemories,
+  memoryMoveTarget,
+  memoryOriginLabel,
+  memoryProjectFilters,
   memoryScopeLabel,
   selectableProjects,
   type MemoryScopeFilter,
-} from "./memorySettings.logic";
+} from "@t3tools/client-runtime/memory-presentation";
 import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsLayout";
 import { searchableSetting } from "./settingsSearch";
 import { useSettingsScope } from "./SettingsScopeContext";
@@ -93,7 +98,15 @@ function EnvironmentMemory({ environmentId }: { readonly environmentId: Environm
 
   const memories = list.data?.memories ?? [];
   const settings = list.data?.settings ?? DEFAULT_MEMORY_SETTINGS;
+  const peers = list.data?.peers ?? [];
   const shown = filterMemories(memories, query, scope);
+  const projectFilters = memoryProjectFilters(memories, projectTitles);
+  const scopeFilterLabel =
+    scope === "all"
+      ? "Everything"
+      : (MEMORY_SCOPE_NAMES[scope as MemoryScope] ??
+        projectFilters.find((entry) => entry.value === scope)?.label ??
+        "Removed project");
   const changeSettings = async (input: MemorySetSettingsInput) => {
     const result = await setSettings({ environmentId, input });
     if (result._tag === "Failure") {
@@ -136,6 +149,38 @@ function EnvironmentMemory({ environmentId }: { readonly environmentId: Environm
           />
         }
       />
+      <SettingsRow
+        title="Sync with linked environments"
+        description="Global and project memories sync with environments linked over a full-access link (Settings → Connections), both ways. This environment's memories stay here."
+        status={
+          peers.length === 0 ? null : (
+            <span className="flex flex-col gap-0.5">
+              {peers.map((peer) => (
+                <span key={peer.environmentId}>
+                  {peer.label}:{" "}
+                  {peer.lastError !== null ? (
+                    <span className="text-destructive">{peer.lastError}</span>
+                  ) : peer.lastSyncedAt !== null ? (
+                    <>
+                      synced <UpdatedLabel value={peer.lastSyncedAt} />
+                    </>
+                  ) : (
+                    "not synced yet"
+                  )}
+                </span>
+              ))}
+            </span>
+          )
+        }
+        control={
+          <Switch
+            aria-label="Sync memory with linked environments"
+            checked={settings.sync}
+            disabled={!canWrite}
+            onCheckedChange={(checked) => void changeSettings({ sync: Boolean(checked) })}
+          />
+        }
+      />
       {draft !== null ? (
         <MemoryEditor
           key={draft.mode === "edit" ? draft.memory.id : "new"}
@@ -167,21 +212,19 @@ function EnvironmentMemory({ environmentId }: { readonly environmentId: Environm
         <Select value={scope} onValueChange={(value) => setScope(value as MemoryScopeFilter)}>
           <div className="grid w-48 shrink-0 grid-cols-1">
             <SelectTrigger size="sm" aria-label="Memory scope">
-              <SelectValue>
-                {scope === "all"
-                  ? "Everything"
-                  : scope === "user"
-                    ? "All projects"
-                    : (projectTitles.get(scope as ProjectId) ?? "Removed project")}
-              </SelectValue>
+              <SelectValue>{scopeFilterLabel}</SelectValue>
             </SelectTrigger>
           </div>
           <SelectPopup>
             <SelectItem value="all">Everything</SelectItem>
-            <SelectItem value="user">All projects</SelectItem>
-            {projects.map((project) => (
-              <SelectItem key={project.id} value={project.id}>
-                {project.title}
+            {(["user", "environment", "project"] as const).map((value) => (
+              <SelectItem key={value} value={value}>
+                {MEMORY_SCOPE_NAMES[value]}
+              </SelectItem>
+            ))}
+            {projectFilters.map((entry) => (
+              <SelectItem key={entry.value} value={entry.value}>
+                {entry.label}
               </SelectItem>
             ))}
           </SelectPopup>
@@ -206,6 +249,9 @@ function EnvironmentMemory({ environmentId }: { readonly environmentId: Environm
             status={
               <span className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline">{memoryScopeLabel(memory, projectTitles)}</Badge>
+                {memoryOriginLabel(memory, peers) === null ? null : (
+                  <span>{memoryOriginLabel(memory, peers)}</span>
+                )}
                 <span>
                   {memory.source === "agent" ? "Saved by an agent" : "Added by you"} ·{" "}
                   <UpdatedLabel value={memory.updatedAt} />
@@ -218,7 +264,7 @@ function EnvironmentMemory({ environmentId }: { readonly environmentId: Environm
                   <Button
                     size="icon-xs"
                     variant="ghost"
-                    aria-label="Edit memory"
+                    aria-label="Edit or move memory"
                     onClick={() => setDraft({ mode: "edit", memory })}
                   >
                     <PencilIcon className="size-3.5" aria-hidden />
@@ -273,15 +319,16 @@ function MemoryEditor({
   const editing = draft.mode === "edit" ? draft.memory : null;
   const [text, setText] = useState(editing?.text ?? "");
   const [scope, setScope] = useState<MemoryScope>(editing?.scope ?? "user");
+  // Another environment's project memory has no project here; it stays put unless one is picked.
   const [projectId, setProjectId] = useState<ProjectId | null>(
-    editing?.projectId ?? projects[0]?.id ?? null,
+    editing === null ? (projects[0]?.id ?? null) : editing.projectId,
   );
   const [busy, setBusy] = useState(false);
   const trimmed = text.trim();
   const valid =
     trimmed.length > 0 &&
     Array.from(trimmed).length <= MEMORY_TEXT_MAX_CHARS &&
-    (scope === "user" || projectId !== null);
+    (scope !== "project" || projectId !== null || editing?.scope === "project");
   return (
     <div className="space-y-2 px-4 pt-3">
       <Textarea
@@ -293,40 +340,57 @@ function MemoryEditor({
         onChange={(event) => setText(event.target.value)}
       />
       <div className="flex flex-wrap items-center gap-2">
-        {editing === null ? (
-          <>
-            <Select value={scope} onValueChange={(value) => setScope(value as MemoryScope)}>
-              <div className="grid w-40 shrink-0 grid-cols-1">
-                <SelectTrigger size="sm" aria-label="Scope">
-                  <SelectValue>{scope === "user" ? "All projects" : "One project"}</SelectValue>
-                </SelectTrigger>
-              </div>
-              <SelectPopup>
-                <SelectItem value="user">All projects</SelectItem>
-                <SelectItem value="project" disabled={projects.length === 0}>
-                  One project
+        <Select
+          value={scope}
+          onValueChange={(value) => {
+            setScope(value as MemoryScope);
+            if (value === "project" && projectId === null && editing?.scope !== "project")
+              setProjectId(projects[0]?.id ?? null);
+          }}
+        >
+          <div className="grid w-44 shrink-0 grid-cols-1">
+            <SelectTrigger size="sm" aria-label="Scope">
+              <SelectValue>{MEMORY_SCOPE_NAMES[scope]}</SelectValue>
+            </SelectTrigger>
+          </div>
+          <SelectPopup>
+            {(["user", "environment", "project"] as const).map((value) => (
+              <SelectItem
+                key={value}
+                value={value}
+                disabled={
+                  value === "project" && projects.length === 0 && editing?.scope !== "project"
+                }
+              >
+                <span className="flex flex-col">
+                  <span>{MEMORY_SCOPE_NAMES[value]}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {MEMORY_SCOPE_DESCRIPTIONS[value]}
+                  </span>
+                </span>
+              </SelectItem>
+            ))}
+          </SelectPopup>
+        </Select>
+        {scope === "project" ? (
+          <Select value={projectId} onValueChange={(value) => setProjectId(value as ProjectId)}>
+            <div className="grid w-48 shrink-0 grid-cols-1">
+              <SelectTrigger size="sm" aria-label="Project">
+                <SelectValue>
+                  {projects.find((project) => project.id === projectId)?.title ??
+                    editing?.projectLabel ??
+                    "Choose a project"}
+                </SelectValue>
+              </SelectTrigger>
+            </div>
+            <SelectPopup>
+              {projects.map((project) => (
+                <SelectItem key={project.id} value={project.id}>
+                  {project.title}
                 </SelectItem>
-              </SelectPopup>
-            </Select>
-            {scope === "project" ? (
-              <Select value={projectId} onValueChange={(value) => setProjectId(value as ProjectId)}>
-                <div className="grid w-48 shrink-0 grid-cols-1">
-                  <SelectTrigger size="sm" aria-label="Project">
-                    <SelectValue>
-                      {projects.find((project) => project.id === projectId)?.title}
-                    </SelectValue>
-                  </SelectTrigger>
-                </div>
-                <SelectPopup>
-                  {projects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.title}
-                    </SelectItem>
-                  ))}
-                </SelectPopup>
-              </Select>
-            ) : null}
-          </>
+              ))}
+            </SelectPopup>
+          </Select>
         ) : null}
         <div className="ms-auto flex items-center gap-2">
           <Button size="xs" variant="ghost" onClick={onCancel} disabled={busy}>
@@ -339,8 +403,7 @@ function MemoryEditor({
               setBusy(true);
               await onSave({
                 ...(editing === null ? {} : { id: editing.id }),
-                scope,
-                ...(scope === "project" && projectId !== null ? { projectId } : {}),
+                ...memoryMoveTarget(editing, scope, projectId),
                 text: trimmed,
               });
               setBusy(false);
