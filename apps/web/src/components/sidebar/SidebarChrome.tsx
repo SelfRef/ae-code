@@ -7,6 +7,7 @@ import {
   GitCommitHorizontalIcon,
   SettingsIcon,
   TagIcon,
+  SquareKanbanIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { memo } from "react";
@@ -268,6 +269,10 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
       search: readPullRequestListPreferences(),
     });
   };
+  const handleBoardClick = () => {
+    closeMobileSidebar();
+    void navigate({ to: "/board" });
+  };
   const handleBranchesClick = () => {
     closeMobileSidebar();
     void navigate({ to: "/branches" });
@@ -316,6 +321,11 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             icon={<SettingsIcon />}
             label="Settings"
             onClick={handleSettingsClick}
+          />
+          <SidebarUtilityItem
+            icon={<SquareKanbanIcon />}
+            label="Board"
+            onClick={handleBoardClick}
           />
           {pullRequestsSupported ? (
             <SidebarUtilityItem

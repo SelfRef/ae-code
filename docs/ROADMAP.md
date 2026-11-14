@@ -46,7 +46,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 | 14   | No git hooks: upstream's pre-commit hook, its `prepare` script and the `staged` config in `vite.config.ts` are removed (they need Node on the committing host)         | done    |
 | [13] | Memory: saved preferences and decisions agents on any provider can recall and save, with a Settings page (modelled on GOAT's, cut down)                                | done    |
 | [12] | Edit the latest message in place: the prompt becomes an inline editor, saving rewinds the thread and resends (idea from MT Code)                                       | planned |
-| [11] | Inbox and board across projects, derived from thread state: what needs you, what runs, what awaits review (idea from T3 Kanban, not 1:1)                               | planned |
+| [11] | Board of threads in derived columns (Draft, Working, Review, In PR, Done, Parked) with merge and pull request steps, web and desktop; Inbox planned                    | partial |
 | [10] | Self-hosted Android push: the server notifies through ntfy instead of the hosted relay                                                                                 | planned |
 | [9]  | Android app: AE Code package id, built and signed by the release workflow                                                                                              | done    |
 | [8]  | Docker image of the release server on GHCR                                                                                                                             | done    |
@@ -510,24 +510,46 @@ registration in `serverRuntimeStartup.ts`.
 Idea from T3 Kanban (a thread is a task with a hand-set status, a board and list across projects, an Inbox of the latest
 result per task, and an MCP tool with which the agent updates its own task) and T3 Agents (a board across connected
 environments); both in [FORK_REFERENCES.md](./FORK_REFERENCES.md#t3-kanban-what1ft3kanban). Not copied 1:1: a second,
-hand-set status drifts from what the agent is doing, and upstream already tracks the state a board needs. Threads are sectioned by active, settled and snoozed, with pins,
-auto-settle and wake rules (`docs/user/thread-sidebar.md`), and every thread has an awareness phase.
+hand-set status drifts from what the agent is doing, and upstream already tracks the state a board needs.
 
-Phases, each useful alone:
+### Board (built)
+
+A thread is the task; there is no task entity and no stored status. User guide: `docs/user/board.md`.
+
+- **Columns are derived** in `packages/client-runtime/src/state/board.ts` (`resolveBoardColumn`): Parked (snoozed), Done
+  (settled), Working (`isThreadWorking`, or waiting on an approval, a question or a plan), Draft (no run yet: the
+  checkout's changes are not the thread's), In PR (an open or draft linked pull request; a link not synced yet counts as
+  open, like the sidebar badge), else Review. Unsent new-thread drafts (synced drafts, change 30) are Draft cards too.
+- **Moves are the existing actions.** `planBoardForward` / `planBoardBack` pick them: Review's forward step comes from
+  the card's git status and the project's settings, so the two workflows share one board. `currentBranchAction:
+  pull_request` makes it `commit_push_pr` / `create_pr`; otherwise it is `merge` (or `merge_push` per `quickMergeAction`),
+  which commits pending changes first, so one step lands everything; with nothing to land it is Settle. A failed merge
+  goes to the agent as from the Default branch button. In PR opens the pull request (the merge method and checks live
+  there); Done un-settles; Parked wakes. Back from Review or In PR is Send back (opens the thread), because "back to
+  working" is the agent running, not a flag.
+- **Git status per card** only for Review cards, from the same `vcs.status` stream the sidebar uses; the server refreshes
+  it after every turn and git action, so the button follows.
+- **Drag** (web, pointer only, `@dnd-kit/core`): a drop runs a step only when the column is where that step lands
+  (`boardMoveTarget`: settle and merge onto Done, a pull request onto In PR, un-settle and wake onto Review). Keyboard
+  users have the buttons.
+- **Entry points** (web and desktop): `/board`, a sidebar button, **Open board** in the command palette, and
+  `board.open` (`mod+alt+k`, a new keybinding command). Below the `md` breakpoint a row of column tabs shows one
+  column at full width (`NarrowColumnContext`), like the Android phone layout.
+- **Not built:** starting a draft from the board (the web send path is `useComposerSend`, 1,400 lines tied to the chat
+  view; a text-only start could come later), merging a pull request from its card, a stored status and an agent tool
+  (phase 3), and the Inbox (phase 1). Agents need no new tool: every move is one they already have (settle, merge,
+  `t3_worktree_merge`).
+- No contract change except the keybinding command, no server change, no data migration.
+
+### Still planned
 
 1. **Inbox.** A page across projects and environments of threads that need you: waiting for approval or input, failed,
-   or finished and not seen. Approvals and questions are answered in place. Needs a per-thread "seen" marker; check
-   first whether upstream keeps one. Logic goes in `packages/client-runtime` so web and mobile share it.
-2. **Board view.** Columns derived from state, not stored: Needs you, Running, Review (finished, not settled, has a
-   diff or pull request), Parked (snoozed), Done (settled). Dragging a card is the existing action (snooze, settle,
-   wake), so it cannot disagree with the thread.
-3. **Manual status and agent tool (only if 1 and 2 fall short).** A status field on the thread and an MCP tool through
-   which the agent sets it with a one-line note. This changes the contract, so every surface follows.
+   or finished and not seen. Approvals and questions are answered in place. Logic goes in `packages/client-runtime`.
+2. **Manual status and agent tool (only if the board falls short).** A status field on the thread and an MCP tool
+   through which the agent sets it with a one-line note. This changes the contract, so every surface follows.
 
-Check the surfaces list in `AGENTS.md` for each phase: web and desktop first, a read-only Inbox on mobile, and the MCP
-tool for agents. Every way in needs the way out and the way to see it (mark unread, un-settle). Rebase cost: new
-components and a new route; the sidebar and thread-shell projections are shared with upstream, so keep edits there to
-a minimum.
+Rebase cost: new files (`board.ts`, `components/board/*`, the route) and a few lines in the sidebar chrome, command
+palette, shortcuts and keybinding lists.
 
 ## Edit the latest message in place (change 12)
 
