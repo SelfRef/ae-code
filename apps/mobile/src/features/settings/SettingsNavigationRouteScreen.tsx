@@ -48,7 +48,7 @@ export function SettingsNavigationRouteScreen() {
       >
         <Text className="px-2 text-sm text-foreground-muted">
           {customizable
-            ? "Phones show the first four enabled sections; Android tablet rails show all enabled sections. Remaining sections appear at the top of Settings. Hidden sections appear only here. Settings always stays last. Pulls starts hidden. Saved on this device."
+            ? "Phones show the first four enabled sections; Android tablet rails show the first five. Remaining sections appear at the top of Settings. Hidden sections appear only here. Settings always stays last. Pulls starts hidden. Saved on this device."
             : "Tab customization becomes available when there are six sections, including Settings."}
         </Text>
         <SettingsSection title="Tab order">

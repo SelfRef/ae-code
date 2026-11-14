@@ -10,6 +10,8 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 - Android: a new thread started in a chosen project keeps that project after you type and go back to the list, instead of showing up under another one.
 - Android: every project picker shows the project icons: the Issues, Branches and Releases chips and their menus, the scheduled task project row, the New thread long-press menu, and the project in the new chat heading.
+- Android: a Board tab with the same columns and steps as the web board: columns side by side on tablets and unfolded phones, one at a time on phones. It starts last in the tab order; move it up in Settings → Navigation tabs.
+- Android tablets: a navigation tab past the rail's first five now opens from the top of Settings, as on phones, instead of being unreachable.
 - Board (web and desktop): your threads as cards in Draft, Working, Review, In PR, Done and Parked columns, with buttons (and drag) to move each one on: merge into the default branch or open a pull request, settle, un-settle, wake. Open it from the sidebar, the command palette or Ctrl+Alt+K.
 - Merging into the default branch no longer fails with "Could not run the pre-merge action: Project was not found" when no project overrides a setting.
 

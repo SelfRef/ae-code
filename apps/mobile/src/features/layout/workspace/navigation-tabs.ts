@@ -22,6 +22,7 @@ export const WORKSPACE_TAB_LABELS = {
 
 export const NAVIGATION_TAB_ICONS = {
   threads: "text.bubble",
+  board: "rectangle.split.3x1",
   branches: "arrow.triangle.branch",
   issues: "circle.inset.filled",
   releases: "tag",

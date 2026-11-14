@@ -12,7 +12,14 @@ import { isThreadWorking } from "./threadInbox.ts";
 import { effectiveSnoozed, type ThreadSnoozeShell } from "./threadSettled.ts";
 
 /** Board columns, in the order they show. Every column is derived from state, never stored. */
-const BOARD_COLUMNS = ["draft", "working", "review", "pull_request", "done", "parked"] as const;
+export const BOARD_COLUMNS = [
+  "draft",
+  "working",
+  "review",
+  "pull_request",
+  "done",
+  "parked",
+] as const;
 export type BoardColumn = (typeof BOARD_COLUMNS)[number];
 
 export const BOARD_COLUMN_LABELS: Record<BoardColumn, string> = {

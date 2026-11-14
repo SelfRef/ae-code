@@ -5,6 +5,7 @@ export const NAVIGATION_TAB_ORDER = [
   "releases",
   "pullRequests",
   "usage",
+  "board",
 ] as const;
 export type NavigationTab = (typeof NAVIGATION_TAB_ORDER)[number];
 
@@ -14,8 +15,14 @@ export const DEFAULT_HIDDEN_NAVIGATION_TABS: readonly NavigationTab[] = ["pullRe
 /** Tabs that are one page rather than a list beside a detail column. */
 export function isPageNavigationTab(
   tab: unknown,
-): tab is "branches" | "issues" | "releases" | "usage" {
-  return tab === "branches" || tab === "issues" || tab === "releases" || tab === "usage";
+): tab is "board" | "branches" | "issues" | "releases" | "usage" {
+  return (
+    tab === "board" ||
+    tab === "branches" ||
+    tab === "issues" ||
+    tab === "releases" ||
+    tab === "usage"
+  );
 }
 
 /** Tabs whose provider isn't signed in on any connected environment; they show nowhere. */
@@ -37,6 +44,7 @@ export function navigationCustomizationAvailable(
 
 export const NAVIGATION_TAB_LABELS: Readonly<Record<NavigationTab, string>> = {
   threads: "Threads",
+  board: "Board",
   branches: "Branches",
   issues: "Issues",
   releases: "Releases",
@@ -93,8 +101,12 @@ export function visibleNavigationTabs(
   return enabledNavigationTabs(saved, hidden).slice(0, capacity);
 }
 
-export function overflowNavigationTabs(saved?: readonly unknown[], hidden?: readonly unknown[]) {
-  return enabledNavigationTabs(saved, hidden).slice(4);
+export function overflowNavigationTabs(
+  saved?: readonly unknown[],
+  hidden?: readonly unknown[],
+  capacity = 4,
+) {
+  return enabledNavigationTabs(saved, hidden).slice(capacity);
 }
 
 export function selectedNavigationTab(

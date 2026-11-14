@@ -286,8 +286,12 @@ function useOverflowRows(): SettingsListRow[] {
   const order = useNavigationTabOrder();
   const hidden = useHiddenNavigationTabs();
   const { layout } = useAdaptiveWorkspaceLayout();
-  const tabs =
-    Platform.OS === "android" && layout.usesSplitView ? [] : overflowNavigationTabs(order, hidden);
+  // The Android tablet rail holds five sections; the rest open from here, as on phones.
+  const tabs = overflowNavigationTabs(
+    order,
+    hidden,
+    Platform.OS === "android" && layout.usesSplitView ? 5 : 4,
+  );
   const selectTab = useSelectWorkspaceTab();
   return tabs.map((tab) => ({
     id: tab,
