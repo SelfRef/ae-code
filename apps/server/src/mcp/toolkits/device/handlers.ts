@@ -14,6 +14,7 @@ import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as ServerConfig from "../../../config.ts";
 import * as DeviceService from "../../../device/DeviceService.ts";
+import { releaseIdleDeviceHoldersFor } from "../../../device/releaseIdleDeviceHolders.ts";
 import { linuxDesktopPaths, linuxDesktopRunCommand } from "../../../device/LinuxDesktop.ts";
 import { threadWorkspaceRoot } from "../../../project/threadWorkspaceRoot.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
@@ -292,6 +293,11 @@ const handlers = {
             "Agent device access requires enabled device support, agent access, and an available simulator platform on this host.",
         });
       }
+      yield* releaseIdleDeviceHoldersFor({
+        threadId: scope.thread.threadId,
+        hostId: target.hostId,
+        deviceId: target.id,
+      });
       const session = yield* devices.open(
         {
           threadId: scope.thread.threadId,
