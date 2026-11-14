@@ -6634,7 +6634,7 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
 
         expect(Result.isFailure(failed)).toBe(true);
         expect(Result.isFailure(failed) ? String(failed.failure.message) : "").toContain(
-          "conflicts",
+          "CONFLICT",
         );
         expect((yield* runGit(worktreeDir, ["status", "--porcelain"])).stdout.trim()).toBe("");
         expect(NodeFS.existsSync(NodePath.join(worktreeDir, ".git"))).toBe(true);
