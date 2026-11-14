@@ -293,11 +293,10 @@ start.
 
 Agent tabs have separate storage and share a Chromium process. An agent's tab opens as
 **View only**: you watch the agent work and the page ignores your input. Choose
-**Take control** to type into the tab yourself; the agent waits until you go
-back to **View only**. Choose **Share control** to act beside the agent: both of
-you can click and type, your actions and the agent's run one after another, and
-the agent is not interrupted, though a page you change under it can make its
-next step start from a fresh snapshot. Read-only connections can watch without
+**Take control** to act beside the agent: both of you can click and type, your
+actions and the agent's run one after another, and the agent is not
+interrupted, though a page you change under it can make its next step start
+from a fresh snapshot. Read-only connections can watch without
 changing the page.
 
 While you have control, the tab works with your device: text the page copies or

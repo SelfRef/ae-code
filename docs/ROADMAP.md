@@ -8,56 +8,56 @@ Upstream: [pingdotgg/t3code](https://github.com/pingdotgg/t3code). This fork is 
 
 Other forks of upstream, what each offers and where an idea here came from: [FORK_REFERENCES.md](./FORK_REFERENCES.md).
 
-| #    | Change                                                                                                                                                                 | Status  |
-| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| [45] | The executable and command are `ae-code` (was `t3`); `AECODE_*` env vars work everywhere `T3CODE_*` did, which stays as the fallback                                   | done    |
-| 48   | Fold and unfold a foldable Android emulator from the Android app's device menu; agents learn `agent-device fold` from `device_open`                                    | done    |
-| [47] | Commit history of a branch as a list or a graph, with a branch picker and changed files per commit, on the web (`/commits`, right panel) and in the Android app        | done    |
-| [46] | Default branch workflow: cleanup follows the local default branch, merges queue per repository and keep your edits there, and more (see the section)                   | done    |
-| 44   | Device panel controls in a row above the screen, like the browser's, instead of a column at the right edge (web)                                                       | done    |
-| 43   | Browser control modes: View only, Take control, and Share control, where you and the agent both act and the agent is not interrupted (web and Android)                 | done    |
-| 42   | Current branch action: a project setting (Push by default) that picks whether the Git button also creates a pull request                                               | done    |
-| 41   | Floating preview: window-style buttons in its top-right corner, shown while the pointer is over it, instead of a dot that opens a pill                                 | done    |
-| [40] | Other ways to run the Android emulator in the Device panel: investigate Cuttlefish and scrcpy; a Google Play image and foldable support are required                   | planned |
-| [39] | File operations in the Files panel: create files and folders, rename, move, copy and delete from a row's or the empty area's menu, on the web and in the Android app   | done    |
-| [38] | Branches: every branch and worktree of a project with what to push, pull and merge, on the web (`/branches`) and in the Android app                                    | done    |
-| [37] | Forgejo and Gitea use the `gt` CLI (Gitea 28+) instead of `tea`; `fj` stays preferred                                                                                  | done    |
-| [36] | GitHub Releases: read-only list and detail per project on the web (`/releases`, right panel) and in the Android app                                                    | done    |
-| [35] | Android catch-up: tinted Input, Done and draft threads; merge, force push and worktree switching in Git                                                                | done    |
-| [34] | A "Thread actions" section in the thread details card: Settle thread, and the thread's context menu under an arrow                                                     | done    |
-| [33] | Saved environments follow you: a browser signed in to a server shows the environments saved on any other browser signed in to it (kept on that server)                 | done    |
-| [32] | Merge a thread's branch into the default branch (with or without pushing) and push the default branch, from a "Default branch" section of the thread details card      | done    |
-| [31] | Move a started thread into a new worktree from the workspace control or the thread menu (the control used to lock after the first message)                             | done    |
-| [30] | Synced drafts: unsent text, model, modes and new-thread settings follow you across web, desktop and Android (on the server); attachments and contexts stay put         | done    |
-| [29] | Appearance defaults: Dev artwork, 100 ms panel animations, composer context on, a version in the sidebar header; Nightly artwork removed                               | done    |
-| [28] | Worktree defaults for parallel feature work: semantic branch names, no start from the remote, cleanup of merged, deleted, unchanged and settled (3 days) worktrees     | done    |
-| [27] | Skills manager: every provider's skills in one list, then a shared library with per-provider switches                                                                  | done    |
-| [25] | The Docker image and a plain `ae-code serve` update in place from GitHub releases when `T3CODE_SELF_UPDATE=true`; the tarball ships a systemd unit                     | done    |
-| [26] | Pull requests and issues come from a project's `origin`, not `upstream`, unless `gh repo set-default` marks another remote (a fork listed upstream's)                  | done    |
-| [24] | The changed-files card under an answer says when that run committed and pushed (read from its successful `git commit` / `git push` commands)                           | done    |
-| [23] | Force push for a diverged branch (Git menu → "Force push..."), with a modal listing the commits it deletes and sends                                                   | done    |
-| [22] | Git panel and Diff panel start on uncommitted changes; "Not pushed" is the old branch diff; Push shows how many commits it sends                                       | done    |
-| [21] | Setting to turn off the "Push to default ref?" confirmation (Settings → Source control, on by default)                                                                 | done    |
-| [20] | Install Claude Code and OpenCode from Settings → Providers with npm into `~/.local`, and update them there (not found in any fork)                                     | done    |
-| [19] | Sidebar shows running subagents: a thread whose turn ended but whose subagents still work reads "N subagents" instead of a stalled "Waiting"                           | done    |
-| [18] | Steer controls: "Stop it and send now" for a steer stuck behind a long command (Claude; take back not built; not found in any fork)                                    | done    |
-| [17] | No product analytics: the server sends no usage events unless `T3CODE_TELEMETRY_ENABLED=true` (idea from E4 Code)                                                      | done    |
-| [16] | MCP servers from Settings: one list of stdio and HTTP servers for Claude, OpenCode, Antigravity and Codex sessions (smaller version of E4 Code's patch)                | done    |
-| [15] | Remove a built-in provider (Codex, Claude, ...) from Settings and the registry, with Restore                                                                           | done    |
-| 14   | No git hooks: upstream's pre-commit hook, its `prepare` script and the `staged` config in `vite.config.ts` are removed (they need Node on the committing host)         | done    |
-| [13] | Memory: saved preferences and decisions agents on any provider can recall and save, in global, environment and project scopes synced over links, with Settings pages   | done    |
-| [12] | Edit the latest message in place: the prompt becomes an inline editor, saving rewinds the thread and resends (idea from MT Code)                                       | planned |
-| [11] | Board of threads in derived columns (Draft, Working, Parked, Review, In PR, Done) with merge and pull request steps, web, desktop, Android                             | partial |
-| [10] | Self-hosted Android push: the server notifies through ntfy instead of the hosted relay                                                                                 | planned |
-| [9]  | Android app: AE Code package id, built and signed by the release workflow                                                                                              | done    |
-| [8]  | Docker image of the release server on GHCR                                                                                                                             | done    |
-| [7]  | Date-versioned releases (`vYYYY.MM.DD`): the Linux x64 server archive                                                                                                  | done    |
-| [6]  | Daily sync: a workflow rebased the patch stack onto upstream and force-pushed `main` (removed: conflicts almost every run, the rebase is done by hand)                 | dropped |
-| [5]  | Claude usage limits for a setup-token session: let `rate_limit_event` stream updates fill the bars when `get_usage` is unsupported                                     | done    |
-| [4]  | Project and thread switchers in the chat breadcrumb (ported from a community branch, below)                                                                            | done    |
-| [2]  | GitHub Issues: read-only list and detail (web, Android), agent tools; UI comment, edit and close still planned                                                         | partly  |
-| [1]  | Linux desktop as a Device-panel device (headless Mutter/GNOME Shell + capture + input)                                                                                 | done    |
-| [0]  | Rebrand as AE Code: own app id and state dir, Aperte icon                                                                                                              | done    |
+| #    | Change                                                                                                                                                               | Status  |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [45] | The executable and command are `ae-code` (was `t3`); `AECODE_*` env vars work everywhere `T3CODE_*` did, which stays as the fallback                                 | done    |
+| 48   | Fold and unfold a foldable Android emulator from the Android app's device menu; agents learn `agent-device fold` from `device_open`                                  | done    |
+| [47] | Commit history of a branch as a list or a graph, with a branch picker and changed files per commit, on the web (`/commits`, right panel) and in the Android app      | done    |
+| [46] | Default branch workflow: cleanup follows the local default branch, merges queue per repository and keep your edits there, and more (see the section)                 | done    |
+| 44   | Device panel controls in a row above the screen, like the browser's, instead of a column at the right edge (web)                                                     | done    |
+| 43   | Browser control modes: View only and Take control, where you and the agent both act and the agent is not interrupted (web and Android)                               | done    |
+| 42   | Current branch action: a project setting (Push by default) that picks whether the Git button also creates a pull request                                             | done    |
+| 41   | Floating preview: window-style buttons in its top-right corner, shown while the pointer is over it, instead of a dot that opens a pill                               | done    |
+| [40] | Other ways to run the Android emulator in the Device panel: investigate Cuttlefish and scrcpy; a Google Play image and foldable support are required                 | planned |
+| [39] | File operations in the Files panel: create files and folders, rename, move, copy and delete from a row's or the empty area's menu, on the web and in the Android app | done    |
+| [38] | Branches: every branch and worktree of a project with what to push, pull and merge, on the web (`/branches`) and in the Android app                                  | done    |
+| [37] | Forgejo and Gitea use the `gt` CLI (Gitea 28+) instead of `tea`; `fj` stays preferred                                                                                | done    |
+| [36] | GitHub Releases: read-only list and detail per project on the web (`/releases`, right panel) and in the Android app                                                  | done    |
+| [35] | Android catch-up: tinted Input, Done and draft threads; merge, force push and worktree switching in Git                                                              | done    |
+| [34] | A "Thread actions" section in the thread details card: Settle thread, and the thread's context menu under an arrow                                                   | done    |
+| [33] | Saved environments follow you: a browser signed in to a server shows the environments saved on any other browser signed in to it (kept on that server)               | done    |
+| [32] | Merge a thread's branch into the default branch (with or without pushing) and push the default branch, from a "Default branch" section of the thread details card    | done    |
+| [31] | Move a started thread into a new worktree from the workspace control or the thread menu (the control used to lock after the first message)                           | done    |
+| [30] | Synced drafts: unsent text, model, modes and new-thread settings follow you across web, desktop and Android (on the server); attachments and contexts stay put       | done    |
+| [29] | Appearance defaults: Dev artwork, 100 ms panel animations, composer context on, a version in the sidebar header; Nightly artwork removed                             | done    |
+| [28] | Worktree defaults for parallel feature work: semantic branch names, no start from the remote, cleanup of merged, deleted, unchanged and settled (3 days) worktrees   | done    |
+| [27] | Skills manager: every provider's skills in one list, then a shared library with per-provider switches                                                                | done    |
+| [25] | The Docker image and a plain `ae-code serve` update in place from GitHub releases when `T3CODE_SELF_UPDATE=true`; the tarball ships a systemd unit                   | done    |
+| [24] | The changed-files card under an answer says when that run committed and pushed (read from its successful `git commit` / `git push` commands)                         | done    |
+| [23] | Force push for a diverged branch (Git menu → "Force push..."), with a modal listing the commits it deletes and sends                                                 | done    |
+| [22] | Git panel and Diff panel start on uncommitted changes; "Not pushed" is the old branch diff; Push shows how many commits it sends                                     | done    |
+| [21] | Setting to turn off the "Push to default ref?" confirmation (Settings → Source control, on by default)                                                               | done    |
+| [20] | Install Claude Code and OpenCode from Settings → Providers with npm into `~/.local`, and update them there (not found in any fork)                                   | done    |
+| [19] | Sidebar shows running subagents: a thread whose turn ended but whose subagents still work reads "N subagents" instead of a stalled "Waiting"                         | done    |
+| [18] | Steer controls: "Stop it and send now" for a steer stuck behind a long command (Claude; take back not built; not found in any fork)                                  | done    |
+| [17] | No product analytics: the server sends no usage events unless `T3CODE_TELEMETRY_ENABLED=true` (idea from E4 Code)                                                    | done    |
+| [16] | MCP servers from Settings: one list of stdio and HTTP servers for Claude, OpenCode, Antigravity and Codex sessions (smaller version of E4 Code's patch)              | done    |
+| [15] | Remove a built-in provider (Codex, Claude, ...) from Settings and the registry, with Restore                                                                         | done    |
+| 14   | No git hooks: upstream's pre-commit hook, its `prepare` script and the `staged` config in `vite.config.ts` are removed (they need Node on the committing host)       | done    |
+| [13] | Memory: saved preferences and decisions agents on any provider can recall and save, in global, environment and project scopes synced over links, with Settings pages | done    |
+| [12] | Edit the latest message in place: the prompt becomes an inline editor, saving rewinds the thread and resends (idea from MT Code)                                     | planned |
+| [11] | Board of threads in derived columns (Draft, Working, Parked, Review, In PR, Done) with merge and pull request steps, web, desktop, Android                           | partial |
+| [10] | Self-hosted Android push: the server notifies through ntfy instead of the hosted relay                                                                               | planned |
+| [9]  | Android app: AE Code package id, built and signed by the release workflow                                                                                            | done    |
+| [8]  | Docker image of the release server on GHCR                                                                                                                           | done    |
+| [7]  | Date-versioned releases (`vYYYY.MM.DD`): the Linux x64 server archive                                                                                                | done    |
+| [6]  | Daily sync: a workflow rebased the patch stack onto upstream and force-pushed `main` (removed: conflicts almost every run, the rebase is done by hand)               | dropped |
+| [5]  | Claude usage limits for a setup-token session: let `rate_limit_event` stream updates fill the bars when `get_usage` is unsupported                                   | done    |
+| [4]  | Project and thread switchers in the chat breadcrumb (ported from a community branch, below)                                                                          | done    |
+| [2]  | GitHub Issues: read-only list and detail (web, Android), agent tools; UI comment, edit and close still planned                                                       | partly  |
+| [1]  | Linux desktop as a Device-panel device (headless Mutter/GNOME Shell + capture + input)                                                                               | done    |
+| [0]  | Rebrand as AE Code: own app id and state dir, Aperte icon                                                                                                            | done    |
+| [26] | Pull requests and issues come from a project's `origin`, not `upstream`, unless `gh repo set-default` marks another remote (a fork listed upstream's)                | done    |
 
 [0]: #identity-change-0
 [1]: #linux-desktop-in-the-device-panel-change-1

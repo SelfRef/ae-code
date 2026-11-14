@@ -761,15 +761,13 @@ export function ServerBrowserSurface(props: {
               aria-label="Browser control"
               variant="segmented"
               disabled={control.controller === "another-viewer"}
-              value={[previewStreamControlMode(control)]}
+              value={[previewStreamControlMode(control) === "view" ? "view" : "share"]}
               onValueChange={([mode]) => {
-                if (mode === "view" || mode === "control" || mode === "share")
-                  send(previewStreamControlInput[mode]);
+                if (mode === "view" || mode === "share") send(previewStreamControlInput[mode]);
               }}
             >
               <Toggle value="view">View only</Toggle>
-              <Toggle value="control">Take control</Toggle>
-              <Toggle value="share">Share control</Toggle>
+              <Toggle value="share">Take control</Toggle>
             </ToggleGroup>
           ) : null}
         </div>
