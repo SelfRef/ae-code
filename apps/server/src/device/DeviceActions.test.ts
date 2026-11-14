@@ -153,6 +153,43 @@ describe("runDeviceAction", () => {
       }),
   );
 
+  it.effect("folds a foldable emulator and waits for the posture", () =>
+    Effect.gen(function* () {
+      let posture = "OPENED";
+      const { ready, calls } = makeReady((call) => {
+        const key = call.args.join(" ");
+        if (key.endsWith("emu fold")) {
+          posture = "CLOSED";
+          return { stdout: "OK\n" };
+        }
+        if (key.endsWith("sensor get hinge-angle0")) return { stdout: "hinge-angle0 = 0\nOK\n" };
+        if (key.endsWith("device_state base-state")) {
+          return { stdout: `Committed state: name='${posture}'\nBase state: name='${posture}'\n` };
+        }
+        return { code: 1 };
+      });
+      yield* runDeviceAction(ready, "android", {
+        type: "setFold",
+        deviceId: "emulator-5554",
+        value: "closed",
+      });
+      expect(calls.some((call) => call.args.join(" ").endsWith("emu fold"))).toBe(true);
+    }),
+  );
+
+  it.effect("refuses to fold an emulator without a hinge sensor", () =>
+    Effect.gen(function* () {
+      const { ready, calls } = makeReady(() => ({ stdout: "KO: unknown sensor name\n" }));
+      const error = yield* runDeviceAction(ready, "android", {
+        type: "setFold",
+        deviceId: "emulator-5554",
+        value: "opened",
+      }).pipe(Effect.flip);
+      expect(error._tag).toBe("DeviceActionUnavailableError");
+      expect(calls.some((call) => call.args.includes("unfold"))).toBe(false);
+    }),
+  );
+
   it.effect("runs no adb or simctl command for a Linux desktop", () =>
     Effect.gen(function* () {
       const { ready, calls } = makeReady();
@@ -216,6 +253,23 @@ describe("readDeviceDetail", () => {
       const detail = yield* readDeviceDetail(ready, "ios", udid);
       expect(detail.settings).toEqual({});
       expect(detail.foregroundApp).toBeNull();
+    }),
+  );
+
+  it.effect("reads the fold posture of a foldable emulator", () =>
+    Effect.gen(function* () {
+      const { ready } = makeReady((call) => {
+        const key = call.args.join(" ");
+        if (key.endsWith("sensor get hinge-angle0")) return { stdout: "hinge-angle0 = 90\nOK\n" };
+        if (key.endsWith("device_state base-state")) {
+          return {
+            stdout: "Committed state: name='HALF_OPENED'\nBase state: name='HALF_OPENED'\n",
+          };
+        }
+        return { code: 1 };
+      });
+      const detail = yield* readDeviceDetail(ready, "android", "emulator-5554");
+      expect(detail.settings.fold).toBe("half_opened");
     }),
   );
 

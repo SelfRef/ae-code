@@ -11,6 +11,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 | #    | Change                                                                                                                                                                 | Status  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
 | [45] | The executable and command are `ae-code` (was `t3`); `AECODE_*` env vars work everywhere `T3CODE_*` did, which stays as the fallback                                   | done    |
+| 48   | Fold and unfold a foldable Android emulator from the Android app's device menu; agents learn `agent-device fold` from `device_open`                                    | done    |
 | [47] | Commit history of a branch as a list or a graph, with a branch picker and changed files per commit, on the web (`/commits`, right panel) and in the Android app        | done    |
 | [46] | Default branch workflow: cleanup follows the local default branch, merges queue per repository and keep your edits there, and more (see the section)                   | done    |
 | 44   | Device panel controls in a row above the screen, like the browser's, instead of a column at the right edge (web)                                                       | done    |

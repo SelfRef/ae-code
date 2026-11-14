@@ -2,6 +2,7 @@
 import {
   type DeviceActionInput,
   type DeviceActionType,
+  type DeviceFoldPosture,
   type DeviceForegroundApp,
   DeviceOperationError,
   DeviceActionUnavailableError,
@@ -45,6 +46,7 @@ const ANDROID_ACTIONS: ReadonlySet<DeviceActionType> = new Set([
   "setTextSize",
   "setToggle",
   "setOrientation",
+  "setFold",
   "setLocation",
   "clearLocation",
   "setPermission",
@@ -307,6 +309,7 @@ const runIos = Effect.fn("DeviceActions.runIos")(function* (
     }
     case "shake":
     case "setOrientation":
+    case "setFold":
       return yield* new DeviceActionUnavailableError({
         operation: input.type,
         platform: "ios",
@@ -410,6 +413,35 @@ const runAndroid = Effect.fn("DeviceActions.runAndroid")(function* (
         ["cmd", "window", "user-rotation", "lock", ANDROID_ROTATION[rotation]],
         "orientation",
       );
+      return;
+    }
+    case "setFold": {
+      if ((yield* readAndroidFold(run, serial)) === undefined) {
+        return yield* new DeviceActionUnavailableError({
+          operation: input.type,
+          platform: "android",
+          reason: "unsupported",
+        });
+      }
+      const answer = yield* adb(
+        run,
+        serial,
+        ["emu", input.value === "closed" ? "fold" : "unfold"],
+        "fold",
+      );
+      // The console reports a refusal on stdout with exit code 0.
+      if (/\bKO:/.test(answer)) {
+        return yield* new DeviceOperationError({
+          operation: "fold",
+          reason: "command_failed",
+          cause: answer,
+        });
+      }
+      // The posture follows the console command by a moment; the answer re-reads it.
+      for (let tries = 0; tries < 40; tries++) {
+        if ((yield* readAndroidFold(run, serial)) === input.value) break;
+        yield* Effect.sleep("50 millis");
+      }
       return;
     }
     case "setLocation":
@@ -540,12 +572,43 @@ const isColorFilter = (value: unknown): value is DeviceSettings["colorFilter"] &
   value === "green-red" ||
   value === "blue-yellow";
 
+const FOLD_POSTURES: Record<string, DeviceFoldPosture> = {
+  CLOSED: "closed",
+  HALF_OPENED: "half_opened",
+  OPENED: "opened",
+  REAR_DISPLAY_MODE: "flipped",
+  FLIPPED: "flipped",
+  TENT: "tent",
+};
+
+/** Undefined unless the emulator has a hinge sensor, which is what makes it foldable. */
+const readAndroidFold = Effect.fn("DeviceActions.readAndroidFold")(function* (
+  run: Runner,
+  serial: string,
+) {
+  if (!serial.startsWith("emulator-")) return undefined;
+  const sensor = yield* quiet(adb(run, serial, ["emu", "sensor", "get", "hinge-angle0"], "fold"));
+  // Emulators without the sensor answer `KO:` with exit code 0.
+  const angle = Number(sensor?.match(/hinge-angle0\s*=\s*(-?[\d.]+(?:[eE][+-]?\d+)?)/)?.[1]);
+  if (!Number.isFinite(angle)) return undefined;
+  const state = yield* quiet(
+    adb(run, serial, ["shell", "cmd", "device_state", "base-state"], "fold"),
+  );
+  // While an app holds an override state, the physical posture is on the `Base state:` line.
+  const name = (state?.match(/Base state:.*?name='([A-Z_]+)'/) ??
+    state?.match(/name='([A-Z_]+)'/))?.[1];
+  return (
+    (name ? FOLD_POSTURES[name] : undefined) ??
+    (angle <= 5 ? "closed" : angle >= 175 ? "opened" : "half_opened")
+  );
+});
+
 const readAndroid = Effect.fn("DeviceActions.readAndroid")(function* (run: Runner, serial: string) {
   const shell = (args: ReadonlyArray<string>) =>
     quiet(
       adb(run, serial, ["shell", ...args], args[0] ?? "shell").pipe(Effect.map((s) => s.trim())),
     );
-  const [night, fontScale, animator, wifi, focus] = yield* Effect.all(
+  const [night, fontScale, animator, wifi, focus, fold] = yield* Effect.all(
     [
       shell(["cmd", "uimode", "night"]),
       shell(["settings", "get", "system", "font_scale"]),
@@ -553,8 +616,9 @@ const readAndroid = Effect.fn("DeviceActions.readAndroid")(function* (run: Runne
       shell(["settings", "get", "global", "wifi_on"]),
       // API 36 dropped focus from `dumpsys window windows`; use the unfiltered dump.
       shell(["dumpsys", "window"]),
+      readAndroidFold(run, serial),
     ],
-    { concurrency: 5 },
+    { concurrency: 6 },
   );
   const scale = fontScale && fontScale !== "null" ? Number(fontScale) : Number.NaN;
   const focused = focus?.match(/m(?:CurrentFocus|FocusedApp)=\w+\{[^ ]+ u\d+ ([^/ ]+)\//);
@@ -564,6 +628,7 @@ const readAndroid = Effect.fn("DeviceActions.readAndroid")(function* (run: Runne
       : night?.includes("no")
         ? { appearance: "light" }
         : {}),
+    ...(fold ? { fold } : {}),
     ...(Number.isFinite(scale) ? { textSize: textSizeFromAndroid(scale) } : {}),
     ...(animator !== undefined && animator !== "null"
       ? { reduceMotion: Number(animator) === 0 }

@@ -95,6 +95,11 @@ export function agentDeviceQuickStart(
     `  ${run('fill @e5 "text" --settle')}`,
     `  ${run("alert accept")}`,
     `  ${run("settings appearance dark")}  # also text-size, permission grant <name>`,
+    ...(device.platform === "android"
+      ? [
+          `  ${run("fold closed")}  # foldable emulators only; also open. Re-snapshot after: refs go stale`,
+        ]
+      : []),
     `  ${run("screenshot /tmp/shot.png")}  # ${device.platform === "ios" ? "iOS saves 1x points; add --pixel-density <n> (3 on most iPhones) for device resolution, " : ""}or call device_screenshot to look`,
     `  ${run("record start --scope device /tmp/run.mp4")}  # then record stop`,
     `  ${run("install <app> <path-to-.app-or-.apk>")}`,
