@@ -340,7 +340,9 @@ export function NewTaskFlowProvider(
       props.active === false ||
       props.routeDraftId !== undefined ||
       activeDraftKey !== null ||
-      selectedProject === null
+      selectedProject === null ||
+      // A child's mount effect runs first and may already have bound a draft; selectedProject here is still the fallback.
+      readNewTaskFlowState(flowKey).draftKey !== null
     ) {
       return;
     }
