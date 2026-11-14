@@ -393,8 +393,23 @@ export const DeviceOrientation = Schema.Literals([
 ]);
 export type DeviceOrientation = typeof DeviceOrientation.Type;
 
+export const DeviceFoldPosture = Schema.Literals([
+  "closed",
+  "half_opened",
+  "opened",
+  "flipped",
+  "tent",
+]);
+export type DeviceFoldPosture = typeof DeviceFoldPosture.Type;
+
+/** What a user or agent can ask a foldable to do; the other postures are only ever read. */
+export const DeviceFoldTarget = Schema.Literals(["closed", "opened"]);
+export type DeviceFoldTarget = typeof DeviceFoldTarget.Type;
+
 export const DeviceSettings = Schema.Struct({
   appearance: Schema.optional(DeviceAppearance),
+  /** Only on foldable emulators. */
+  fold: Schema.optional(DeviceFoldPosture),
   textSize: Schema.optional(DeviceTextSize),
   reduceMotion: Schema.optional(Schema.Boolean),
   increaseContrast: Schema.optional(Schema.Boolean),
@@ -481,6 +496,7 @@ export const DeviceActionInput = Schema.Union([
     type: Schema.Literal("setOrientation"),
     value: DeviceOrientation,
   }),
+  Schema.Struct({ ...DeviceTarget, type: Schema.Literal("setFold"), value: DeviceFoldTarget }),
   Schema.Struct({
     ...DeviceTarget,
     type: Schema.Literal("setLocation"),

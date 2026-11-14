@@ -84,9 +84,10 @@ describe("device tool helpers", () => {
     const examples = text.split("\n").filter((line) => line.trimStart().startsWith(command));
     expect(examples).toContain(`  ${command} snapshot -i  # accessibility tree with @eN refs`);
     expect(examples.find((line) => line.includes(" screenshot "))).toContain("--pixel-density <n>");
-    expect(agentDeviceQuickStart({ ...device, platform: "android" }, [], command)).not.toContain(
-      "--pixel-density",
-    );
+    const android = agentDeviceQuickStart({ ...device, platform: "android" }, [], command);
+    expect(android).not.toContain("--pixel-density");
+    expect(android).toContain(`${command} fold closed`);
+    expect(text).not.toContain(" fold ");
     expect(examples.join("\n")).not.toMatch(/--(?:platform|udid|serial|config|session)\b/);
     expect(text).not.toContain("remain available");
     expect(text).toContain("Do not use simctl, idb, adb or ssh for those actions.");

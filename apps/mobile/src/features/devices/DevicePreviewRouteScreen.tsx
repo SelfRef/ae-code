@@ -44,6 +44,7 @@ import {
   type ThreadDevicePreview,
 } from "./threadDevicePreviews";
 import { createShakeDetector } from "./shakeDetector";
+import { useDeviceFold } from "./useDeviceFold";
 
 const OVERLAY_ENTERING = FadeIn.duration(160).reduceMotion(ReduceMotion.System);
 const OVERLAY_EXITING = FadeOut.duration(120).reduceMotion(ReduceMotion.System);
@@ -115,6 +116,7 @@ export function DevicePreviewScreen({
   const setViewOnly = (value: boolean) =>
     preview && setViewOnlyByKey((current) => ({ ...current, [preview.key]: value }));
   const inputEnabled = inputConnected && !viewOnly;
+  const fold = useDeviceFold(environmentId, preview?.session);
   const onInputConnected = async (connected: boolean) => {
     setInputConnected(connected);
     if (!connected) setControlsVisible(true);
@@ -248,6 +250,17 @@ export function DevicePreviewScreen({
             onPress: () => streamRef.current?.appSwitcher(),
           },
         ]),
+    ...(fold.posture
+      ? [
+          {
+            id: "fold",
+            title: fold.posture === "closed" ? "Unfold device" : "Fold device",
+            icon: "square.split.2x1" as const,
+            disabled: !inputEnabled || fold.pending,
+            onPress: () => void fold.toggle(),
+          },
+        ]
+      : []),
     ...(preview?.session.platform === "ios"
       ? [
           {
