@@ -228,8 +228,9 @@ gets the result (or the reason it failed) in its turn.
 On the Branches page (and its right-panel tab and the Android tab), **Delete merged** removes the
 local branches the default branch already contains once you confirm the list. It leaves the default
 branch, checked-out branches, branches in a worktree and remote copies alone. A branch row's trash button (**Delete** on
-Android) removes that one branch, even when it is not merged; it warns that the commits the default
-branch lacks are lost. Worktree cleanup never deletes branches itself.
+Android) removes that one branch, even when it is not merged, and for a worktree branch the worktree folder too; it warns
+that the commits the default branch lacks and uncommitted changes in the worktree are lost. The default branch and the
+branch checked out in the project root have no button. Worktree cleanup never deletes branches itself.
 
 A worktree branch with commits the default branch lacks has a merge button on its Branches row: after
 you confirm, it does what the thread's Merge button does (commits the worktree's uncommitted changes,

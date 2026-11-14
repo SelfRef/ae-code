@@ -29,6 +29,13 @@ export function isPlainLocalBranch(
   );
 }
 
+/** A branch a row can delete: any local branch but the default and the one checked out in the project root. A worktree goes with it. */
+export function isDeletableBranch(
+  branch: Pick<VcsBranchOverviewEntry, "isRemoteOnly" | "isDefault" | "current">,
+): boolean {
+  return !branch.isRemoteOnly && !branch.isDefault && !branch.current;
+}
+
 /** A worktree branch with commits the default branch lacks: the merge action runs in its checkout. */
 export function canMergeBranch(
   branch: Pick<
