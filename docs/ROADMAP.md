@@ -1525,9 +1525,14 @@ merged into the default branch.
 - **Edits in the default checkout stay.** The merge no longer demands a clean default checkout: `git merge --ff-only`
   runs there and refuses, changing nothing, only when uncommitted or untracked files are in the way of what it
   changes, so merging while you work on the default branch no longer hands the merge to the agent.
-- **Merges queue per repository.** `mergeIntoDefault` holds a lock keyed by the repository's common git directory, so
-  threads merging at once (their worktrees share one repository) run one after the other instead of racing each
-  other's rebase and fast-forward. If the default branch still moves between this merge's rebase and its fast-forward
+- **Merges queue per repository.** `runStackedAction` holds a lock (`mergeLock.ts`) keyed by the repository's common git
+  directory around `merge`, `merge_push`, `push_default` and `rebase_default`, so threads merging at once (their
+  worktrees share one repository) run one after the other instead of racing each other's rebase and fast-forward. The
+  lock covers a hand-off to the agent too, released when its turn ends or after 20 minutes (the action then fails
+  saying so), since that agent is finishing the same rebase and fast-forward. It is re-entrant for the holding thread,
+  so that agent can call `t3_worktree_merge`. A waiting action shows "Waiting for "<thread>" to finish merging...".
+  The lock lives in memory, so a restart or crash cannot leave one behind; nothing guards a `git merge` an agent
+  runs itself, or a second server on the same repository. If the default branch still moves between this merge's rebase and its fast-forward
   (a commit in its own checkout), it rebases once more before giving up. A failed fast-forward no longer says "a file
   may be in the way": it names edits that are in the way, or says it could not fast-forward.
 - **A pushed branch stays in step.** The merge's rebase rewrites the thread's branch, which would leave one that was

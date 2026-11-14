@@ -1,4 +1,5 @@
 import { mergeIntoDefault, type MergeIntoDefaultResult } from "./mergeIntoDefault.ts";
+import { repositoryLockKey, withRepositoryLock } from "./mergeLock.ts";
 import * as Arr from "effect/Array";
 import * as Cache from "effect/Cache";
 import * as Clock from "effect/Clock";
@@ -40,7 +41,7 @@ import {
   type ProjectId,
   SourceControlProviderError,
   type SourceControlWritingStyleSettings,
-  type ThreadId,
+  ThreadId,
   type ThreadPullRequestKey,
   type VcsCreateWorktreeInput,
   type VcsCreateWorktreeResult,
@@ -95,6 +96,8 @@ import type { ChangeRequest } from "@t3tools/contracts";
 export interface GitActionProgressReporter {
   readonly publish: (event: GitActionProgressEvent) => Effect.Effect<void, never>;
 }
+
+const MERGE_BY_AGENT_LOCK_CAP = Duration.minutes(20);
 
 export interface GitRunStackedActionOptions {
   readonly actionId?: string;
@@ -3373,6 +3376,65 @@ export const make = Effect.gen(function* () {
                         .pipe(Effect.andThen(handOffMerge(error.message, choice.modelSelection))),
                 ),
               );
+        // Merges into the default branch, and a hand-off turn finishing one, run one at a time per repository.
+        const withMergeLock = <A, E, R>(
+          phase: GitActionProgressPhase,
+          label: string,
+          effect: Effect.Effect<A, E, R>,
+        ) =>
+          repositoryLockKey(gitCore, input.cwd).pipe(
+            Effect.flatMap((key) =>
+              effect.pipe(
+                withRepositoryLock({
+                  key,
+                  owner: input.threadId ?? null,
+                  waiting: (holder) =>
+                    (holder === null
+                      ? Effect.succeed(null)
+                      : threads.getThreadShell(ThreadId.make(holder)).pipe(
+                          Effect.map((thread) => thread?.title ?? null),
+                          Effect.orElseSucceed(() => null),
+                        )
+                    ).pipe(
+                      Effect.flatMap((title) =>
+                        progress.emit({
+                          kind: "phase_started",
+                          phase,
+                          label:
+                            title === null
+                              ? "Waiting for another merge to finish..."
+                              : `Waiting for "${title}" to finish merging...`,
+                        }),
+                      ),
+                    ),
+                  resumed: progress.emit({ kind: "phase_started", phase, label }),
+                }),
+              ),
+            ),
+          );
+        // Caps how long a hand-off turn keeps the merge lock, so a turn stuck on a question cannot stall every merge.
+        const lockedHandOff = (
+          phase: GitActionProgressPhase,
+          label: string,
+          error: { readonly message: string },
+        ) =>
+          handOffToAgent(phase, label, error).pipe(
+            Effect.timeoutOption(MERGE_BY_AGENT_LOCK_CAP),
+            Effect.flatMap(
+              Option.match({
+                onSome: Effect.succeed,
+                onNone: () =>
+                  Effect.fail(
+                    new GitManagerError({
+                      operation: "runStackedAction",
+                      cwd: input.cwd,
+                      detail:
+                        "The agent was still finishing the merge after 20 minutes, so other merges may go ahead now. Check the thread.",
+                    }),
+                  ),
+              }),
+            ),
+          );
         const handedOffToast = {
           title: "The agent finished its turn",
           description: "Check the thread for how it went.",
@@ -3417,15 +3479,19 @@ export const make = Effect.gen(function* () {
             phase: "push",
             label: "Pushing default branch...",
           });
-          const pushed = yield* mergeIntoDefault(gitCore, {
-            cwd: input.cwd,
-            branch: initialStatus.branch ?? "",
-            push: true,
-            pushOnly: true,
-          }).pipe(
-            Effect.catch((error) =>
-              handOffToAgent("push", "Pushing by agent...", error).pipe(
-                Effect.flatMap((done) => (done ? Effect.succeed(null) : Effect.fail(error))),
+          const pushed = yield* withMergeLock(
+            "push",
+            "Pushing default branch...",
+            mergeIntoDefault(gitCore, {
+              cwd: input.cwd,
+              branch: initialStatus.branch ?? "",
+              push: true,
+              pushOnly: true,
+            }).pipe(
+              Effect.catch((error) =>
+                lockedHandOff("push", "Pushing by agent...", error).pipe(
+                  Effect.flatMap((done) => (done ? Effect.succeed(null) : Effect.fail(error))),
+                ),
               ),
             ),
           );
@@ -3475,12 +3541,16 @@ export const make = Effect.gen(function* () {
           }
           yield* Ref.set(currentPhase, Option.some("merge"));
           yield* progress.emit({ kind: "phase_started", phase: "merge", label: "Rebasing..." });
-          const rebased = yield* mergeIntoDefault(gitCore, {
-            cwd: input.cwd,
-            branch: initialStatus.branch,
-            push: false,
-            rebaseOnly: true,
-          });
+          const rebased = yield* withMergeLock(
+            "merge",
+            "Rebasing...",
+            mergeIntoDefault(gitCore, {
+              cwd: input.cwd,
+              branch: initialStatus.branch,
+              push: false,
+              rebaseOnly: true,
+            }),
+          );
           const upstreamNote = branchUpstreamNote(rebased.branchUpstream);
           const result = {
             action: input.action,
@@ -3616,29 +3686,35 @@ export const make = Effect.gen(function* () {
                 .pipe(
                   Effect.tap(() => Ref.set(currentPhase, Option.some("merge"))),
                   Effect.flatMap(() =>
-                    squashMessageFor(input, textGenerationSettings, currentBranch).pipe(
-                      Effect.flatMap((squashMessage) =>
-                        mergeIntoDefault(gitCore, {
-                          cwd: input.cwd,
-                          branch: currentBranch,
-                          push: input.action === "merge_push",
-                          ...(squashMessage ? { squashMessage } : {}),
-                          ...(input.threadId === undefined
-                            ? {}
-                            : { beforeLand: preMergeAction(input, input.threadId, progress.emit) }),
-                        }),
-                      ),
-                    ),
-                  ),
-                  Effect.catch((error) =>
-                    handOffToAgent("merge", "Merging by agent...", error).pipe(
-                      Effect.flatMap((done) =>
-                        done
-                          ? Effect.sync(() => {
-                              handedOff = true;
-                              return undefined;
-                            })
-                          : Effect.fail(error),
+                    withMergeLock(
+                      "merge",
+                      "Merging...",
+                      squashMessageFor(input, textGenerationSettings, currentBranch).pipe(
+                        Effect.flatMap((squashMessage) =>
+                          mergeIntoDefault(gitCore, {
+                            cwd: input.cwd,
+                            branch: currentBranch,
+                            push: input.action === "merge_push",
+                            ...(squashMessage ? { squashMessage } : {}),
+                            ...(input.threadId === undefined
+                              ? {}
+                              : {
+                                  beforeLand: preMergeAction(input, input.threadId, progress.emit),
+                                }),
+                          }),
+                        ),
+                        Effect.catch((error) =>
+                          lockedHandOff("merge", "Merging by agent...", error).pipe(
+                            Effect.flatMap((done) =>
+                              done
+                                ? Effect.sync(() => {
+                                    handedOff = true;
+                                    return undefined;
+                                  })
+                                : Effect.fail(error),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
