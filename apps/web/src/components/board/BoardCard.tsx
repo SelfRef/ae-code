@@ -69,7 +69,7 @@ export function BoardCardShell(props: {
   readonly projectName: string | null;
   readonly meta?: ReactNode;
   readonly badges?: ReactNode;
-  readonly actions: ReactNode;
+  readonly actions?: ReactNode;
   readonly onOpen: () => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -115,7 +115,9 @@ export function BoardCardShell(props: {
         ) : null}
         {props.badges ? <div className="mt-1.5 flex flex-wrap gap-1">{props.badges}</div> : null}
       </div>
-      <div className="mt-2 flex items-center justify-between gap-1.5">{props.actions}</div>
+      {props.actions ? (
+        <div className="mt-2 flex items-center justify-between gap-1.5">{props.actions}</div>
+      ) : null}
     </li>
   );
 }

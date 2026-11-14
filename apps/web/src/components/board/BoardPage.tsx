@@ -26,10 +26,9 @@ import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
-import type { EnvironmentId, ProjectId } from "@t3tools/contracts";
 import { replaceComposerContextReferences } from "@t3tools/shared/composerContextReferences";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { ChevronDownIcon, ChevronRightIcon, FolderIcon, LayersIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { createContext, useContext, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
@@ -42,14 +41,14 @@ import { useDelegatedUnderParent, useProjects, useVisibleThreadShells } from "~/
 import { buildThreadRouteParams } from "../../threadRoutes";
 
 import { filterSidebarV2VisibleThreads, useSnoozeWakeClock } from "../Sidebar.logic";
-import { PullRequestCompactFilterMenu } from "../pullRequest/PullRequestCompactFilterMenu";
-import type { PullRequestFilterOption } from "../pullRequest/PullRequestListFilters";
 import { Button } from "../ui/button";
 import { SidebarInset } from "../ui/sidebar";
 import { toastManager } from "../ui/toast";
 import { WorkspaceBreadcrumb, WorkspaceBreadcrumbItem } from "../WorkspaceBreadcrumb";
 import { WorkspacePageHeader } from "../WorkspacePageHeader";
 import { isElectron } from "~/env";
+import { BoardMinimap } from "./BoardMinimap";
+import { BoardProjectFilter } from "./BoardProjectFilter";
 import {
   BoardCardShell,
   BoardThreadCard,
@@ -57,7 +56,6 @@ import {
   type BoardDragData,
 } from "./BoardCard";
 
-const ALL_PROJECTS = "all";
 /** The column narrow screens show; wider ones show every column. */
 const NarrowColumnContext = createContext<BoardColumn>("review");
 
@@ -91,8 +89,8 @@ function toastFailure(title: string, result: AtomCommandResult<unknown, unknown>
 function BoardColumnView(props: {
   readonly column: BoardColumn;
   readonly count: number;
-  readonly collapsed?: boolean;
-  readonly onToggle?: () => void;
+  readonly collapsed: boolean;
+  readonly onToggle: () => void;
   readonly footer?: React.ReactNode;
   readonly children: React.ReactNode;
 }) {
@@ -107,30 +105,44 @@ function BoardColumnView(props: {
       aria-label={label}
       data-testid={`board-column-${props.column}`}
       className={cn(
-        "max-h-full w-full shrink-0 snap-start flex-col rounded-xl bg-muted/40 md:flex md:w-72",
+        "max-h-full shrink-0 snap-start flex-col rounded-xl bg-muted/40 md:flex",
+        collapsed ? "md:w-9" : "w-full md:w-72",
         narrowActive ? "flex" : "hidden",
         isOver && "ring-2 ring-ring",
       )}
     >
-      <header className="flex items-center gap-1.5 px-3 pt-2.5 pb-1.5 text-sm font-medium">
-        {props.onToggle ? (
-          <button
-            type="button"
-            className="inline-flex cursor-pointer items-center gap-1"
-            aria-expanded={!collapsed}
-            onClick={props.onToggle}
-          >
-            {collapsed ? (
-              <ChevronRightIcon className="size-3.5" />
-            ) : (
-              <ChevronDownIcon className="size-3.5" />
-            )}
-            {label}
-          </button>
-        ) : (
-          <h2>{label}</h2>
+      <header
+        className={cn(
+          "flex text-sm font-medium",
+          collapsed ? "min-h-0 flex-1" : "items-center gap-1.5 px-3 pt-2.5 pb-1.5",
         )}
-        <span className="text-xs text-muted-foreground tabular-nums">{props.count}</span>
+      >
+        <button
+          type="button"
+          className={cn(
+            "inline-flex cursor-pointer items-center gap-1",
+            collapsed && "w-full flex-col py-2.5",
+          )}
+          aria-expanded={!collapsed}
+          onClick={props.onToggle}
+        >
+          {collapsed ? (
+            <ChevronRightIcon className="size-3.5" />
+          ) : (
+            <ChevronDownIcon className="size-3.5" />
+          )}
+          <span className={cn(collapsed && "[writing-mode:vertical-rl]")}>
+            {label}
+            {collapsed ? (
+              <span className="ms-1.5 text-xs text-muted-foreground tabular-nums">
+                {props.count}
+              </span>
+            ) : null}
+          </span>
+        </button>
+        {collapsed ? null : (
+          <span className="text-xs text-muted-foreground tabular-nums">{props.count}</span>
+        )}
       </header>
       {collapsed ? null : (
         <ul className="flex min-h-12 flex-col gap-2 overflow-y-auto px-2 pb-2">
@@ -142,7 +154,7 @@ function BoardColumnView(props: {
   );
 }
 
-function useBoardDrafts(scopedKey: string | null) {
+function useBoardDrafts(scope: ReadonlySet<string> | null) {
   const sessions = useComposerDraftStore((store) => store.draftThreadsByThreadKey);
   const composers = useComposerDraftStore(
     useShallow((store) =>
@@ -159,7 +171,7 @@ function useBoardDrafts(scopedKey: string | null) {
       if (session.promotedTo != null || !composer || !composerDraftHasUserContent(composer)) {
         return [];
       }
-      if (scopedKey !== null && `${session.environmentId}:${session.projectId}` !== scopedKey) {
+      if (scope !== null && !scope.has(`${session.environmentId}:${session.projectId}`)) {
         return [];
       }
       const text =
@@ -180,17 +192,17 @@ export function BoardPage() {
   const { settleThread, unsettleThread, unsnoozeThread } = useThreadActions();
   const openPrLink = useOpenPrLink();
   const [doneExpanded, setDoneExpanded] = useState(false);
-  const [parkedOpen, setParkedOpen] = useState(false);
+  // Parked starts collapsed: it holds what you chose to look at later.
+  const [collapsed, setCollapsed] = useState<ReadonlySet<BoardColumn>>(new Set(["parked"]));
+  const [scroller, setScroller] = useState<HTMLElement | null>(null);
   const [narrowColumn, setNarrowColumn] = useState<BoardColumn>("review");
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
-  const scopedKey =
-    search.environmentId && search.projectId ? `${search.environmentId}:${search.projectId}` : null;
-  const visible = filterSidebarV2VisibleThreads(
-    threads,
-    scopedKey === null ? null : new Set([scopedKey]),
-    delegatedUnderParent,
-  ).filter((thread) => thread.deletedAt === null);
+  const selectedProjects = search.projects ?? [];
+  const scope = selectedProjects.length === 0 ? null : new Set(selectedProjects);
+  const visible = filterSidebarV2VisibleThreads(threads, scope, delegatedUnderParent).filter(
+    (thread) => thread.deletedAt === null,
+  );
   const clockMs = useSnoozeWakeClock(visible);
   const now = new Date(clockMs).toISOString();
   const projectByKey = new Map(projects.map((project) => [projectKey(project), project]));
@@ -199,7 +211,7 @@ export function BoardPage() {
       group.memberProjects.map((project) => [projectKey(project), group.displayName] as const),
     ),
   );
-  const drafts = useBoardDrafts(scopedKey);
+  const drafts = useBoardDrafts(scope);
 
   const byColumn = new Map<BoardColumn, EnvironmentThreadShell[]>();
   for (const thread of visible) {
@@ -218,6 +230,17 @@ export function BoardPage() {
       (left.snoozedUntil ?? "").localeCompare(right.snoozedUntil ?? ""),
     ),
   };
+  const columnView = (column: BoardColumn) => ({
+    column,
+    count: columnCount(column),
+    collapsed: collapsed.has(column),
+    onToggle: () =>
+      setCollapsed((current) => {
+        const next = new Set(current);
+        if (!next.delete(column)) next.add(column);
+        return next;
+      }),
+  });
 
   const columnCount = (column: BoardColumn) =>
     sorted[column].length + (column === "draft" ? drafts.length : 0);
@@ -254,15 +277,6 @@ export function BoardPage() {
     data?.moves.find((move) => move.target === event.over?.id)?.run();
   };
 
-  const projectOptions: ReadonlyArray<PullRequestFilterOption<string>> = [
-    { value: ALL_PROJECTS, label: "All projects", Icon: LayersIcon },
-    ...projects.map((project) => ({
-      value: projectKey(project),
-      label: projectNameByKey.get(projectKey(project)) ?? project.title,
-      Icon: FolderIcon,
-      project,
-    })),
-  ];
   const doneThreads = doneExpanded ? sorted.done : sorted.done.slice(0, DONE_LIMIT);
   const threadCards = (column: BoardColumn, list: EnvironmentThreadShell[]) =>
     list.map((thread) => {
@@ -288,23 +302,12 @@ export function BoardPage() {
           </WorkspaceBreadcrumbItem>
         </WorkspaceBreadcrumb>
         <div className="min-w-0 flex-1" />
-        <PullRequestCompactFilterMenu
-          label="Project"
-          outlined
-          value={scopedKey ?? ALL_PROJECTS}
-          options={projectOptions}
-          onChange={(value) => {
-            const project = projectByKey.get(value);
-            void navigate({
-              to: "/board",
-              search: project
-                ? {
-                    environmentId: project.environmentId as EnvironmentId,
-                    projectId: project.id as ProjectId,
-                  }
-                : {},
-            });
-          }}
+        <BoardMinimap scroller={scroller} />
+        <BoardProjectFilter
+          selected={selectedProjects}
+          onChange={(projects) =>
+            void navigate({ to: "/board", search: projects.length > 0 ? { projects } : {} })
+          }
         />
       </WorkspacePageHeader>
       <DndContext
@@ -332,8 +335,11 @@ export function BoardPage() {
           ))}
         </div>
         <NarrowColumnContext value={narrowColumn}>
-          <div className="flex min-h-0 flex-1 snap-x gap-3 overflow-x-auto p-3">
-            <BoardColumnView column="draft" count={drafts.length + sorted.draft.length}>
+          <div
+            ref={setScroller}
+            className="relative flex min-h-0 flex-1 snap-x gap-3 overflow-x-auto p-3"
+          >
+            <BoardColumnView {...columnView("draft")}>
               {threadCards("draft", sorted.draft)}
               {drafts.map((draft) => {
                 const open = () =>
@@ -356,30 +362,24 @@ export function BoardPage() {
                       ) ?? null
                     }
                     onOpen={open}
-                    actions={
-                      <>
-                        <span />
-                        <Button size="xs" variant="outline" onClick={open}>
-                          Open draft
-                        </Button>
-                      </>
-                    }
                   />
                 );
               })}
             </BoardColumnView>
-            <BoardColumnView column="working" count={sorted.working.length}>
+            <BoardColumnView {...columnView("working")}>
               {threadCards("working", sorted.working)}
             </BoardColumnView>
-            <BoardColumnView column="review" count={sorted.review.length}>
+            <BoardColumnView {...columnView("parked")}>
+              {threadCards("parked", sorted.parked)}
+            </BoardColumnView>
+            <BoardColumnView {...columnView("review")}>
               {threadCards("review", sorted.review)}
             </BoardColumnView>
-            <BoardColumnView column="pull_request" count={sorted.pull_request.length}>
+            <BoardColumnView {...columnView("pull_request")}>
               {threadCards("pull_request", sorted.pull_request)}
             </BoardColumnView>
             <BoardColumnView
-              column="done"
-              count={sorted.done.length}
+              {...columnView("done")}
               footer={
                 sorted.done.length > DONE_LIMIT ? (
                   <li className="list-none">
@@ -396,14 +396,6 @@ export function BoardPage() {
               }
             >
               {threadCards("done", doneThreads)}
-            </BoardColumnView>
-            <BoardColumnView
-              column="parked"
-              count={sorted.parked.length}
-              collapsed={!parkedOpen}
-              onToggle={() => setParkedOpen((value) => !value)}
-            >
-              {threadCards("parked", sorted.parked)}
             </BoardColumnView>
           </div>
         </NarrowColumnContext>

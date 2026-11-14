@@ -63,12 +63,10 @@ import { vcsActionManager, vcsEnvironment } from "../../state/vcs";
 import { useThreadListActions } from "../home/useThreadListActions";
 import { usePendingTaskListActions } from "../home/usePendingTaskListActions";
 import { SymbolView } from "../../components/ui/AppSymbol";
-import { ChoiceChip } from "../layout/workspace/ChoiceChip";
+import { ListFilterMenu } from "../layout/workspace/ListFilterMenu";
 import { projectIcon } from "../layout/workspace/ProjectChoiceChip";
 import { useSelectWorkspaceDetail } from "../layout/workspace/useSelectWorkspaceDetail";
 import { SettingsScreen } from "../settings/components/SettingsScreen";
-
-const ALL_PROJECTS = "all";
 
 const allProjectsIcon = (size: number) => (
   <SymbolView name="square.grid.2x2" size={size} tintColorClassName="accent-icon-subtle" />
@@ -271,13 +269,16 @@ export function BoardScreen() {
   );
   const { settleThread, unsettleThread, unsnoozeThread } = useThreadListActions();
   const [column, setColumn] = useState<BoardColumn>("review");
-  const [scope, setScope] = useState(ALL_PROJECTS);
+  // Project keys the board shows; empty means every project.
+  const [scope, setScope] = useState<ReadonlyArray<string>>([]);
+  // Parked starts collapsed: it holds what you chose to look at later.
+  const [collapsed, setCollapsed] = useState<ReadonlySet<BoardColumn>>(new Set(["parked"]));
   const [doneExpanded, setDoneExpanded] = useState(false);
   // Snoozes ending while no thread changes show up within a minute.
   const now = new Date(useNowMinuteMs()).toISOString();
   const projectByKey = new Map(projects.map((project) => [projectKey(project), project]));
   const inScope = (environmentId: string, projectId: string) =>
-    scope === ALL_PROJECTS || scope === `${environmentId}:${projectId}`;
+    scope.length === 0 || scope.includes(`${environmentId}:${projectId}`);
 
   const byColumn = new Map<BoardColumn, EnvironmentThreadShell[]>();
   for (const thread of threads) {
@@ -326,7 +327,18 @@ export function BoardScreen() {
     }
   };
 
-  const scopedProject = scope === ALL_PROJECTS ? null : (projectByKey.get(scope) ?? null);
+  const scopedProjects = scope.flatMap((key) => projectByKey.get(key) ?? []);
+  const [onlyProject] = scopedProjects;
+  const toggleScope = (key: string) =>
+    setScope((current) =>
+      current.includes(key) ? current.filter((entry) => entry !== key) : [...current, key],
+    );
+  const toggleCollapsed = (target: BoardColumn) =>
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (!next.delete(target)) next.add(target);
+      return next;
+    });
   const columnCards = (target: BoardColumn) => {
     const list =
       target === "done" && !doneExpanded ? sorted.done.slice(0, DONE_LIMIT) : sorted[target];
@@ -356,7 +368,6 @@ export function BoardScreen() {
                 machine={machineOf(task.environmentId)}
                 title={task.title}
                 onOpen={() => openPendingTask(task)}
-                forward={{ label: "Open draft", onPress: () => openPendingTask(task) }}
               />
             ))
           : null}
@@ -376,21 +387,33 @@ export function BoardScreen() {
   const projectChip =
     projects.length > 1 ? (
       <View className="flex-row">
-        <ChoiceChip
-          label={scopedProject?.title ?? "All projects"}
-          accessibilityLabel="Choose project"
-          leading={scopedProject ? projectIcon(scopedProject, 16) : allProjectsIcon(16)}
-          options={[
-            { value: ALL_PROJECTS, label: "All projects", icon: allProjectsIcon(24) },
+        <ListFilterMenu
+          label={
+            scopedProjects.length === 0
+              ? "All projects"
+              : onlyProject && scopedProjects.length === 1
+                ? onlyProject.title
+                : `${scopedProjects.length} projects`
+          }
+          accessibilityLabel="Choose projects"
+          leading={
+            onlyProject && scopedProjects.length === 1
+              ? projectIcon(onlyProject, 16)
+              : allProjectsIcon(16)
+          }
+          active={scopedProjects.length > 0}
+          actionIcons={Object.fromEntries(
+            projects.map((project) => [projectKey(project), projectIcon(project, 24)] as const),
+          )}
+          actions={[
+            { id: "all", title: "All projects", state: scope.length === 0 ? "on" : "off" },
             ...projects.map((project) => ({
-              value: projectKey(project),
-              label: project.title,
-              icon: projectIcon(project, 24),
+              id: projectKey(project),
+              title: project.title,
+              state: scope.includes(projectKey(project)) ? ("on" as const) : ("off" as const),
             })),
           ]}
-          selected={scope}
-          active={scope !== ALL_PROJECTS}
-          onSelect={setScope}
+          onSelect={(id) => (id === "all" ? setScope([]) : toggleScope(id))}
         />
       </View>
     ) : null;
@@ -406,23 +429,72 @@ export function BoardScreen() {
             contentContainerClassName="gap-3 px-4 pb-4"
             showsHorizontalScrollIndicator={false}
           >
-            {BOARD_COLUMNS.map((target) => (
-              <View key={target} className="w-72 rounded-2xl bg-grouped-card">
-                <Text textRole="footnote" className="px-3 pt-2.5 pb-2 font-t3-bold">
-                  {BOARD_COLUMN_LABELS[target]}{" "}
-                  <Text textRole="footnote" className="text-foreground-muted">
-                    {count(target)}
-                  </Text>
-                </Text>
-                <RowScrollView
-                  className="flex-1"
-                  contentContainerClassName="px-2 pb-2"
-                  showsVerticalScrollIndicator={false}
+            {BOARD_COLUMNS.map((target) => {
+              const label = `${BOARD_COLUMN_LABELS[target]} ${count(target)}`;
+              return collapsed.has(target) ? (
+                <Pressable
+                  key={target}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Expand ${label}`}
+                  accessibilityState={{ expanded: false }}
+                  onPress={() => toggleCollapsed(target)}
+                  className="w-10 items-center rounded-2xl bg-grouped-card pt-3 active:opacity-70"
                 >
-                  {columnCards(target)}
-                </RowScrollView>
-              </View>
-            ))}
+                  <SymbolView
+                    name="chevron.right"
+                    size={14}
+                    tintColorClassName="accent-icon-subtle"
+                  />
+                  <View style={{ width: 20, height: 150, marginTop: 8 }}>
+                    <Text
+                      textRole="footnote"
+                      numberOfLines={1}
+                      className="font-t3-bold"
+                      style={{
+                        position: "absolute",
+                        width: 150,
+                        height: 20,
+                        left: -65,
+                        top: 65,
+                        textAlign: "left",
+                        transform: [{ rotate: "90deg" }],
+                      }}
+                    >
+                      {label}
+                    </Text>
+                  </View>
+                </Pressable>
+              ) : (
+                <View key={target} className="w-72 rounded-2xl bg-grouped-card">
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Collapse ${label}`}
+                    accessibilityState={{ expanded: true }}
+                    onPress={() => toggleCollapsed(target)}
+                    className="flex-row items-center gap-1.5 px-3 pt-2.5 pb-2 active:opacity-70"
+                  >
+                    <SymbolView
+                      name="chevron.down"
+                      size={14}
+                      tintColorClassName="accent-icon-subtle"
+                    />
+                    <Text textRole="footnote" className="font-t3-bold">
+                      {BOARD_COLUMN_LABELS[target]}{" "}
+                      <Text textRole="footnote" className="text-foreground-muted">
+                        {count(target)}
+                      </Text>
+                    </Text>
+                  </Pressable>
+                  <RowScrollView
+                    className="flex-1"
+                    contentContainerClassName="px-2 pb-2"
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {columnCards(target)}
+                  </RowScrollView>
+                </View>
+              );
+            })}
           </RowScrollView>
         </View>
       ) : (

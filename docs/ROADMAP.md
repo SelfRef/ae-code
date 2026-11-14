@@ -47,7 +47,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 | 14   | No git hooks: upstream's pre-commit hook, its `prepare` script and the `staged` config in `vite.config.ts` are removed (they need Node on the committing host)         | done    |
 | [13] | Memory: saved preferences and decisions agents on any provider can recall and save, in global, environment and project scopes synced over links, with Settings pages   | done    |
 | [12] | Edit the latest message in place: the prompt becomes an inline editor, saving rewinds the thread and resends (idea from MT Code)                                       | planned |
-| [11] | Board of threads in derived columns (Draft, Working, Review, In PR, Done, Parked) with merge and pull request steps, web, desktop, Android                             | partial |
+| [11] | Board of threads in derived columns (Draft, Working, Parked, Review, In PR, Done) with merge and pull request steps, web, desktop, Android                             | partial |
 | [10] | Self-hosted Android push: the server notifies through ntfy instead of the hosted relay                                                                                 | planned |
 | [9]  | Android app: AE Code package id, built and signed by the release workflow                                                                                              | done    |
 | [8]  | Docker image of the release server on GHCR                                                                                                                             | done    |
@@ -544,6 +544,12 @@ A thread is the task; there is no task entity and no stored status. User guide: 
   the new-task drafts the thread list shows as Unsent. No drag. The Android tablet rail holds five sections and the
   Settings list used to drop the rest in split view, which made a sixth enabled tab unreachable; overflow now follows
   the rail's capacity. iOS gets the tab through the shared code but is not tested (out of scope for the fork).
+- **Filters and layout:** the project filter is a multi-select (`/board?projects=[...]`, project keys, empty = all;
+  groups of the same repository toggle together) and every column collapses to a vertical strip (Parked starts
+  collapsed; a collapsed column still takes drops). A draft card has no button, the card itself opens it. Web and
+  desktop show `BoardMinimap` in the header: the columns in miniature with the visible part outlined, driven straight
+  from the scroller's DOM so scrolling never re-renders. Android has the multi-select (the menu closes after each
+  tap, a native menu limit) and collapsing in the side-by-side layout.
 - **Not built:** starting a draft from the board (the web send path is `useComposerSend`, 1,400 lines tied to the chat
   view; a text-only start could come later), merging a pull request from its card, a stored status and an agent tool
   (phase 3), and the Inbox (phase 1). Agents need no new tool: every move is one they already have (settle, merge,
