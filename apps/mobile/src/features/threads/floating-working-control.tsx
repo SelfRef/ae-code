@@ -150,6 +150,15 @@ export function FloatingWorkingControl(props: {
     capsuleWidth.set(first ? width : withTiming(width, CONTROL_TIMING));
   };
   const hasStatus = props.status !== null;
+  // Idle statuses (ship, lifecycle, ...) keep the preview buttons in their own pill beside the capsule.
+  const previewSeparate =
+    hasPreview &&
+    hasStatus &&
+    props.status?.kind !== "working" &&
+    props.status?.kind !== "compacting" &&
+    props.status?.kind !== "stop" &&
+    props.status?.kind !== "preparing" &&
+    props.status?.kind !== "syncing";
   const hasCapsule = hasStatus || hasQueue || hasAgents || hasPreview;
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- clears the Reanimated capsule width value and measured width when the status goes away
   useEffect(() => {
@@ -170,6 +179,7 @@ export function FloatingWorkingControl(props: {
   }
 
   const previewCompact =
+    previewSeparate ||
     hasStatus ||
     hasAgents ||
     hasQueue ||
@@ -186,7 +196,7 @@ export function FloatingWorkingControl(props: {
     action !== null ||
     hasQueue ||
     hasAgents ||
-    hasPreview;
+    (hasPreview && !previewSeparate);
   const statusContent =
     props.status !== null ? (
       <View
@@ -213,6 +223,21 @@ export function FloatingWorkingControl(props: {
         </View>
       </View>
     ) : null;
+
+  const previewContent = hasPreview ? (
+    <View
+      className="h-11 flex-row items-center"
+      onLayout={(event) => setPreviewWidth(settleWidth(event.nativeEvent.layout.width))}
+    >
+      {hasStatus && !previewSeparate ? <View className="h-4 w-px bg-border" /> : null}
+      {props.devicePreview !== null ? (
+        <DevicePreviewButton {...props.devicePreview} compact={previewCompact} />
+      ) : null}
+      {props.browserPreview !== null ? (
+        <BrowserPreviewButton {...props.browserPreview} compact={previewCompact} />
+      ) : null}
+    </View>
+  ) : null;
 
   const capsuleContent = (
     <View className="flex-row items-center">
@@ -253,20 +278,7 @@ export function FloatingWorkingControl(props: {
           </Pressable>
         </View>
       ) : null}
-      {hasPreview ? (
-        <View
-          className="h-11 flex-row items-center"
-          onLayout={(event) => setPreviewWidth(settleWidth(event.nativeEvent.layout.width))}
-        >
-          {hasStatus ? <View className="h-4 w-px bg-border" /> : null}
-          {props.devicePreview !== null ? (
-            <DevicePreviewButton {...props.devicePreview} compact={previewCompact} />
-          ) : null}
-          {props.browserPreview !== null ? (
-            <BrowserPreviewButton {...props.browserPreview} compact={previewCompact} />
-          ) : null}
-        </View>
-      ) : null}
+      {previewSeparate ? null : previewContent}
       {agents !== null ? (
         <Pressable
           accessibilityRole="button"
@@ -276,7 +288,9 @@ export function FloatingWorkingControl(props: {
           onLayout={(event) => setAgentsWidth(settleWidth(event.nativeEvent.layout.width))}
           className="h-11 flex-row items-center gap-1.5 px-3 active:opacity-70"
         >
-          {hasStatus || hasPreview ? <View className="absolute left-0 h-4 w-px bg-border" /> : null}
+          {hasStatus || (hasPreview && !previewSeparate) ? (
+            <View className="absolute left-0 h-4 w-px bg-border" />
+          ) : null}
           <SymbolView name="person.2" size={13} tintColorClassName="accent-foreground" />
           <Text className="font-t3-medium text-xs tabular-nums" numberOfLines={1}>
             {agents.label}
@@ -293,7 +307,7 @@ export function FloatingWorkingControl(props: {
           style={{ maxWidth: Math.min(overlayWidth, windowWidth) * 0.45 }}
           className="h-11 flex-row items-center gap-2 px-3 active:opacity-70"
         >
-          {hasStatus || hasPreview || hasAgents ? (
+          {hasStatus || (hasPreview && !previewSeparate) || hasAgents ? (
             <View className="absolute left-0 h-4 w-px bg-border" />
           ) : null}
           <SymbolView name="list.number" size={13} tintColorClassName="accent-foreground" />
@@ -331,6 +345,18 @@ export function FloatingWorkingControl(props: {
             {capsuleContent}
           </AnimatedGlassView>
 
+          {previewSeparate ? (
+            <AnimatedGlassView
+              colorScheme={props.colorScheme}
+              glassEffectStyle="regular"
+              isInteractive
+              className="h-11 items-center justify-center overflow-hidden rounded-full"
+              style={capsuleStyle}
+            >
+              {previewContent}
+            </AnimatedGlassView>
+          ) : null}
+
           <AnimatedGlassView
             colorScheme={props.colorScheme}
             glassEffectStyle={{ style: props.showScrollToEnd ? "regular" : "none", animate: true }}
@@ -355,6 +381,15 @@ export function FloatingWorkingControl(props: {
           >
             {capsuleContent}
           </Animated.View>
+
+          {previewSeparate ? (
+            <Animated.View
+              className="h-11 items-center justify-center overflow-hidden rounded-full border border-border bg-glass-fallback shadow-md shadow-black/10"
+              style={capsuleStyle}
+            >
+              {previewContent}
+            </Animated.View>
+          ) : null}
 
           <Animated.View
             pointerEvents={props.showScrollToEnd ? "auto" : "none"}
