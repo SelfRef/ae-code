@@ -1,1 +1,0 @@
-Merges into the default branch queue per repository until a merge being finished by the agent is done too, and a waiting merge says whose merge it is waiting for. The agent's turn holds the queue for at most 20 minutes.

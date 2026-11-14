@@ -1,1 +1,0 @@
-Android: a Board tab with the same columns and steps as the web board: columns side by side on tablets and unfolded phones, one at a time on phones. It starts last in the tab order; move it up in Settings → Navigation tabs.

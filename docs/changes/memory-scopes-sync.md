@@ -1,1 +1,0 @@
-Memory: a third scope, This environment, next to Global and One project; project memories follow the repository, global and project memories sync with linked environments over full-access links, memories can be moved between scopes, and Android has a Memory page in Settings.
