@@ -1,6 +1,5 @@
 import { GitManagerError, type GitCommandError } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
-import * as Semaphore from "effect/Semaphore";
 
 import type * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
 
@@ -56,9 +55,9 @@ export const resolveDefaultBranch = Effect.fn("GitManager.resolveDefaultBranch")
  * Fast-forwards the default branch to `branch` (rebasing `branch` onto it first when it moved),
  * and optionally pushes the default branch. Runs in the default branch's own checkout, whose
  * uncommitted edits stay unless the merge changes the same files; the thread's checkout is `cwd`
- * and is never switched.
+ * and is never switched. Callers hold the repository's merge lock (`mergeLock.ts`).
  */
-const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(function* (
+export const mergeIntoDefault = Effect.fn("GitManager.mergeIntoDefault")(function* (
   git: Git,
   input: {
     readonly cwd: string;
@@ -313,25 +312,4 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
     rebased,
     branchUpstream,
   };
-});
-
-const repositoryLocks = new Map<string, Semaphore.Semaphore>();
-
-/**
- * Merges run one at a time per repository, so threads merging at once queue instead of racing
- * each other's rebase and fast-forward.
- */
-export const mergeIntoDefault = Effect.fn("GitManager.mergeIntoDefault")(function* (
-  ...args: Parameters<typeof mergeIntoDefaultNow>
-) {
-  const [git, input] = args;
-  const common = yield* git.execute({
-    operation: "GitManager.mergeIntoDefault.repository",
-    cwd: input.cwd,
-    args: ["rev-parse", "--path-format=absolute", "--git-common-dir"],
-  });
-  const key = common.stdout.trim();
-  const lock = repositoryLocks.get(key) ?? Semaphore.makeUnsafe(1);
-  repositoryLocks.set(key, lock);
-  return yield* mergeIntoDefaultNow(...args).pipe(lock.withPermits(1));
 });

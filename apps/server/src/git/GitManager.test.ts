@@ -7157,5 +7157,55 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
         expect(Result.isFailure(declined)).toBe(true);
       }),
     );
+
+    it.effect("holds the merge lock through the hand-off turn, up to its cap", () =>
+      Effect.gen(function* () {
+        const { repoDir, worktreeDir, subjects } = yield* setupMerge;
+        NodeFS.writeFileSync(NodePath.join(repoDir, "thread.txt"), "main wrote this first\n");
+        yield* runGit(repoDir, ["add", "thread.txt"]);
+        yield* runGit(repoDir, ["commit", "-m", "Conflicting"]);
+        const second = NodePath.join(yield* makeTempDir("t3code-git-worktrees-"), "second");
+        yield* runGit(repoDir, ["worktree", "add", "-b", "feature/second", second, "main"]);
+        NodeFS.writeFileSync(NodePath.join(second, "second.txt"), "second work\n");
+        yield* runGit(second, ["add", "second.txt"]);
+        yield* runGit(second, ["commit", "-m", "Second work"]);
+        const { manager } = yield* makeManager();
+        const handedOff = yield* Deferred.make<void>();
+        const secondWaits = yield* Deferred.make<void>();
+
+        const first = yield* runStackedAction(
+          manager,
+          { cwd: worktreeDir, action: "merge" },
+          {
+            handOffMerge: () =>
+              Deferred.succeed(handedOff, undefined).pipe(Effect.andThen(Effect.never)),
+          },
+        ).pipe(Effect.result, Effect.forkChild);
+        yield* Deferred.await(handedOff);
+        const merged = yield* runStackedAction(
+          manager,
+          { cwd: second, action: "merge" },
+          {
+            actionId: "second",
+            progressReporter: {
+              publish: (event) =>
+                event.kind === "phase_started" && event.label.startsWith("Waiting for")
+                  ? Deferred.succeed(secondWaits, undefined).pipe(Effect.asVoid)
+                  : Effect.void,
+            },
+          },
+        ).pipe(Effect.forkChild);
+        yield* Deferred.await(secondWaits);
+        expect(yield* subjects(repoDir, "main")).toEqual(["Conflicting", "Initial commit"]);
+
+        yield* TestClock.adjust("20 minutes");
+        const timedOut = yield* Fiber.join(first);
+        expect(Result.isFailure(timedOut) ? String(timedOut.failure.message) : "").toContain(
+          "after 20 minutes",
+        );
+        expect((yield* Fiber.join(merged)).merge?.status).toBe("merged");
+        expect(yield* subjects(repoDir, "main")).toContain("Second work");
+      }),
+    );
   });
 });
