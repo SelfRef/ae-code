@@ -148,7 +148,7 @@ function ReleaseDetail(props: { readonly target: Target; readonly id: number }) 
   return (
     <View className="gap-4">
       <View className="gap-1">
-        <Text textRole="title" className="font-t3-bold">
+        <Text textRole="headline" className="font-t3-bold">
           {release.name || release.tagName}
         </Text>
         <Text textRole="footnote" className="text-foreground-muted">

@@ -170,7 +170,7 @@ function IssueDetail(props: { readonly target: Target; readonly number: number }
   return (
     <View className="gap-4">
       <View className="gap-1">
-        <Text textRole="title" className="font-t3-bold">
+        <Text textRole="headline" className="font-t3-bold">
           {issue.title}
         </Text>
         <Text textRole="footnote" className="text-foreground-muted">

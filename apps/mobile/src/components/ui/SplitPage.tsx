@@ -1,9 +1,12 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { BackHandler, View } from "react-native";
 
+import { useAdaptiveWorkspaceLayout } from "../../features/layout/adaptive-workspace-context";
+import { IconButton } from "./IconButton";
+
 /** Below this the page shows the list or the open item, not both. */
 export const SPLIT_PAGE_MIN_WIDTH = 640;
-const LIST_WIDTH = 380;
+const FALLBACK_LIST_WIDTH = 320;
 
 /**
  * A list with an open item beside it where the page is wide, such as unfolded or on a tablet, and
@@ -18,6 +21,9 @@ export function SplitPage(props: {
   readonly onCloseDetail: () => void;
 }) {
   const [width, setWidth] = useState<number | null>(null);
+  const [listHidden, setListHidden] = useState(false);
+  // The thread list's width, so the pages beside it share its proportions.
+  const listWidth = useAdaptiveWorkspaceLayout().layout.listPaneWidth ?? FALLBACK_LIST_WIDTH;
   const wide = width !== null && width >= SPLIT_PAGE_MIN_WIDTH;
   const { onCloseDetail } = props;
   const closesOnBack = props.open && !wide;
@@ -39,11 +45,22 @@ export function SplitPage(props: {
     >
       {width === null ? null : wide ? (
         <View className="flex-1 flex-row">
-          <View className="border-r border-border" style={{ width: LIST_WIDTH }}>
-            {props.list}
-          </View>
+          {listHidden ? null : (
+            <View className="border-r border-border" style={{ width: listWidth }}>
+              {props.list}
+            </View>
+          )}
           <View className="flex-1">
-            {props.open ? props.renderDetail(false) : props.emptyDetail}
+            <View className="flex-row px-2 pt-1">
+              <IconButton
+                accessibilityLabel={listHidden ? "Show list" : "Maximize content"}
+                icon="sidebar.left"
+                onPress={() => setListHidden((hidden) => !hidden)}
+              />
+            </View>
+            <View className="flex-1">
+              {props.open ? props.renderDetail(false) : props.emptyDetail}
+            </View>
           </View>
         </View>
       ) : props.open ? (

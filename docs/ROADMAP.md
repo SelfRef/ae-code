@@ -193,7 +193,7 @@ Built differently from the plan below, to stay small:
 - **Right panel**: an "Issues" tab (add menu, key `I`) lists and reads the thread's project issues beside the chat, same
   list and detail as the page. Offered when the thread's project is on GitHub.
 - **Android**: an Issues tab next to Threads, Pulls and Usage. `SplitPage` shows the open issue (or release) beside the list
-  once the page is 640 dp wide, such as unfolded, and replaces the list below that. Sort, state and "mine" chips match the web. Settings → Navigation chooses which tabs show; Pulls is
+  once the page is 640 dp wide, such as unfolded, and replaces the list below that. The list is as wide as the thread list and a button above the item hides it. Sort, state and "mine" chips match the web. Settings → Navigation chooses which tabs show; Pulls is
   hidden by default (the choice is saved once changed).
 - **Agent tools (phase C, landed ahead of the UI writes)**: `IssueProviderApi` gained `createIssue`, `updateIssue` and
   `commentOnIssue` (REST `POST/PATCH repos/o/r/issues`; an update first reads the issue and refuses a pull request, which the
