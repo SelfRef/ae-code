@@ -1620,3 +1620,17 @@ merged into the default branch.
   confirmation that says they are lost. For a branch in a linked worktree the server removes the worktree first (forced,
   so its uncommitted changes go too), then deletes the branch; the bulk **Delete merged** still skips worktree branches.
 - No data migration.
+
+## Web navigation rail (change 47)
+
+The sidebar footer's page icons (Settings, Board, Pull requests, Branches, Commits, Issues, Releases, Usage), the sidebar
+toggle and New thread move into a 3rem bar at the far left of the web and desktop shell (`AppNavRail`), from the `md`
+breakpoint up. The bar highlights the open page, so the footer's Back button is not needed there. Phones keep the footer
+icons, the header toggle and the header New thread button; the page list lives in one hook (`useAppNavItems`) and the New
+thread handler in another (`useNewThreadAction`).
+
+- On macOS the traffic lights fill the top row of the rail, so the toggle starts below them and the sidebar header and
+  collapsed page titles clear whatever of the lights reaches past the rail (`--workspace-titlebar-content-left`, now set
+  in `index.css` per breakpoint instead of inline).
+- Untested on macOS and Windows desktop.
+- No data migration.

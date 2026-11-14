@@ -120,6 +120,8 @@ export function SidebarThreadHeader({
               newThreadLabel
             )
           }
+          // The nav rail carries New thread from md up.
+          className="md:hidden"
           disabled={newThreadDisabled}
           onClick={onNewThread}
         >
