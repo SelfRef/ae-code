@@ -8,20 +8,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
-- Merges into the default branch queue per repository until a merge being finished by the agent is done too, and a waiting merge says whose merge it is waiting for. The agent's turn holds the queue for at most 20 minutes.
-- Android: a running source control action (merge, commit, pull request) shows in the status pill above the composer instead of a second pill at the top of the screen.
-- A failed rebase onto the default branch now lists the conflicting files, or git's own message when it was not a conflict.
-- Android: source control errors show in full with a dismiss button and stay for 20 seconds, instead of being cut to one line after 5.
-- Android: the tool calls and reasoning listed under an expanded work group are indented less.
-- Automatic pull no longer skips a default-branch checkout that has unpushed local commits: it rebases them onto the new upstream commits (and aborts, leaving the checkout as it was, on a conflict). A skipped pull is now logged with its reason.
-- Android: a new thread started in a chosen project keeps that project after you type and go back to the list, instead of showing up under another one.
-- Android: every project picker shows the project icons: the Issues, Branches and Releases chips and their menus, the scheduled task project row, the New thread long-press menu, the project in the new chat heading, and the Board's project filter.
-- Android: a Board tab with the same columns and steps as the web board: columns side by side on tablets and unfolded phones, one at a time on phones. It starts last in the tab order; move it up in Settings → Navigation tabs.
-- Android tablets: a navigation tab past the rail's first five now opens from the top of Settings, as on phones, instead of being unreachable.
-- Board (web and desktop): your threads as cards in Draft, Working, Review, In PR, Done and Parked columns, with buttons (and drag) to move each one on: merge into the default branch or open a pull request, settle, un-settle, wake. Open it from the sidebar, the command palette or Ctrl+Alt+K.
-- Merging into the default branch no longer fails with "Could not run the pre-merge action: Project was not found" when no project overrides a setting.
-- Android: the device and browser buttons sit in their own pill beside the Merge, Commit and other idle status buttons, instead of inside the same pill.
-- Android: the device and browser previews share one bar. A hand button switches between view only and controlling alongside the agent (the browser's separate "Take control" strip is gone); the browser bar holds close, back, address and the menu, with forward, reload and tabs moved into the menu; the device's Home button moved into its menu next to Back and App switcher.
+Notes for the next release are the files in [changes/](changes/), one per change.
 
 ## [v2026.11.13.9] - 2026-11-13
 
