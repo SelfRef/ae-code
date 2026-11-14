@@ -148,7 +148,11 @@ export function ThreadDetailsCard({
       onContextMenu={onContextMenu}
       data-thread-details-card
     >
-      <ScrollArea scrollFade className="min-h-0">
+      {/* The card only scrolls vertically; a row that overhangs by a pixel must not add a horizontal bar. */}
+      <ScrollArea
+        scrollFade
+        className="min-h-0 [&>[data-slot=scroll-area-viewport]]:overflow-x-hidden [&>[data-slot=scroll-area-scrollbar][data-orientation=horizontal]]:hidden"
+      >
         <div ref={setContentElement}>{children(density)}</div>
       </ScrollArea>
     </div>
