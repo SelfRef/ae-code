@@ -11,11 +11,13 @@ import {
   type PreviewViewportSetting,
 } from "@t3tools/contracts";
 import { PREVIEW_VIEWPORT_PRESETS } from "@t3tools/shared/previewViewport";
+import type { PreviewStreamInput } from "@t3tools/client-runtime/preview/server-browser-stream";
 
 import { ControlPill } from "../../components/ui/ControlPill";
 import { Menu } from "../../components/ui/Menu";
 import { previewEnvironment } from "../../state/preview";
 import { useAtomCommand } from "../../state/use-atom-command";
+import { browserTabTitle, browserTabUrl } from "./browserTabs";
 
 const APPEARANCES = [
   { id: "system", title: "System" },
@@ -41,12 +43,19 @@ const VIEWPORTS = [
 export function BrowserTabMenu({
   environmentId,
   tab,
+  tabs,
+  onSelectTab,
   streaming,
+  onCommand,
   onPaste,
 }: {
   readonly environmentId: EnvironmentId;
   readonly tab: PreviewSessionSnapshot;
+  readonly tabs: ReadonlyArray<PreviewSessionSnapshot>;
+  readonly onSelectTab: (tabId: string) => void;
   readonly streaming: boolean;
+  /** Present while this viewer can drive the page. */
+  readonly onCommand?: (input: PreviewStreamInput) => void;
   readonly onPaste?: () => void;
 }) {
   const adjust = useAtomCommand(previewEnvironment.adjust, "browser tab change");
@@ -74,7 +83,35 @@ export function BrowserTabMenu({
     image: "xmark",
     attributes: { destructive: true, disabled: !canClose },
   };
+  const tabsAction: MenuAction[] =
+    tabs.length > 1
+      ? [
+          {
+            id: "tabs",
+            title: "Tabs",
+            image: "square.on.square",
+            subactions: tabs.map((entry) => ({
+              id: `tab:${entry.tabId}`,
+              title: browserTabTitle(entry),
+              subtitle: browserTabUrl(entry),
+              state: entry.tabId === tab.tabId ? "on" : "off",
+            })),
+          },
+        ]
+      : [];
   const actions: MenuAction[] = [
+    ...tabsAction,
+    ...(onCommand
+      ? [
+          {
+            id: "forward",
+            title: "Forward",
+            image: "chevron.right",
+            attributes: { disabled: !tab.canGoForward },
+          },
+          { id: "reload", title: "Reload", image: "arrow.clockwise" },
+        ]
+      : []),
     ...(onPaste ? [{ id: "paste", title: "Paste", image: "doc.on.clipboard" }] : []),
     { id: "hard-reload", title: "Hard reload", image: "arrow.clockwise.circle" },
     {
@@ -131,6 +168,9 @@ export function BrowserTabMenu({
       });
       return;
     }
+    if (id.startsWith("tab:")) return onSelectTab(id.slice("tab:".length));
+    if (id === "forward") return onCommand?.({ type: "history", delta: 1 });
+    if (id === "reload") return onCommand?.({ type: "reload" });
     if (id === "paste") return onPaste?.();
     if (id === "hard-reload") return void run({ hardReload: true });
     if (id === "zoom:in") return void run({ zoomFactor: zoomTo(1) });
@@ -162,7 +202,7 @@ export function BrowserTabMenu({
       accessible
       accessibilityLabel="Browser tab options"
       accessibilityRole="button"
-      actions={streaming ? actions : [closeAction]}
+      actions={streaming ? actions : [...tabsAction, closeAction]}
       onPressAction={({ nativeEvent }) => onAction(nativeEvent.event)}
     >
       <ControlPill icon="ellipsis" accessibilityLabel="Browser tab options" />

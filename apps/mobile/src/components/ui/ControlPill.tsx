@@ -141,3 +141,20 @@ export function ControlPill(props: {
     </Pressable>
   );
 }
+
+/** The two-way input switch shared by the device and browser previews: view only, or control alongside the agent. */
+export function ControlToggle(props: {
+  readonly viewOnly: boolean;
+  readonly onChange: (viewOnly: boolean) => void;
+  readonly disabled?: boolean;
+}) {
+  return (
+    <ControlPill
+      icon="hand.point.up.left"
+      variant={props.viewOnly ? "circle" : "primary"}
+      accessibilityLabel={props.viewOnly ? "Take control" : "Stop controlling"}
+      disabled={props.disabled}
+      onPress={() => props.onChange(!props.viewOnly)}
+    />
+  );
+}

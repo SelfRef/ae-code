@@ -1,4 +1,4 @@
-import { SheetHeader } from "../../components/ui/SheetHeader";
+import { SheetCloseButton } from "../../components/ui/SheetHeader";
 import { AppBar } from "../../components/ui/AppBar";
 import { AppActivityIndicator } from "../../components/ui/AppActivityIndicator";
 import * as Dialog from "../../components/ui/Dialog";
@@ -10,7 +10,12 @@ import { useEffect, useRef, useState } from "react";
 import { Platform, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ControlPill } from "../../components/ui/ControlPill";
+import { ControlPill, ControlToggle } from "../../components/ui/ControlPill";
+import {
+  previewStreamControlInput,
+  type PreviewStreamControl,
+  type PreviewStreamInput,
+} from "@t3tools/client-runtime/preview/server-browser-stream";
 import { useAppForeground } from "../../lib/appState";
 
 import { useThreadServerBrowserTabs } from "../../state/preview";
@@ -68,7 +73,7 @@ export function BrowserPreviewScreen({
   const [selectedTabId, setSelectedTabId] = useState(initialTabId);
   const [pictureInPicture, setPictureInPicture] = useState(NO_PICTURE_IN_PICTURE);
   const [streaming, setStreaming] = useState(false);
-  const [canControl, setCanControl] = useState(false);
+  const [control, setControl] = useState<PreviewStreamControl | null>(null);
   const streamRef = useRef<PreviewStreamRef>(null);
   const { tabs, loaded } = useThreadServerBrowserTabs({ environmentId, threadId, enabled: true });
   const tab = tabs.find((entry) => entry.tabId === selectedTabId) ?? latestBrowserTab(tabs);
@@ -92,25 +97,15 @@ export function BrowserPreviewScreen({
     setSelectedTabId(next);
   };
   const live = (focused && foreground) || pictureInPicture.active;
-  const tabMenus =
-    tabs.length > 1
-      ? [
-          {
-            title: "Tabs",
-            icon: "square.on.square" as const,
-            items: tabs.map((entry) => ({
-              id: entry.tabId,
-              title: browserTabTitle(entry),
-              subtitle: browserTabUrl(entry),
-              selected: entry.tabId === tabId,
-              onPress: () => selectTab(entry.tabId),
-            })),
-          },
-        ]
-      : [];
+  const viewOnly = control?.controller !== "you";
+  const canCommand = streaming && !viewOnly;
+  const command = (input: PreviewStreamInput) => streamRef.current?.command(input);
 
   return (
-    <View className="flex-1 bg-sheet" style={{ paddingBottom: insets.bottom }}>
+    <View
+      className="flex-1 bg-sheet"
+      style={{ paddingTop: onMaximize ? 0 : insets.top, paddingBottom: insets.bottom }}
+    >
       {onMaximize ? (
         <AppBar
           title={tab ? browserTabTitle(tab) : "Browser"}
@@ -121,65 +116,76 @@ export function BrowserPreviewScreen({
               onPress: () => onMaximize(tabId),
             },
           ]}
-          menus={tabMenus}
         />
-      ) : (
-        <SheetHeader
-          title={tab ? browserTabTitle(tab) : "Browser"}
-          onClose={onClose}
-          accessibilityLabel="Close browser"
-          actions={
-            // Android WebView cannot play video in picture in picture.
-            Platform.OS === "ios" &&
-            pictureInPicture.supported &&
-            (pictureInPicture.active || pdfUri === null)
-              ? [
-                  {
-                    accessibilityLabel: pictureInPicture.active
-                      ? "Exit picture in picture"
-                      : "Picture in picture",
-                    icon: {
-                      ios: pictureInPicture.active ? "pip.exit" : "pip.enter",
-                      android: "visibility",
-                    },
-                    selected: pictureInPicture.active,
-                    onPress: () => streamRef.current?.togglePictureInPicture(),
-                  },
-                ]
-              : []
-          }
-          menus={tabMenus}
-        />
-      )}
-      {tab ? (
-        <>
+      ) : null}
+      <View className="flex-row items-center gap-1 px-2 py-2">
+        {onMaximize ? null : (
+          <SheetCloseButton accessibilityLabel="Close browser" onClose={onClose} />
+        )}
+        {tab ? (
           <BrowserAddressBar
             key={`address:${tab.tabId}`}
+            tab={tab}
+            ready={canCommand}
+            onCommand={command}
+          />
+        ) : (
+          <View className="flex-1" />
+        )}
+        {
+          // Android WebView cannot play video in picture in picture.
+          Platform.OS === "ios" &&
+          pictureInPicture.supported &&
+          (pictureInPicture.active || pdfUri === null) ? (
+            <ControlPill
+              accessibilityLabel={
+                pictureInPicture.active ? "Exit picture in picture" : "Picture in picture"
+              }
+              icon={{
+                ios: pictureInPicture.active ? "pip.exit" : "pip.enter",
+                android: "visibility",
+              }}
+              onPress={() => streamRef.current?.togglePictureInPicture()}
+            />
+          ) : null
+        }
+        {control?.canOperate ? (
+          <ControlToggle
+            viewOnly={viewOnly}
+            disabled={control.controller === "another-viewer"}
+            onChange={(next) => command(previewStreamControlInput[next ? "view" : "share"])}
+          />
+        ) : null}
+        {tab ? (
+          <BrowserTabMenu
             environmentId={environmentId}
             tab={tab}
+            tabs={tabs}
+            onSelectTab={selectTab}
             streaming={streaming}
-            ready={streaming && canControl}
-            onCommand={(input) => streamRef.current?.command(input)}
-            onPaste={() => streamRef.current?.paste()}
+            onCommand={canCommand ? command : undefined}
+            onPaste={canCommand ? () => streamRef.current?.paste() : undefined}
           />
-          {live ? (
-            <PreviewStreamWebView
-              key={`stream:${tab.tabId}`}
-              environmentId={environmentId}
-              threadId={threadId}
-              tabId={tab.tabId}
-              pdfUri={pdfUri}
-              ref={streamRef}
-              interactive
-              background={themeVariables["--color-sheet-solid"]}
-              onPictureInPicture={onPictureInPicture}
-              onStreamingChange={setStreaming}
-              onControl={(control) => setCanControl(control?.controller === "you")}
-            />
-          ) : (
-            <View className="flex-1" />
-          )}
-        </>
+        ) : null}
+      </View>
+      {tab ? (
+        live ? (
+          <PreviewStreamWebView
+            key={`stream:${tab.tabId}`}
+            environmentId={environmentId}
+            threadId={threadId}
+            tabId={tab.tabId}
+            pdfUri={pdfUri}
+            ref={streamRef}
+            interactive
+            background={themeVariables["--color-sheet-solid"]}
+            onPictureInPicture={onPictureInPicture}
+            onStreamingChange={setStreaming}
+            onControl={setControl}
+          />
+        ) : (
+          <View className="flex-1" />
+        )
       ) : (
         <View className="flex-1 items-center justify-center">
           {focused && foreground ? (
@@ -192,19 +198,13 @@ export function BrowserPreviewScreen({
 }
 
 function BrowserAddressBar({
-  environmentId,
   tab,
   ready,
-  streaming,
   onCommand,
-  onPaste,
 }: {
-  readonly environmentId: EnvironmentId;
   readonly tab: PreviewSessionSnapshot;
   readonly ready: boolean;
-  readonly streaming: boolean;
   readonly onCommand: PreviewStreamRef["command"];
-  readonly onPaste: () => void;
 }) {
   const url = browserTabUrl(tab);
   const [draft, setDraft] = useState<string | null>(null);
@@ -218,18 +218,12 @@ function BrowserAddressBar({
     }
   };
   return (
-    <View className="flex-row items-center gap-1 px-2 pb-2">
+    <>
       <ControlPill
         icon="chevron.left"
         accessibilityLabel="Back"
         disabled={!ready || !tab.canGoBack}
         onPress={() => onCommand({ type: "history", delta: -1 })}
-      />
-      <ControlPill
-        icon="chevron.right"
-        accessibilityLabel="Forward"
-        disabled={!ready || !tab.canGoForward}
-        onPress={() => onCommand({ type: "history", delta: 1 })}
       />
       <TextInput
         accessibilityLabel="Address"
@@ -248,18 +242,6 @@ function BrowserAddressBar({
         lineBreakModeIOS="tail"
         className="h-10 min-w-0 flex-1 rounded-full border border-input-border bg-input px-4 font-sans text-sm text-foreground"
       />
-      <ControlPill
-        icon="arrow.clockwise"
-        accessibilityLabel="Reload page"
-        disabled={!ready}
-        onPress={() => onCommand({ type: "reload" })}
-      />
-      <BrowserTabMenu
-        environmentId={environmentId}
-        tab={tab}
-        streaming={streaming}
-        onPaste={ready ? onPaste : undefined}
-      />
-    </View>
+    </>
   );
 }

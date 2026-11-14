@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppActivityIndicator } from "../../components/ui/AppActivityIndicator";
 import { AppText } from "../../components/ui/AppText";
-import { ControlPill } from "../../components/ui/ControlPill";
+import { ControlPill, ControlToggle } from "../../components/ui/ControlPill";
 import { Menu } from "../../components/ui/Menu";
 import { GlassSurface } from "../../components/ui/GlassSurface";
 import {
@@ -215,6 +215,17 @@ export function DevicePreviewScreen({
         setStreamAttempt((attempt) => attempt + 1);
       },
     },
+    ...(desktop
+      ? []
+      : [
+          {
+            id: "home",
+            title: "Home",
+            icon: "house" as const,
+            disabled: !inputEnabled,
+            onPress: () => streamRef.current?.home(),
+          },
+        ]),
     ...(preview?.session.platform === "android"
       ? [
           {
@@ -256,7 +267,6 @@ export function DevicePreviewScreen({
       onPress: () => void shutDownDevice(),
     },
   ];
-  const pressHome = () => streamRef.current?.home();
   const menuItems: AppBarMenuItem[] = [
     ...(previews.length > 1
       ? [
@@ -274,15 +284,6 @@ export function DevicePreviewScreen({
           },
         ]
       : []),
-    {
-      id: "input",
-      title: "Input",
-      inline: true,
-      items: [
-        { id: "input-view", title: "View only", selected: viewOnly },
-        { id: "input-control", title: "Take control", selected: !viewOnly },
-      ].map((item) => ({ ...item, onPress: () => setViewOnly(item.id === "input-view") })),
-    },
     ...controls,
   ];
   return (
@@ -338,14 +339,7 @@ export function DevicePreviewScreen({
           className="flex-row items-center justify-center gap-2 px-3 py-2"
           style={{ paddingBottom: Math.max(insets.bottom, 8) }}
         >
-          {desktop ? null : (
-            <ControlPill
-              accessibilityLabel="Home"
-              icon="house"
-              disabled={!inputEnabled}
-              onPress={pressHome}
-            />
-          )}
+          <ControlToggle viewOnly={viewOnly} onChange={setViewOnly} />
           <DeviceOptionsMenu items={menuItems} />
         </View>
       ) : controlsVisible ? (
@@ -368,14 +362,7 @@ export function DevicePreviewScreen({
               <AppText numberOfLines={1} className="flex-1 text-center font-t3-medium text-base">
                 {preview?.name ?? "Devices"}
               </AppText>
-              {desktop ? null : (
-                <ControlPill
-                  accessibilityLabel="Home"
-                  icon="house"
-                  disabled={!inputEnabled}
-                  onPress={pressHome}
-                />
-              )}
+              <ControlToggle viewOnly={viewOnly} onChange={setViewOnly} />
               <DeviceOptionsMenu items={menuItems} />
             </GlassSurface>
           </View>
