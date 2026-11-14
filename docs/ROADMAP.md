@@ -46,7 +46,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 | 14   | No git hooks: upstream's pre-commit hook, its `prepare` script and the `staged` config in `vite.config.ts` are removed (they need Node on the committing host)         | done    |
 | [13] | Memory: saved preferences and decisions agents on any provider can recall and save, with a Settings page (modelled on GOAT's, cut down)                                | done    |
 | [12] | Edit the latest message in place: the prompt becomes an inline editor, saving rewinds the thread and resends (idea from MT Code)                                       | planned |
-| [11] | Board of threads in derived columns (Draft, Working, Review, In PR, Done, Parked) with merge and pull request steps, web and desktop; Inbox planned                    | partial |
+| [11] | Board of threads in derived columns (Draft, Working, Review, In PR, Done, Parked) with merge and pull request steps, web, desktop, Android                             | partial |
 | [10] | Self-hosted Android push: the server notifies through ntfy instead of the hosted relay                                                                                 | planned |
 | [9]  | Android app: AE Code package id, built and signed by the release workflow                                                                                              | done    |
 | [8]  | Docker image of the release server on GHCR                                                                                                                             | done    |
@@ -534,6 +534,11 @@ A thread is the task; there is no task entity and no stored status. User guide: 
 - **Entry points** (web and desktop): `/board`, a sidebar button, **Open board** in the command palette, and
   `board.open` (`mod+alt+k`, a new keybinding command). Below the `md` breakpoint a row of column tabs shows one
   column at full width (`NarrowColumnContext`), like the Android phone layout.
+- **Android**: a `board` navigation tab (`features/board/BoardScreen.tsx`), last in the default order so existing tab
+  layouts do not shift. Columns side by side in a pane at least 700 dp wide, else one at a time behind a row of column chips; the same resolver and planner; cards name the machine when more than one is saved; the drafts are
+  the new-task drafts the thread list shows as Unsent. No drag. The Android tablet rail holds five sections and the
+  Settings list used to drop the rest in split view, which made a sixth enabled tab unreachable; overflow now follows
+  the rail's capacity. iOS gets the tab through the shared code but is not tested (out of scope for the fork).
 - **Not built:** starting a draft from the board (the web send path is `useComposerSend`, 1,400 lines tied to the chat
   view; a text-only start could come later), merging a pull request from its card, a stored status and an agent tool
   (phase 3), and the Inbox (phase 1). Agents need no new tool: every move is one they already have (settle, merge,
@@ -547,8 +552,8 @@ A thread is the task; there is no task entity and no stored status. User guide: 
 2. **Manual status and agent tool (only if the board falls short).** A status field on the thread and an MCP tool
    through which the agent sets it with a one-line note. This changes the contract, so every surface follows.
 
-Rebase cost: new files (`board.ts`, `components/board/*`, the route) and a few lines in the sidebar chrome, command
-palette, shortcuts and keybinding lists.
+Rebase cost: new files (`board.ts`, `components/board/*`, the route, `features/board/*`) and a few lines in the
+sidebar chrome, command palette, shortcuts, keybinding lists and the mobile navigation tab lists.
 
 ## Edit the latest message in place (change 12)
 

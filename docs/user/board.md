@@ -5,6 +5,9 @@ The board shows your threads as cards in columns, from an idea to shipped work. 
 `Ctrl+Alt+K` (`Cmd+Alt+K` on macOS). Pick a project at the top right, or keep **All projects**. On a
 narrow window the board shows one column at a time; pick it from the row of columns above it.
 
+On Android, **Board** is a navigation tab. It starts at the end of the tab list, so it opens from the
+top of **Settings** until you move it up in **Settings → Navigation tabs**. Tablets and unfolded phones show the columns side by side; a phone shows one column at a time, picked from the row of columns above it.
+
 A card's column follows what the thread is doing, so it never disagrees with the thread. The
 buttons on a card do what the thread itself would: settle, un-settle, wake, merge, open a pull
 request.

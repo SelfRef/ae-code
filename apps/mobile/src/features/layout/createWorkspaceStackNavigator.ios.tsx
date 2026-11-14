@@ -364,9 +364,17 @@ function WorkspaceColumns(
         if (workspace.some((route) => route.name !== "Home" && route.name !== "Settings")) return;
         const tab = workspace.some((route) => route.name === "Settings")
           ? "settings"
-          : (["threads", "branches", "issues", "releases", "pullRequests", "usage"] as const).find(
-              (candidate) => workspaceTabs?.isTabActive(candidate),
-            );
+          : (
+              [
+                "threads",
+                "board",
+                "branches",
+                "issues",
+                "releases",
+                "pullRequests",
+                "usage",
+              ] as const
+            ).find((candidate) => workspaceTabs?.isTabActive(candidate));
         openWorkspaceTab(tab ?? "threads", { columns: true });
       }}
       preferredDisplayMode={

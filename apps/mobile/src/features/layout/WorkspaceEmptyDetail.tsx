@@ -17,6 +17,7 @@ export function WorkspaceEmptyDetail(props: {
   const settings = props.tab === "settings";
   if (
     props.tab === "usage" ||
+    props.tab === "board" ||
     props.tab === "branches" ||
     props.tab === "issues" ||
     props.tab === "releases"

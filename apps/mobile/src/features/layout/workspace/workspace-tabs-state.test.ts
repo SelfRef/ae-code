@@ -73,6 +73,7 @@ describe("workspace root navigation", () => {
       "releases",
       "pullRequests",
       "usage",
+      "board",
     ]);
     expect(resolveWorkspaceTabOrder(["home", "usage", "issues", "threads"])).toEqual([
       "usage",
@@ -81,6 +82,7 @@ describe("workspace root navigation", () => {
       "branches",
       "releases",
       "pullRequests",
+      "board",
     ]);
   });
 
