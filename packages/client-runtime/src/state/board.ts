@@ -15,20 +15,20 @@ import { effectiveSnoozed, type ThreadSnoozeShell } from "./threadSettled.ts";
 export const BOARD_COLUMNS = [
   "draft",
   "working",
+  "parked",
   "review",
   "pull_request",
   "done",
-  "parked",
 ] as const;
 export type BoardColumn = (typeof BOARD_COLUMNS)[number];
 
 export const BOARD_COLUMN_LABELS: Record<BoardColumn, string> = {
   draft: "Draft",
   working: "Working",
+  parked: "Parked",
   review: "Review",
   pull_request: "In PR",
   done: "Done",
-  parked: "Parked",
 };
 
 export type BoardThreadInput = ThreadSnoozeShell &
@@ -100,12 +100,12 @@ const SETTLE: BoardMove = { kind: "settle", label: "Settle" };
 /**
  * The step that moves a card to the next column. Review follows the project's workflow: a branch
  * merges into the default branch, or, with `currentBranchAction: pull_request`, opens a pull request.
- * Null when nothing moves it (the agent is working) or git status is still loading.
+ * Null when nothing moves it (a draft opens from its card, the agent is working) or git status is still loading.
  */
 export function planBoardForward(input: BoardForwardInput): BoardMove | null {
   switch (input.column) {
     case "draft":
-      return { kind: "open", label: "Open draft" };
+      return null;
     case "working":
       return input.needsYou ? { kind: "open", label: "Answer" } : null;
     case "pull_request":

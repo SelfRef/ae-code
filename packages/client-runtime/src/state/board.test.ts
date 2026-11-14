@@ -172,6 +172,7 @@ describe("planBoardForward", () => {
       review(status({ isDefaultRef: true, hasWorkingTreeChanges: true })),
       "git:commit:Commit",
     ],
+    ["draft", { ...review(status()), column: "draft" }, null],
     ["working", { ...review(status()), column: "working" }, null],
     ["needs you", { ...review(status()), column: "working", needsYou: true }, "open"],
     ["parked", { ...review(status()), column: "parked" }, "wake"],
