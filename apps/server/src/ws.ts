@@ -223,6 +223,7 @@ import { linkCreatedPullRequest } from "./git/linkCreatedPullRequest.ts";
 import * as ReviewService from "./review/ReviewService.ts";
 import * as ProjectEnrichmentService from "./project/ProjectEnrichmentService.ts";
 import * as ProjectService from "./project/ProjectService.ts";
+import { releaseIdleDeviceHoldersFor } from "./device/releaseIdleDeviceHolders.ts";
 import { threadWorkspaceRoot } from "./project/threadWorkspaceRoot.ts";
 import * as ManagedProjectFolders from "./project/ManagedProjectFolders.ts";
 import * as ScratchThreadPromotion from "./project/ScratchThreadPromotion.ts";
@@ -3292,7 +3293,8 @@ export const layerWsRpc = (
                     : deviceService.list,
               ),
         [WS_METHODS.deviceOpen]: (input) =>
-          threadWorkspaceRoot(input.threadId).pipe(
+          releaseIdleDeviceHoldersFor(input).pipe(
+            Effect.andThen(threadWorkspaceRoot(input.threadId)),
             Effect.flatMap((workspaceRoot) => deviceService.open(input, { workspaceRoot })),
           ),
         [WS_METHODS.deviceClose]: (input) => deviceService.close(input),
