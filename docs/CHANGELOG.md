@@ -19,6 +19,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 - Board (web and desktop): your threads as cards in Draft, Working, Review, In PR, Done and Parked columns, with buttons (and drag) to move each one on: merge into the default branch or open a pull request, settle, un-settle, wake. Open it from the sidebar, the command palette or Ctrl+Alt+K.
 - Merging into the default branch no longer fails with "Could not run the pre-merge action: Project was not found" when no project overrides a setting.
 - Android: the device and browser buttons sit in their own pill beside the Merge, Commit and other idle status buttons, instead of inside the same pill.
+- Android: the device and browser previews share one bar. A hand button switches between view only and controlling alongside the agent (the browser's separate "Take control" strip is gone); the browser bar holds close, back, address and the menu, with forward, reload and tabs moved into the menu; the device's Home button moved into its menu next to Back and App switcher.
 
 ## [v2026.11.13.9] - 2026-11-13
 

@@ -3,12 +3,8 @@ import { AppActivityIndicator } from "../../components/ui/AppActivityIndicator";
 import * as Dialog from "../../components/ui/Dialog";
 import previewStreamScript from "@t3tools/mobile-preview-stream";
 import {
-  previewStreamControlInput,
-  previewStreamControlLabel,
-  previewStreamControlMode,
   previewStreamHostSetupMessage,
   type PreviewStreamControl,
-  type PreviewStreamControlMode,
   type PreviewStreamDownload,
   type PreviewStreamFileChooser,
   type PreviewStreamInput,
@@ -27,7 +23,6 @@ import { WebView } from "react-native-webview";
 import * as Clipboard from "expo-clipboard";
 
 import { AppText } from "../../components/ui/AppText";
-import { SegmentedControl } from "../../components/ui/SegmentedControl";
 import { PdfPreview } from "../../components/PdfPreview";
 import { downloadAndShareAttachment } from "../../lib/attachmentDownload";
 import { beginForegroundHandoff } from "../../lib/foreground-handoff";
@@ -114,12 +109,6 @@ function offerDownload(download: PreviewStreamDownload) {
 }
 
 const MAX_REFUSALS = 3;
-
-const CONTROL_OPTIONS: readonly { value: PreviewStreamControlMode; label: string }[] = [
-  { value: "view", label: "View only" },
-  { value: "control", label: "Take control" },
-  { value: "share", label: "Share control" },
-];
 
 export function PreviewStreamWebView(
   props: Omit<PreviewStreamConfiguration, "access"> &
@@ -333,27 +322,6 @@ function PreviewStreamDocumentView({
   };
   return (
     <View className="flex-1" style={{ backgroundColor: background }}>
-      {!compact ? (
-        <View className="gap-2 border-b border-secondary-border px-3 py-2">
-          <AppText className="text-xs text-foreground-muted">
-            {previewStreamControlLabel(control)}
-          </AppText>
-          {control?.canOperate ? (
-            <View
-              pointerEvents={control.controller === "another-viewer" ? "none" : "auto"}
-              className={control.controller === "another-viewer" ? "opacity-50" : undefined}
-            >
-              <SegmentedControl
-                size="compact"
-                role="button"
-                options={CONTROL_OPTIONS}
-                selected={previewStreamControlMode(control)}
-                onSelect={(mode) => command(previewStreamControlInput[mode])}
-              />
-            </View>
-          ) : null}
-        </View>
-      ) : null}
       <View className="relative flex-1">
         <WebView<object>
           ref={webView}

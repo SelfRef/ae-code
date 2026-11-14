@@ -636,7 +636,7 @@ const RootStackConfig = createWorkspaceStackNavigator({
     ThreadBrowserPreview: createNativeStackScreen({
       screen: BrowserPreviewRouteScreen,
       linking: `${THREAD_LINKING_PREFIX}/browser`,
-      options: { ...modalRoute({ header: "solid" }), gestureEnabled: false },
+      options: immersiveRoute(),
     }),
     ThreadReview: createNativeStackScreen({
       screen: ReviewSheet,
@@ -661,7 +661,7 @@ const RootStackConfig = createWorkspaceStackNavigator({
     ThreadMcpApp: createNativeStackScreen({
       screen: McpAppFullscreenScreen,
       linking: `${THREAD_LINKING_PREFIX}/apps/:itemId`,
-      options: { ...modalRoute({ header: "solid" }), gestureEnabled: false },
+      options: immersiveRoute(),
     }),
     ThreadAttachment: createNativeStackScreen({
       screen: AttachmentFileScreen,
