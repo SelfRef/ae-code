@@ -19,6 +19,7 @@ export function BoardMinimap(props: { readonly scroller: HTMLElement | null }) {
   const [blocks, setBlocks] = useState(NO_BLOCKS);
   const [scrollable, setScrollable] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
 
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- mirrors the scroller's layout and scroll position, which only the DOM knows
   useEffect(() => {
@@ -42,11 +43,23 @@ export function BoardMinimap(props: { readonly scroller: HTMLElement | null }) {
       );
       place();
     };
+    // The board snaps to columns, which would pull every drag step back to a column edge.
+    const track = trackRef.current;
+    const snap = (value: "none" | "") => () => void (scroller.style.scrollSnapType = value);
+    const unsnap = snap("none");
+    const resnap = snap("");
+    track?.addEventListener("pointerdown", unsnap);
+    track?.addEventListener("pointerup", resnap);
+    track?.addEventListener("pointercancel", resnap);
     const stopObserving = observeResize([scroller, ...scroller.children], measure);
     scroller.addEventListener("scroll", place, { passive: true });
     measure();
     return () => {
       stopObserving();
+      track?.removeEventListener("pointerdown", unsnap);
+      track?.removeEventListener("pointerup", resnap);
+      track?.removeEventListener("pointercancel", resnap);
+      resnap();
       scroller.removeEventListener("scroll", place);
     };
   }, [scroller]);
@@ -60,6 +73,7 @@ export function BoardMinimap(props: { readonly scroller: HTMLElement | null }) {
 
   return (
     <div
+      ref={trackRef}
       aria-hidden
       data-testid="board-minimap"
       className="relative hidden h-7 w-32 shrink-0 cursor-pointer touch-none rounded-md border bg-muted/40 [-webkit-app-region:no-drag] data-[scrollable=true]:md:block"
