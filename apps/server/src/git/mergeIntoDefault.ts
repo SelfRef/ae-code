@@ -217,8 +217,13 @@ const mergeIntoDefaultNow = Effect.fn("GitManager.mergeIntoDefault.run")(functio
       });
       if (rebase.exitCode !== 0) {
         yield* run("rebase-abort", cwd, ["rebase", "--abort"], { allowNonZeroExit: true });
+        const output = `${rebase.stderr}\n${rebase.stdout}`.split("\n").map((line) => line.trim());
+        const conflicts = [...new Set(output.filter((line) => line.startsWith("CONFLICT")))];
+        const outcome = input.rebaseOnly ? "changed" : "merged";
         return yield* fail(
-          `Rebasing ${branch} onto ${base} hit conflicts, so nothing was ${input.rebaseOnly ? "changed" : "merged"}. Resolve them with \`git rebase ${base}\` in this checkout, then run the action again.`,
+          conflicts.length > 0
+            ? `Rebasing ${branch} onto ${base} hit conflicts, so nothing was ${outcome}.\n${conflicts.slice(0, 8).join("\n")}\nResolve them with \`git rebase ${base}\` in this checkout, then run the action again.`
+            : `Rebasing ${branch} onto ${base} failed, so nothing was ${outcome}: ${output.filter(Boolean).slice(-3).join(" ") || `git exited with ${rebase.exitCode}`}`,
         );
       }
       rebased = true;
