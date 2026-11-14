@@ -83,7 +83,10 @@ export class GitWorkflowService extends Context.Service<
     readonly invalidateStatus: (cwd: string) => Effect.Effect<void, never>;
     /** The checkout's own HEAD file, inside a linked worktree's admin directory when there is one. */
     readonly headPath: (cwd: string) => Effect.Effect<string | null, never>;
-    readonly pullCurrentBranch: (cwd: string) => Effect.Effect<VcsPullResult, GitCommandError>;
+    readonly pullCurrentBranch: (
+      cwd: string,
+      options?: { readonly rebase?: boolean },
+    ) => Effect.Effect<VcsPullResult, GitCommandError>;
     readonly forcePushPreview: (cwd: string) => Effect.Effect<VcsForcePushPreview, GitCommandError>;
     readonly forcePushCurrentBranch: (
       cwd: string,
@@ -434,9 +437,9 @@ export const make = Effect.gen(function* () {
           Effect.orElseSucceed(() => null),
         );
     }),
-    pullCurrentBranch: Effect.fn("GitWorkflowService.pullCurrentBranch")(function (cwd) {
+    pullCurrentBranch: Effect.fn("GitWorkflowService.pullCurrentBranch")(function (cwd, options) {
       return ensureGitCommand("GitWorkflowService.pullCurrentBranch", cwd).pipe(
-        Effect.andThen(git.pullCurrentBranch(cwd)),
+        Effect.andThen(git.pullCurrentBranch(cwd, options)),
       );
     }),
     forcePushPreview: Effect.fn("GitWorkflowService.forcePushPreview")(function (cwd) {

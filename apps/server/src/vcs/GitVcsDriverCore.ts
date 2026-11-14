@@ -3467,7 +3467,9 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
 
   const pullCurrentBranch: GitVcsDriver.GitVcsDriver["Service"]["pullCurrentBranch"] = Effect.fn(
     "pullCurrentBranch",
-  )(function* (cwd) {
+  )(function* (cwd, pullOptions) {
+    // `merges` keeps local merge commits instead of flattening them.
+    const mode = pullOptions?.rebase ? "--rebase=merges" : "--ff-only";
     const details = yield* readStatusDetailsLocal(cwd);
     const refName = details.branch;
     if (!refName) {
@@ -3475,7 +3477,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
         ...gitCommandContext({
           operation: "GitVcsDriver.pullCurrentBranch",
           cwd,
-          args: ["pull", "--ff-only"],
+          args: ["pull", mode],
         }),
         detail: "Cannot pull from detached HEAD.",
       });
@@ -3485,7 +3487,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
         ...gitCommandContext({
           operation: "GitVcsDriver.pullCurrentBranch",
           cwd,
-          args: ["pull", "--ff-only"],
+          args: ["pull", mode],
         }),
         detail: "Current branch has no upstream configured. Push with upstream first.",
       });
@@ -3532,7 +3534,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
       appendTruncationMarker: true,
       allowNonZeroExit: true,
     };
-    let args = ["pull", "--ff-only"];
+    let args = ["pull", mode];
     let result = yield* executeGitWithStableDiagnostics(
       "GitVcsDriver.pullCurrentBranch.pull",
       cwd,
@@ -3568,7 +3570,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
         currentBranch === refName &&
         currentSha === beforeSha
       ) {
-        args = ["pull", "--ff-only", "--", remote, mergeRef];
+        args = ["pull", mode, "--", remote, mergeRef];
         fetchedUpstreamOnly = true;
         result = yield* executeGitWithStableDiagnostics(
           "GitVcsDriver.pullCurrentBranch.pull",
@@ -3579,6 +3581,15 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
       }
     }
     if (result.exitCode !== 0) {
+      // A conflicting rebase stops halfway; leave the checkout as it was.
+      if (pullOptions?.rebase) {
+        yield* executeGitWithStableDiagnostics(
+          "GitVcsDriver.pullCurrentBranch.abortRebase",
+          cwd,
+          ["rebase", "--abort"],
+          { timeoutMs: 30_000, allowNonZeroExit: true },
+        );
+      }
       const reason = classifyGitFailure(result.stderr);
       return yield* new GitCommandError({
         ...gitCommandContext({ operation: "GitVcsDriver.pullCurrentBranch.pull", cwd, args }),
@@ -6441,8 +6452,8 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     pushCurrentBranch: Effect.fnUntraced(function* (cwd, fallbackBranch, options) {
       return yield* withListRefsInvalidation(cwd, pushCurrentBranch(cwd, fallbackBranch, options));
     }),
-    pullCurrentBranch: Effect.fnUntraced(function* (cwd) {
-      return yield* withListRefsInvalidation(cwd, pullCurrentBranch(cwd));
+    pullCurrentBranch: Effect.fnUntraced(function* (cwd, options) {
+      return yield* withListRefsInvalidation(cwd, pullCurrentBranch(cwd, options));
     }),
     forcePushPreview,
     forcePushCurrentBranch: Effect.fnUntraced(function* (cwd, expectedUpstreamSha) {

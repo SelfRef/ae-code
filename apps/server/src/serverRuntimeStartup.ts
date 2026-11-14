@@ -207,10 +207,9 @@ export const autoPullProjects = Effect.fn("autoPullProjects")(function* (
           !status.isRepo ||
           !status.isDefaultBranch ||
           !status.hasUpstream ||
-          status.hasWorkingTreeChanges ||
-          status.aheadCount > 0
+          status.hasWorkingTreeChanges
         ) {
-          yield* Effect.logDebug("Skipped automatic project pull", {
+          yield* Effect.logInfo("Skipped automatic project pull", {
             cwd,
             reason: !status.isRepo
               ? "not-a-repository"
@@ -218,16 +217,14 @@ export const autoPullProjects = Effect.fn("autoPullProjects")(function* (
                 ? "not-on-default-branch"
                 : !status.hasUpstream
                   ? "no-upstream"
-                  : status.hasWorkingTreeChanges
-                    ? "working-tree-changes"
-                    : "local-commits",
+                  : "working-tree-changes",
           });
           return;
         }
 
         if (status.behindCount <= 0) return;
 
-        const result = yield* git.pullCurrentBranch(cwd);
+        const result = yield* git.pullCurrentBranch(cwd, { rebase: status.aheadCount > 0 });
         yield* Effect.logDebug("Automatic project pull completed", {
           cwd,
           status: result.status,

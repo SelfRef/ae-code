@@ -732,8 +732,14 @@ describe("VcsStatusBroadcaster", () => {
   it.effect.skipIf(!symlinksSupported)(
     "automatically pulls an enabled clean default branch when status detects it is behind",
     () => {
-      let remoteStatus: VcsStatusRemoteResult = { ...baseRemoteStatus, behindCount: 2 };
+      // Unpushed local commits are replayed on the new upstream instead of blocking the pull.
+      let remoteStatus: VcsStatusRemoteResult = {
+        ...baseRemoteStatus,
+        aheadCount: 1,
+        behindCount: 2,
+      };
       let pullCalls = 0;
+      let pullOptions: { readonly rebase?: boolean } | undefined;
       let configuredWorkspaceRoot = "";
       const localStatus: VcsStatusLocalResult = {
         ...baseLocalStatus,
@@ -757,9 +763,10 @@ describe("VcsStatusBroadcaster", () => {
             invalidateLocalStatus: () => Effect.void,
             invalidateRemoteStatus: () => Effect.void,
             invalidateStatus: () => Effect.void,
-            pullCurrentBranch: () =>
+            pullCurrentBranch: (_cwd, options) =>
               Effect.sync(() => {
                 pullCalls += 1;
+                pullOptions = options;
                 remoteStatus = { ...remoteStatus, behindCount: 0 };
                 return {
                   status: "pulled" as const,
@@ -787,6 +794,7 @@ describe("VcsStatusBroadcaster", () => {
         const status = yield* broadcaster.refreshStatus(configuredWorkspaceRoot);
 
         assert.equal(pullCalls, 1);
+        assert.deepStrictEqual(pullOptions, { rebase: true });
         assert.equal(status.behindCount, 0);
       }).pipe(Effect.provide(layerTest));
     },

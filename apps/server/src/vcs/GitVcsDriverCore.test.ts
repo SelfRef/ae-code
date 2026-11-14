@@ -1551,6 +1551,42 @@ describe("pullCurrentBranch", () => {
     ).pipe(Effect.provide(layerTest)),
   );
 
+  it.effect("rebases local commits onto the upstream when asked", () =>
+    Effect.gen(function* () {
+      const driver = yield* GitVcsDriver.GitVcsDriver;
+      const { cwd, remoteHead } = yield* cloneBehindRemote;
+      yield* writeTextFile(cwd, "local.txt", "local\n");
+      yield* git(cwd, ["add", "local.txt"]);
+      yield* git(cwd, ["commit", "-m", "local commit"]);
+
+      const error = yield* Effect.flip(driver.pullCurrentBranch(cwd));
+      assert.equal(error.operation, "GitVcsDriver.pullCurrentBranch.pull");
+
+      const result = yield* driver.pullCurrentBranch(cwd, { rebase: true });
+
+      assert.equal(result.status, "pulled");
+      assert.equal(yield* git(cwd, ["rev-parse", "HEAD~1"]), remoteHead);
+      assert.equal(yield* git(cwd, ["log", "-1", "--format=%s"]), "local commit");
+    }).pipe(Effect.provide(layerTest)),
+  );
+
+  it.effect("leaves the checkout untouched when a requested rebase conflicts", () =>
+    Effect.gen(function* () {
+      const driver = yield* GitVcsDriver.GitVcsDriver;
+      const { cwd } = yield* cloneBehindRemote;
+      yield* writeTextFile(cwd, "remote.txt", "local\n");
+      yield* git(cwd, ["add", "remote.txt"]);
+      yield* git(cwd, ["commit", "-m", "conflicting local commit"]);
+      const before = yield* git(cwd, ["rev-parse", "HEAD"]);
+
+      yield* Effect.flip(driver.pullCurrentBranch(cwd, { rebase: true }));
+
+      assert.equal(yield* git(cwd, ["rev-parse", "HEAD"]), before);
+      assert.notEqual(yield* git(cwd, ["branch", "--show-current"]), "");
+      assert.equal(yield* git(cwd, ["status", "--porcelain"]), "");
+    }).pipe(Effect.provide(layerTest)),
+  );
+
   it.effect("still fetches other branches on the first pull", () =>
     Effect.gen(function* () {
       const driver = yield* GitVcsDriver.GitVcsDriver;

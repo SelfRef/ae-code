@@ -402,7 +402,10 @@ export class GitVcsDriver extends Context.Service<
     readonly branchOverview: (
       input: VcsBranchOverviewInput,
     ) => Effect.Effect<VcsBranchOverviewResult, GitCommandError>;
-    readonly pullCurrentBranch: (cwd: string) => Effect.Effect<VcsPullResult, GitCommandError>;
+    readonly pullCurrentBranch: (
+      cwd: string,
+      options?: { readonly rebase?: boolean },
+    ) => Effect.Effect<VcsPullResult, GitCommandError>;
     readonly forcePushPreview: (cwd: string) => Effect.Effect<VcsForcePushPreview, GitCommandError>;
     readonly forcePushCurrentBranch: (
       cwd: string,
