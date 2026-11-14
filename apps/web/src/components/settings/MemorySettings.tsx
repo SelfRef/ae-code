@@ -181,23 +181,6 @@ function EnvironmentMemory({ environmentId }: { readonly environmentId: Environm
           />
         }
       />
-      {draft !== null ? (
-        <MemoryEditor
-          key={draft.mode === "edit" ? draft.memory.id : "new"}
-          draft={draft}
-          projects={projects}
-          onCancel={() => setDraft(null)}
-          onSave={async (input) => {
-            const result = await save({ environmentId, input });
-            if (result._tag === "Failure") {
-              if (!isAtomCommandInterrupted(result)) fail("Could not save memory", result);
-              return;
-            }
-            setDraft(null);
-            list.refresh();
-          }}
-        />
-      ) : null}
       <div className="flex flex-wrap items-center gap-2 px-4 py-3">
         <div className="grid min-w-40 flex-1 grid-cols-1">
           <Input
@@ -230,6 +213,23 @@ function EnvironmentMemory({ environmentId }: { readonly environmentId: Environm
           </SelectPopup>
         </Select>
       </div>
+      {draft !== null ? (
+        <MemoryEditor
+          key={draft.mode === "edit" ? draft.memory.id : "new"}
+          draft={draft}
+          projects={projects}
+          onCancel={() => setDraft(null)}
+          onSave={async (input) => {
+            const result = await save({ environmentId, input });
+            if (result._tag === "Failure") {
+              if (!isAtomCommandInterrupted(result)) fail("Could not save memory", result);
+              return;
+            }
+            setDraft(null);
+            list.refresh();
+          }}
+        />
+      ) : null}
       {list.error !== null && list.data === null ? (
         <p className="px-4 pb-3 text-sm text-destructive">{list.error}</p>
       ) : shown.length === 0 ? (
