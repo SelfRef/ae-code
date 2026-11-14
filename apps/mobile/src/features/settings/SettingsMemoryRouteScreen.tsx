@@ -266,18 +266,19 @@ function EnvironmentMemory({
                     : "gap-1.5 border-t border-border-subtle px-4 py-3 active:opacity-70"
                 }
               >
-                <Text textRole="body" className="text-foreground">
+                <Text textRole="body" className="text-foreground" numberOfLines={3}>
                   {memory.text}
                 </Text>
-                <View className="flex-row flex-wrap items-center gap-2">
-                  <Text className="rounded-full bg-subtle px-2 py-0.5 text-xs text-foreground">
+                <View className="flex-row items-center gap-2">
+                  <Text
+                    className="shrink rounded-full bg-subtle px-2 py-0.5 text-xs text-foreground"
+                    numberOfLines={1}
+                  >
                     {memoryScopeLabel(memory, projectTitles)}
                   </Text>
-                  {origin !== null ? (
-                    <Text className="text-sm text-foreground-muted">{origin}</Text>
-                  ) : null}
-                  <Text className="text-sm text-foreground-muted">
-                    {memory.source === "agent" ? "Saved by an agent" : "Added by you"} ·{" "}
+                  <Text className="shrink-0 text-sm text-foreground-muted" numberOfLines={1}>
+                    {origin !== null ? `${origin} · ` : ""}
+                    {memory.source === "agent" ? "Agent" : "You"} ·{" "}
                     <RelativeTime timestamp={memory.updatedAt} />
                   </Text>
                 </View>
