@@ -18,7 +18,7 @@ import { useAtomCommand } from "../../state/use-atom-command";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
 import { stackedThreadToast, toastManager } from "../ui/toast";
-import { selectableProjects } from "./memorySettings.logic";
+import { selectableProjects } from "@t3tools/client-runtime/memory-presentation";
 import { MemoryImportDialog } from "./MemoryImportDialog";
 import { SettingsRow, SettingsSection } from "./settingsLayout";
 

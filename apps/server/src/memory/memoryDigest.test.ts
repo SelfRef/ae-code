@@ -1,20 +1,24 @@
 import { describe, expect, it } from "@effect/vitest";
-import { MemoryId, ProjectId, type Memory } from "@t3tools/contracts";
+import { MemoryId, type Memory, type MemoryScope } from "@t3tools/contracts";
 
 import { renderMemoryDigest } from "./memoryDigest.ts";
 
-const mine = ProjectId.make("project:mine");
-const theirs = ProjectId.make("project:theirs");
+const mine = "github.com/me/mine";
+const theirs = "github.com/me/theirs";
 
 const memory = (
   id: string,
   text: string,
-  projectId: ProjectId | null = null,
+  projectKey: string | null = null,
   updatedAt = "2026-11-01T00:00:00.000Z",
+  scope: MemoryScope = projectKey === null ? "user" : "project",
 ): Memory => ({
   id: MemoryId.make(id),
-  scope: projectId === null ? "user" : "project",
-  projectId,
+  scope,
+  projectId: null,
+  projectKey,
+  projectLabel: null,
+  originEnvironmentId: null,
   text,
   source: "user",
   sourceThreadId: null,
@@ -29,13 +33,14 @@ describe("renderMemoryDigest", () => {
     expect(renderMemoryDigest([memory("a", "Deploys use Nomad", theirs)], undefined)).toBe("");
   });
 
-  it("lists user memories, then this project's, newest first, as reference data", () => {
+  it("lists global memories, then this environment's, then this project's, newest first", () => {
     const digest = renderMemoryDigest(
       [
         memory("old", "Prefer pnpm", null, "2026-10-01T00:00:00.000Z"),
         memory("new", "Reply in Polish", null, "2026-11-08T00:00:00.000Z"),
         memory("p", "Format with oxfmt", mine),
         memory("x", "Not mine", theirs),
+        memory("e", "Docker runs rootless here", null, undefined, "environment"),
       ],
       mine,
     );
@@ -46,6 +51,8 @@ describe("renderMemoryDigest", () => {
         "All projects:",
         "- Reply in Polish",
         "- Prefer pnpm",
+        "This environment:",
+        "- Docker runs rootless here",
         "This project:",
         "- Format with oxfmt",
         "</saved_memory>",

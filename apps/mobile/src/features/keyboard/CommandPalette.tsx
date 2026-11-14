@@ -333,6 +333,13 @@ export function CommandPalette(props: {
         run: () => openSettings(navigation, "SettingsScheduledTasks"),
       },
       {
+        key: "memory",
+        kind: "action",
+        title: "Memory",
+        searchTerms: ["memories", "remember", "recall", "forget"],
+        run: () => openSettings(navigation, "SettingsMemory"),
+      },
+      {
         key: "usage",
         kind: "action",
         title: "Usage",

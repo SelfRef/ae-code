@@ -45,7 +45,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 | [16] | MCP servers from Settings: one list of stdio and HTTP servers for Claude, OpenCode, Antigravity and Codex sessions (smaller version of E4 Code's patch)                | done    |
 | [15] | Remove a built-in provider (Codex, Claude, ...) from Settings and the registry, with Restore                                                                           | done    |
 | 14   | No git hooks: upstream's pre-commit hook, its `prepare` script and the `staged` config in `vite.config.ts` are removed (they need Node on the committing host)         | done    |
-| [13] | Memory: saved preferences and decisions agents on any provider can recall and save, with a Settings page (modelled on GOAT's, cut down)                                | done    |
+| [13] | Memory: saved preferences and decisions agents on any provider can recall and save, in global, environment and project scopes synced over links, with Settings pages   | done    |
 | [12] | Edit the latest message in place: the prompt becomes an inline editor, saving rewinds the thread and resends (idea from MT Code)                                       | planned |
 | [11] | Board of threads in derived columns (Draft, Working, Review, In PR, Done, Parked) with merge and pull request steps, web, desktop, Android                             | partial |
 | [10] | Self-hosted Android push: the server notifies through ntfy instead of the hosted relay                                                                                 | planned |
@@ -132,13 +132,14 @@ The app id is already `dev.aperte.*`. The repository is still referenced as `Sel
 
 Anything that moves or renames persisted data gets a row here, with how to carry the data over. Run migrations with the server stopped.
 
-| Moved from → to                                                | What lives there                                                                                                                         | Migration                                                                                                                                                                                                                                                                                                                                                      |
-| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `~/.t3` → `~/.ae` (server, CLI, installer, service)            | The T3 home: `userdata` (database, settings, keybindings, logs), `secrets`, `service.env`, `runtime`, `worktrees`, `projects`, `scratch` | Stop both servers, then `cp -a ~/.t3 ~/.ae`. Or keep the old directory by setting `T3CODE_HOME=~/.t3`; nothing moves. Worktrees and project folders created under the old home keep their old paths (the database stores them), so keep `~/.t3` until they are archived. Do not start the fork against upstream's live directory while upstream's server runs. |
-| `~/.t3/{runtime,ssh-launch,device}` → `~/.ae/...` on SSH hosts | The server runtime T3 installs on a remote machine, and its launch state                                                                 | None. The next connection bootstraps the new location; delete the old `~/.t3` on the host when no upstream T3 uses it.                                                                                                                                                                                                                                         |
-| `~/.t3/wsl-runtime` → `~/.ae/wsl-runtime` in WSL               | The server runtime for the desktop app's WSL environment                                                                                 | None, it is re-installed. Remove the old directory by hand.                                                                                                                                                                                                                                                                                                    |
-| Electron profile `t3code-v2` → `ae-code`                       | Desktop app profile: window state, safeStorage keys, desktop-local storage                                                               | Not migrated, except that Windows copies its credential keys from the legacy profile names. Sign in again, or copy the profile folder while the app is closed.                                                                                                                                                                                                 |
-| Android app `com.t3tools.t3code` → `dev.aperte.aecode`         | The app's local data: the paired servers, its settings                                                                                   | None. It installs beside upstream's app as a new app with its own data; pair the servers again. Its APKs are signed with the fork's own key (see Releases).                                                                                                                                                                                                    |
+| Moved from → to                                                | What lives there                                                                                                                         | Migration                                                                                                                                                                                                                                                                                                                                                                                           |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `~/.t3` → `~/.ae` (server, CLI, installer, service)            | The T3 home: `userdata` (database, settings, keybindings, logs), `secrets`, `service.env`, `runtime`, `worktrees`, `projects`, `scratch` | Stop both servers, then `cp -a ~/.t3 ~/.ae`. Or keep the old directory by setting `T3CODE_HOME=~/.t3`; nothing moves. Worktrees and project folders created under the old home keep their old paths (the database stores them), so keep `~/.t3` until they are archived. Do not start the fork against upstream's live directory while upstream's server runs.                                      |
+| `~/.t3/{runtime,ssh-launch,device}` → `~/.ae/...` on SSH hosts | The server runtime T3 installs on a remote machine, and its launch state                                                                 | None. The next connection bootstraps the new location; delete the old `~/.t3` on the host when no upstream T3 uses it.                                                                                                                                                                                                                                                                              |
+| `~/.t3/wsl-runtime` → `~/.ae/wsl-runtime` in WSL               | The server runtime for the desktop app's WSL environment                                                                                 | None, it is re-installed. Remove the old directory by hand.                                                                                                                                                                                                                                                                                                                                         |
+| Electron profile `t3code-v2` → `ae-code`                       | Desktop app profile: window state, safeStorage keys, desktop-local storage                                                               | Not migrated, except that Windows copies its credential keys from the legacy profile names. Sign in again, or copy the profile folder while the app is closed.                                                                                                                                                                                                                                      |
+| `memories` table: `project_id` → `project_key`, three scopes   | Saved memory (change 13)                                                                                                                 | Automatic: the server rebuilds the table at start, in one transaction. Existing memories keep their scope; All-projects ones become Global and start syncing; project ones are keyed `local:<projectId>` until the project's repository key is known. An older build cannot read the new table, so before going back, copy `statev2.sqlite` from before the upgrade or delete the `memories` table. |
+| Android app `com.t3tools.t3code` → `dev.aperte.aecode`         | The app's local data: the paired servers, its settings                                                                                   | None. It installs beside upstream's app as a new app with its own data; pair the servers again. Its APKs are signed with the fork's own key (see Releases).                                                                                                                                                                                                                                         |
 
 The `~/.t3` `T3CODE_HOME` default is also what a pre-existing upstream `t3 service` and a Docker volume home point at, so check both before switching a running install.
 
@@ -782,11 +783,33 @@ Saved preferences, decisions and facts that every agent on every provider can re
 to see and edit them. Modelled on GOAT's memory ([FORK_REFERENCES.md](./FORK_REFERENCES.md#goat-goat-sigoat)), cut down to what one
 person needs. User guide: `docs/user/memory.md`.
 
-- **Storage.** A `memories` table in the server's database (`id`, `scope` `user|project`, `project_id`, `text`,
-  `source` `user|agent`, `source_thread_id`, timestamps), capped at 2000 rows of 2000 characters. `MemoryService` creates
-  it with `CREATE TABLE IF NOT EXISTS` when the server starts, **not** through a numbered migration: upstream keeps adding
-  migrations, and a fork migration would collide with the next one it adds. It is a new table, not a rename, so there is
-  no migration step; delete the table to forget everything.
+- **Storage.** A `memories` table in the server's database (`id`, `scope`, `project_key`, `project_label`, `text`,
+  `source` `user|agent`, `source_thread_id`, `origin_environment_id`, timestamps, `deleted_at`, `rev`), capped at 2000
+  live rows of 2000 characters. `MemoryService` creates it when the server starts, **not** through a numbered migration:
+  upstream keeps adding migrations, and a fork migration would collide with the next one it adds. The first layout
+  (`project_id`, two scopes) is rebuilt in place at start (see Data migration). Delete the table to forget everything.
+- **Three scopes.** `user` (Global: every project, every linked environment), `environment` (every project, this server
+  only) and `project`. A project memory is keyed by the repository's grouping key (`repositoryGroupingKeyOf`), so every
+  project with that remote shares it, here and on other environments; a project without a remote is keyed
+  `local:<projectId>` and never leaves. Adapters need the key synchronously for the digest, so `MemorySync` publishes
+  each project's key every minute through `setProjectKeys`, which also re-keys `local:` memories once the project has a
+  remote. A new project's memories can therefore show up to a minute late.
+- **Moving.** `memory.save` with an `id` moves the memory to the scope it names (a project only when one is named, so
+  editing another environment's project memory keeps it). Agents' corrections keep the scope; moving is the user's
+  call in Settings.
+- **Sync over peer links.** Global and repository-keyed project memories sync with every environment linked from here
+  over a **full-access** link, both ways, through one more MCP tool, `t3_memory_sync`, which `EnabledWhen` hides from
+  everything but peer-link sessions (so agents never see it; `AgentContextBudget` still counts it, since it measures
+  every registered tool). It reuses the link's session, auth and Linked environments gate rather than a new route.
+  Each row has a local `rev`; the linking side keeps per-link cursors (`memory_sync_peers`) and exchanges pages of 200
+  changes since them. Newest `updatedAt` wins, ties go to a deletion, then to the greater text, so every peer picks the
+  same row. Deletions are tombstones kept 90 days; a memory moved to `environment` or to a `local:` project leaves
+  peers as a deletion and peers never overwrite it. Two environments that saved the same text keep the smaller id. The
+  receiving side reads its changes before merging, so the caller's own changes do not come straight back. `MemorySync`
+  runs at start, 3 s after a change, and every 5 minutes; changes made on a machine that only receives a link reach
+  the linking machine at its next run. Merged memories may take the store past 2000, so environments never disagree.
+  _Sync with linked environments_ (`memory_settings.sync`, default on) turns it off on either side. Clock skew between
+  machines can let an older write win; a hybrid logical clock is the upgrade if that matters.
 - **Recall is term ranking, not FTS or vectors.** `memoryRanking.ts` scores terms by rarity, then recency and scope, over
   at most 2000 rows read in one query. GOAT uses SQLite FTS5 with a tokenizer; at this size a full scan costs less than
   keeping an index consistent, and the function is the one place to swap if the corpus ever outgrows it.
@@ -796,8 +819,9 @@ person needs. User guide: `docs/user/memory.md`.
   linking text, so every adapter that sends one carries it: Claude, Codex, ACP, Cursor, Muse, OpenCode and Antigravity.
   Pi receives only the orchestration text and does not get it. The briefing says memory is reference data, never
   instructions.
-- **Settings → Memory** (web and desktop, one environment at a time): list, search, scope filter, add, edit, forget,
-  and the _Agent memory_ switch. Claude's own controls (the native-memory switch and the import) sit in the Claude
+- **Settings → Memory** (web, desktop and Android, one environment at a time): list, search, scope and project
+  filter, add, edit, move, forget, the _Agent memory_ and _Sync with linked environments_ switches, and each link's last
+  sync or error. The list logic is shared in client-runtime `memoryPresentation.ts`. Claude's own controls (the native-memory switch and the import) sit in the Claude
   provider card, in `ClaudeMemorySettings.tsx`, a "Memory" section shown for every `claudeAgent` instance and bound to
   the same environment-wide settings; a few lines in `ProviderInstanceCard.tsx` mount it. Five RPCs (`memory.list`, `memory.save`, `memory.delete`, `memory.setSettings`,
   `memory.importScan`); the three writes need the settings-write scope.
@@ -813,7 +837,7 @@ person needs. User guide: `docs/user/memory.md`.
   published) leaves a provider's own memory alone, which keeps the recorded Claude replay fixtures valid. The tools stay
   in the tool list while memory is off (registration is static), so the tool-list part of the context budget stays.
 - **Claude starts with the memories, like its native index.** `ClaudeAdapterV2` appends a `<saved_memory>` digest to the
-  session's system prompt: the newest user-scope memories, then the thread's project's, in 3000 characters, with a
+  session's system prompt: the newest global memories, then this environment's, then the thread's project's, in 3000 characters, with a
   pointer to `t3_memory_recall` for the rest (`memoryDigest.ts`; one line per memory, `<` escaped so a memory cannot
   close the block). It reads a cache `MemoryService` refreshes on every write, through `memoryDigest()` in
   `memoryPolicy.ts`, so the adapter stays synchronous. Only Claude gets it: its system prompt is sent once per session,
@@ -829,17 +853,18 @@ person needs. User guide: `docs/user/memory.md`.
   session transcripts too, so mount or copy only the `memory` folders into the container (see the stack's docs), never
   the whole `projects` folder.
 - **Not built, from GOAT:** automatic summaries of finished threads, thread-scoped memory, importing Codex memories,
-  sharing between devices (hub), conflict resolution, storage quotas, a digest for providers other than Claude, and a
-  mobile page. The tools and the page are the seam for each.
+  a hub, conflict resolution beyond newest-wins, storage quotas, and a digest for providers other than Claude. The tools
+  and the page are the seam for each.
 - **Context budget.** The briefing and three tool definitions raise `agentContextBudget.json` (about 540 bytes of
   instructions per adapter that carries them, 1 KB of tool list). `agent-context-budget.yml` only gates pull requests,
   which this fork does not open, so nothing asks for the `agent-context-increase` label.
 - **Evals not run.** `evals/mcp-tool-use` covers tool text and was not run (it needs paid model keys); add the memory
   toolkit to it and run it before changing the tool descriptions or the briefing.
 - **Rebase cost.** New files: `packages/contracts/src/memory.ts`, `apps/server/src/memory/*`,
-  `apps/server/src/mcp/toolkits/memory/*`, `MemorySettings.tsx` and its logic file, the route. Touch points of a few lines:
+  `apps/server/src/mcp/toolkits/memory/*`, client-runtime `memoryPresentation.ts`, `MemorySettings.tsx`, the route, and
+  the Android screen. Touch points of a few lines:
   `rpc.ts` and `clientRpcPermissions.ts` (three methods), `RpcAuthorization.ts`, `RpcInstrumentation.ts`, `ws.ts`,
-  `server.ts` (one layer), `McpHttpServer.ts`, `t3McpToolPresentation.ts` with `t3ToolSummary.ts`, the Claude read-only
+  `server.ts` (two layers), `McpHttpServer.ts`, `McpInvocationContext.ts` (`onlyForPeerLinks`), `t3McpToolPresentation.ts` with `t3ToolSummary.ts`, the Claude read-only
   allowlist, `runtimeInstructions.ts` with the Antigravity append, client-runtime `state/server.ts`, the settings
   navigation and search (`settingsSearch.ts`, `SettingsSidebarNav.tsx`, `_chat.settings.tsx`) and the generated route tree.
 

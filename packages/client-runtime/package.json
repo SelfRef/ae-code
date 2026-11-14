@@ -47,6 +47,10 @@
       "types": "./src/imageAttachmentSize.ts",
       "default": "./src/imageAttachmentSize.ts"
     },
+    "./memory-presentation": {
+      "types": "./src/memoryPresentation.ts",
+      "default": "./src/memoryPresentation.ts"
+    },
     "./handoff": {
       "types": "./src/handoff.ts",
       "default": "./src/handoff.ts"

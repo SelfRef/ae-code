@@ -91,6 +91,7 @@ import * as TerminalManager from "./terminal/Manager.ts";
 import * as McpHttpServer from "./mcp/McpHttpServer.ts";
 import * as WorktreeMcpService from "./mcp/WorktreeMcpService.ts";
 import * as MemoryService from "./memory/MemoryService.ts";
+import * as MemorySync from "./memory/MemorySync.ts";
 import * as ComposerDraftService from "./composerDrafts/ComposerDraftService.ts";
 import * as SkillLibraryService from "./skills/SkillLibraryService.ts";
 import * as PeerForwarding from "./peer/PeerForwarding.ts";
@@ -874,6 +875,8 @@ const layerMakeRoutes = Layer.mergeAll(
   Layer.effectDiscard(
     RemoteDelegation.RemoteDelegation.pipe(Effect.flatMap((remote) => remote.start())),
   ),
+  // Memory's project keys, and memory sync over full-access links.
+  MemorySync.layer,
 ).pipe(
   Layer.provide(
     PullRequestReviewGuideService.layer.pipe(Layer.provide(PullRequestReviewGuides.layer)),

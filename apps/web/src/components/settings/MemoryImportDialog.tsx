@@ -139,8 +139,8 @@ export function MemoryImportDialog({
           <DialogTitle>Import Claude's memories</DialogTitle>
           <DialogDescription>
             Reads the memory folders Claude Code keeps on this environment's disk. Personal notes
-            (user, feedback) import as All projects; project notes need a project. Nothing is
-            changed in Claude's files, and a note already saved is not added twice.
+            (user, feedback) import as Global; project notes need a project. Nothing is changed in
+            Claude's files, and a note already saved is not added twice.
           </DialogDescription>
         </DialogHeader>
         <DialogPanel>
