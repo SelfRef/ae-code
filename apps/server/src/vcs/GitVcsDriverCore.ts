@@ -4912,9 +4912,29 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
           key: branchBaseConfigKey(newRefName),
           value: base.branchName,
         });
-        if (base.baseRef.startsWith("refs/remotes/") || base.baseRef.startsWith("refs/heads/")) {
-          // The base key names a branch on the host; this one keeps the ref it came from, so a
-          // local base ahead of its remote does not count its own commits as the branch's.
+        const localBaseAheadOfRemote = base.baseRef.startsWith("refs/heads/")
+          ? yield* resolvePrimaryRemoteName(input.cwd).pipe(
+              Effect.flatMap((remoteName) =>
+                executeGit(
+                  "GitVcsDriver.createWorktree.localBaseAhead",
+                  input.cwd,
+                  [
+                    "rev-list",
+                    "--count",
+                    "--end-of-options",
+                    `refs/remotes/${remoteName}/${base.baseRef.slice("refs/heads/".length)}..${base.baseRef}`,
+                  ],
+                  { allowNonZeroExit: true },
+                ),
+              ),
+              Effect.map((result) => result.exitCode === 0 && result.stdout.trim() !== "0"),
+              Effect.orElseSucceed(() => false),
+            )
+          : false;
+        if (base.baseRef.startsWith("refs/remotes/") || localBaseAheadOfRemote) {
+          // The base key names a branch on the host; this one keeps the ref it came from. A local
+          // base ahead of its remote stays pinned so its own commits are not counted as the
+          // branch's; otherwise the remote is resolved live and follows it as it advances.
           yield* writeConfigValue({
             cwd: input.cwd,
             key: `branch.${newRefName}.t3-merge-base-ref`,
