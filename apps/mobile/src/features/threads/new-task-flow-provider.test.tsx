@@ -13,7 +13,7 @@ import * as Layer from "effect/Layer";
 import * as Queue from "effect/Queue";
 import * as Stream from "effect/Stream";
 import { AsyncResult, Atom, AtomRegistry } from "effect/reactivity";
-import { act, useLayoutEffect } from "react";
+import { act, useEffect, useLayoutEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vite-plus/test";
 import type { ComposerDraft } from "../../state/use-composer-drafts";
@@ -208,8 +208,14 @@ function setup() {
   mocks.writeSettings.mockImplementation(write);
   mocks.writeText.mockImplementation((key, text) => write(key, { text }));
   let current: ReturnType<typeof useNewTaskFlow>;
+  let applyOnMount: EnvironmentProject | null = null;
   function Probe() {
     const value = useNewTaskFlow();
+    // A draft screen applies its route project in a mount effect, which runs before the provider's.
+    useEffect(() => {
+      if (applyOnMount) value.setProject(applyOnMount);
+      // oxlint-disable-next-line react/exhaustive-effect-dependencies -- fires once on mount, like the screen's effect
+    }, []);
     useLayoutEffect(() => {
       current = value;
     });
@@ -240,7 +246,8 @@ function setup() {
     get current() {
       return current;
     },
-    async render(active: boolean) {
+    async render(active: boolean, routeProject: EnvironmentProject | null = null) {
+      applyOnMount = routeProject;
       await act(async () =>
         root.render(
           <RegistryContext.Provider value={registry}>
@@ -324,6 +331,16 @@ it("owns a status stream only while the draft is active, retaining draft choices
   expect.soft(screen.current.currentCheckoutBranchName).toBe("updated-checkout");
   expect(screen.current.prompt).toBe("keep this draft");
   expect(screen.snapshot(draftKey).workspaceSelection).toEqual(chosenWorkspace);
+});
+
+it("stamps the route project, not the fallback project, when the screen selects it on mount", async () => {
+  using screen = setup();
+  await screen.render(true, screen.projects[2]!);
+  expect(mocks.createDraft).toHaveBeenCalledTimes(1);
+  expect(screen.snapshot(screen.current.draftKey!).project).toEqual({
+    environmentId: "two",
+    projectId: "b",
+  });
 });
 
 it("does not persist a provisional workspace default after releasing inactive status", async () => {
