@@ -21,10 +21,12 @@ import { useSelectWorkspaceDetail } from "../layout/workspace/useSelectWorkspace
 import { uuidv4 } from "../../lib/uuid";
 import {
   CHOOSE_PROJECT_ACTION,
+  newThreadMenuActionId,
   newThreadMenuActions,
   newThreadMenuScope,
   newThreadMenuScopes,
 } from "./new-thread-menu";
+import { projectIcon } from "../layout/workspace/ProjectChoiceChip";
 import { FabScrollContext } from "./FabScrollContext";
 import { updateFabScroll } from "./fab-scroll";
 import { useAndroidControlSizing } from "../../components/ui/useAndroidControlSizing";
@@ -119,6 +121,12 @@ export function AndroidHomeFabLayout(props: ComponentProps<typeof SharedAndroidH
           menu={{
             title: "New thread in",
             actions: newThreadMenuActions(menuScopes),
+            actionIcons: Object.fromEntries(
+              menuScopes.map((scope) => [
+                newThreadMenuActionId(scope),
+                projectIcon(scope.representative, 24),
+              ]),
+            ),
             onSelect: startInMenuChoice,
           }}
           className="absolute"

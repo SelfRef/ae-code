@@ -14,11 +14,13 @@ export function newThreadMenuScopes(
   return pickableProjectGroups(scopes).filter((scope) => !isScratch(scope));
 }
 
+export const newThreadMenuActionId = (scope: HomeProjectScope) => PROJECT_PREFIX + scope.key;
+
 /** The most recently active projects, then the full picker for the rest. */
 export function newThreadMenuActions(scopes: ReadonlyArray<HomeProjectScope>): MenuAction[] {
   return [
     ...scopes.slice(0, PROJECT_LIMIT).map((scope) => ({
-      id: PROJECT_PREFIX + scope.key,
+      id: newThreadMenuActionId(scope),
       title: scope.title,
       image: "folder",
     })),

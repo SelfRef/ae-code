@@ -1,10 +1,17 @@
+import type { ReactNode } from "react";
 import { ListFilterMenu } from "./ListFilterMenu";
 
 /** A chip that opens a menu of one-of-many choices, like the Pull requests filters. */
 export function ChoiceChip<Value extends string>(props: {
   readonly label: string;
   readonly accessibilityLabel: string;
-  readonly options: ReadonlyArray<{ readonly value: Value; readonly label: string }>;
+  readonly options: ReadonlyArray<{
+    readonly value: Value;
+    readonly label: string;
+    readonly icon?: ReactNode;
+  }>;
+  /** Shown in the chip, before the label. */
+  readonly leading?: ReactNode;
   readonly selected: Value;
   /** Highlights the chip: it is not at its default. */
   readonly active?: boolean;
@@ -14,6 +21,10 @@ export function ChoiceChip<Value extends string>(props: {
     <ListFilterMenu
       label={props.label}
       accessibilityLabel={props.accessibilityLabel}
+      leading={props.leading}
+      actionIcons={Object.fromEntries(
+        props.options.flatMap((option) => (option.icon ? [[option.value, option.icon]] : [])),
+      )}
       {...(props.active === undefined ? {} : { active: props.active })}
       actions={props.options.map((option) => ({
         id: option.value,

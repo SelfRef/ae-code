@@ -10,7 +10,7 @@ import {
   onSizeChanged,
   size,
 } from "@expo/ui/jetpack-compose/modifiers";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { I18nManager, Pressable, View, type StyleProp, type ViewStyle } from "react-native";
 import { useAndroidControlSizing } from "./ui/useAndroidControlSizing";
 import { useAppearancePreferences } from "../features/settings/appearance/AppearancePreferencesProvider";
@@ -24,6 +24,7 @@ export function ScrollComposeButton(props: {
   readonly menu?: {
     readonly title: string;
     readonly actions: readonly MenuAction[];
+    readonly actionIcons?: Readonly<Record<string, ReactNode>>;
     readonly onSelect: (id: string) => void;
   };
   readonly size?: number;
@@ -98,6 +99,7 @@ export function ScrollComposeButton(props: {
       {/* The visual host is wider than the button; only this target intercepts list touches. */}
       <AndroidAnchoredMenu
         actions={props.menu?.actions ?? []}
+        actionIcons={props.menu?.actionIcons}
         title={props.menu?.title}
         onPressAction={({ nativeEvent }) => props.menu?.onSelect(nativeEvent.event)}
         style={{

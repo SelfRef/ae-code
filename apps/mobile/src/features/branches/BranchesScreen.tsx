@@ -9,7 +9,6 @@ import {
   type BranchMergeFilter,
   type BranchSort,
 } from "@t3tools/client-runtime/branch-overview";
-import { projectKey } from "@t3tools/client-runtime/issue-projects";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
@@ -38,6 +37,8 @@ import { useAtomCommand } from "../../state/use-atom-command";
 import { vcsEnvironment } from "../../state/vcs";
 import { useOpenWorkspaceDetail } from "../layout/useOpenWorkspaceDetail";
 import { ChoiceChip } from "../layout/workspace/ChoiceChip";
+import { PullRequestGlyph } from "../pull-requests/pullRequestGlyphs";
+import { ProjectChoiceChip } from "../layout/workspace/ProjectChoiceChip";
 import { SettingsScreen } from "../settings/components/SettingsScreen";
 import { CommitsView } from "./CommitsView";
 import { useMergeBranch } from "./useMergeBranch";
@@ -86,7 +87,7 @@ function BranchRow(props: {
   };
   const menuActions = [
     { id: "commits", title: "Commit history", image: "git.commit" },
-    ...(onMerge ? [{ id: "merge", title: "Merge", image: "arrow.triangle.merge" }] : []),
+    ...(onMerge ? [{ id: "merge", title: "Merge", image: PullRequestGlyph.merged }] : []),
     ...(props.onDelete
       ? [{ id: "delete", title: "Delete", image: "trash", attributes: { destructive: true } }]
       : []),
@@ -175,7 +176,7 @@ function BranchRow(props: {
         {onMerge ? (
           <IconButton
             accessibilityLabel={`Merge ${branch.name} into ${props.defaultRef ?? "the default branch"}`}
-            icon="arrow.triangle.merge"
+            icon={PullRequestGlyph.merged}
             onPress={onMerge}
           />
         ) : null}
@@ -341,14 +342,9 @@ export function BranchesScreen() {
               contentContainerStyle={{ gap: 8 }}
             >
               {projects.length > 1 ? (
-                <ChoiceChip
-                  label={project.title}
-                  accessibilityLabel="Choose project"
-                  options={projects.map((candidate) => ({
-                    value: projectKey(candidate),
-                    label: candidate.title,
-                  }))}
-                  selected={projectKey(project)}
+                <ProjectChoiceChip
+                  projects={projects}
+                  project={project}
                   onSelect={(key) => {
                     setSelectedKey(key);
                     setRemote(undefined);

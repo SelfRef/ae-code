@@ -2,6 +2,7 @@ import { DraftEnvironmentControl } from "./DraftEnvironmentControl";
 import { NativeScrollEdgeEffectsContext } from "../../native/NativeScrollViewMarker";
 import { DraftThreadHeader } from "./DraftThreadHeader";
 import { useComposerAttachmentActions } from "../../state/use-composer-attachment-actions";
+import { projectIcon } from "../layout/workspace/ProjectChoiceChip";
 import { useWorkspaceBackNavigation } from "../layout/workspace/useAndroidWorkspaceNavigation";
 import { submittedThreadParams } from "./thread-route-state";
 import { ThreadScreenBinding, ThreadScreenFallback } from "./ThreadScreenHost";
@@ -742,6 +743,14 @@ export function NewTaskDraftScreen(props: {
         </Text>
         <View className="max-w-full flex-row items-center justify-center">
           <Text className="text-2xl font-t3-medium tracking-tight text-foreground">in </Text>
+          <Pressable
+            accessible={false}
+            disabled={isComposerInteractionLocked}
+            onPress={chooseProject}
+            className="mr-1.5 active:opacity-65"
+          >
+            {projectIcon(selectedProject, 26)}
+          </Pressable>
           <Pressable
             accessibilityHint="Opens the project picker"
             accessibilityLabel={selectedProjectLabel ?? selectedProject.title}

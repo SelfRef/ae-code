@@ -9,6 +9,7 @@ import {
 } from "@expo/ui/jetpack-compose";
 import { defaultMinSize, padding, size, width } from "@expo/ui/jetpack-compose/modifiers";
 import type { MenuAction } from "@react-native-menu/menu";
+import type { ReactNode } from "react";
 import { Pressable } from "react-native";
 import { resolveScaledTextRole } from "../../lib/appearancePreferences";
 
@@ -55,8 +56,33 @@ function MenuIcon(props: {
   );
 }
 
+function MenuNodeIcon(props: {
+  readonly children: ReactNode;
+  readonly onPress: () => void;
+  readonly disabled?: boolean;
+}) {
+  const { iconSize } = useAndroidControlSizing();
+  return (
+    <RNHostView matchContents modifiers={[size(iconSize, iconSize)]}>
+      <Pressable
+        accessible={false}
+        focusable={false}
+        disabled={props.disabled}
+        onPress={props.onPress}
+        style={{ width: iconSize, height: iconSize }}
+        importantForAccessibility="no-hide-descendants"
+      >
+        {props.children}
+      </Pressable>
+    </RNHostView>
+  );
+}
+
 export function MenuPopupItems(
-  props: Pick<MenuPopupProps, "menuWidth" | "actions" | "title" | "parent" | "onPress" | "onBack">,
+  props: Pick<
+    MenuPopupProps,
+    "menuWidth" | "actions" | "actionIcons" | "title" | "parent" | "onPress" | "onBack"
+  >,
 ) {
   const { appearance, themeVariables: colors } = useAppearancePreferences();
   const { scale, menuItemHeight } = useAndroidControlSizing();
@@ -95,7 +121,16 @@ export function MenuPopupItems(
           modifiers={itemModifiers}
           onClick={() => props.onPress(action)}
         >
-          {action.image && isAppSymbolName(action.image) ? (
+          {action.id !== undefined && props.actionIcons?.[action.id] ? (
+            <DropdownMenuItem.LeadingIcon>
+              <MenuNodeIcon
+                onPress={() => props.onPress(action)}
+                disabled={action.attributes?.disabled}
+              >
+                {props.actionIcons[action.id]}
+              </MenuNodeIcon>
+            </DropdownMenuItem.LeadingIcon>
+          ) : action.image && isAppSymbolName(action.image) ? (
             <DropdownMenuItem.LeadingIcon>
               <MenuIcon
                 name={action.image}

@@ -47,7 +47,7 @@ export function Menu(props: MenuProps) {
   const menuPress = useRef({ isPreparing: false, isOpen: false, suppressPress: false });
   const pendingPress = useRef<(() => void) | null>(null);
 
-  const { className: _className, ...menuProps } = props;
+  const { className: _className, actionIcons: _actionIcons, ...menuProps } = props;
   let children = menuProps.children;
   if (props.shouldOpenOnLongPress && isValidElement(children)) {
     const child = children as ReactElement<Pick<PressableProps, "onTouchStart" | "onPress">>;

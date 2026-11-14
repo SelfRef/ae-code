@@ -9,6 +9,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 ## [Unreleased]
 
 - Android: a new thread started in a chosen project keeps that project after you type and go back to the list, instead of showing up under another one.
+- Android: every project picker shows the project icons: the Issues, Branches and Releases chips and their menus, the scheduled task project row, the New thread long-press menu, and the project in the new chat heading.
 
 ## [v2026.11.13.9] - 2026-11-13
 
