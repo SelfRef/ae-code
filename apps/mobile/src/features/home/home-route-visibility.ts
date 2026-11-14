@@ -1,6 +1,6 @@
 import { RegistryContext } from "@effect/atom-react";
 import { useNavigation } from "@react-navigation/native";
-import { useContext, useRef, useSyncExternalStore } from "react";
+import { createContext, useContext, useRef, useSyncExternalStore } from "react";
 import type { Atom } from "effect/reactivity";
 
 import {
@@ -63,10 +63,14 @@ export function recordHomeFocus(): void {
   setHomeVisible(true);
 }
 
+/** A Home copy drawn under a swiping chat is on screen while the real Home is still covered. */
+export const HomeRouteShownContext = createContext(false);
+
 export function useHomeRouteVisible(): boolean {
   const navigation = useNavigation();
   const primaryColumn = useContext(NativePrimaryColumnContext);
   const tabActive = useContext(NativeWorkspaceTabActivityContext)?.active ?? true;
+  const shown = useContext(HomeRouteShownContext);
   const visible = useSyncExternalStore(subscribeHomeVisibility, () => homeVisible);
   // Every tab slot's primary column reports to the one Home route, so a tab
   // switch can end on the leaving slot's disappear. Trust this column instead.
@@ -75,7 +79,7 @@ export function useHomeRouteVisible(): boolean {
   if (!tabActive) return false;
   // Before Home's first navigation event: a cold deep link mounts Home under
   // its Thread without ever showing it.
-  return visible ?? navigation.isFocused();
+  return shown || (visible ?? navigation.isFocused());
 }
 
 export function useAtomValueWhileVisible<A>(atom: Atom.Atom<A>, visible: boolean): A {
