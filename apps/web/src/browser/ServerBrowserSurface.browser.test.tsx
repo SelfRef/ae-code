@@ -158,17 +158,16 @@ const mouseUp = (canvas: HTMLCanvasElement, button: number) => {
 };
 
 describe("ServerBrowserSurface control modes", () => {
-  it("moves between view only, taking control and sharing it with the agent", async () => {
+  it("moves between view only and taking control beside the agent", async () => {
     setup();
     const { screen } = await renderSurface("agent");
     await using _screen = screen;
 
-    await userEvent.click(screen.getByRole("button", { name: "Share control" }));
     await userEvent.click(screen.getByRole("button", { name: "Take control" }));
-    expect(mocks.sent).toEqual([{ type: "shareControl" }, { type: "takeControl" }]);
+    expect(mocks.sent).toEqual([{ type: "shareControl" }]);
   });
 
-  it("shows sharing as the pressed mode and releases from it", async () => {
+  it("shows taking control as the pressed mode and releases from it", async () => {
     setup();
     const { screen, input } = await renderSurface("you", true);
     await using _screen = screen;
@@ -177,7 +176,7 @@ describe("ServerBrowserSurface control modes", () => {
       .element(screen.getByRole("status"))
       .toHaveTextContent("You and the agent have control");
     await expect
-      .element(screen.getByRole("button", { name: "Share control" }))
+      .element(screen.getByRole("button", { name: "Take control" }))
       .toHaveAttribute("aria-pressed", "true");
     expect(
       input.closest("[data-server-browser-surface]")!.querySelector("textarea")!.disabled,

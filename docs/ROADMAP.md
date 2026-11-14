@@ -15,7 +15,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 | [47] | Commit history of a branch as a list or a graph, with a branch picker and changed files per commit, on the web (`/commits`, right panel) and in the Android app        | done    |
 | [46] | Default branch workflow: cleanup follows the local default branch, merges queue per repository and keep your edits there, and more (see the section)                   | done    |
 | 44   | Device panel controls in a row above the screen, like the browser's, instead of a column at the right edge (web)                                                       | done    |
-| 43   | Browser control modes: View only, Take control, and Share control, where you and the agent both act and the agent is not interrupted (web and Android)                 | done    |
+| 43   | Browser control modes: View only and Take control, where you and the agent both act and the agent is not interrupted (web and Android)                                 | done    |
 | 42   | Current branch action: a project setting (Push by default) that picks whether the Git button also creates a pull request                                               | done    |
 | 41   | Floating preview: window-style buttons in its top-right corner, shown while the pointer is over it, instead of a dot that opens a pill                                 | done    |
 | [40] | Other ways to run the Android emulator in the Device panel: investigate Cuttlefish and scrcpy; a Google Play image and foldable support are required                   | planned |
