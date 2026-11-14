@@ -26,6 +26,7 @@ import { Route as ChatNewRouteImport } from './routes/_chat.new'
 import { Route as ChatIssuesRouteImport } from './routes/_chat.issues'
 import { Route as ChatCommitsRouteImport } from './routes/_chat.commits'
 import { Route as ChatBranchesRouteImport } from './routes/_chat.branches'
+import { Route as ChatBoardRouteImport } from './routes/_chat.board'
 import { Route as ThreadsEnvironmentIdThreadIdRouteImport } from './routes/threads.$environmentId.$threadId'
 import { Route as ChatSettingsWorktreesRouteImport } from './routes/_chat.settings.worktrees'
 import { Route as ChatSettingsVoiceRouteImport } from './routes/_chat.settings.voice'
@@ -142,6 +143,11 @@ const ChatCommitsRoute = ChatCommitsRouteImport.update({
 const ChatBranchesRoute = ChatBranchesRouteImport.update({
   id: '/branches',
   path: '/branches',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ChatBoardRoute = ChatBoardRouteImport.update({
+  id: '/board',
+  path: '/board',
   getParentRoute: () => ChatRoute,
 } as any)
 const ThreadsEnvironmentIdThreadIdRoute =
@@ -324,6 +330,7 @@ export interface FileRoutesByFullPath {
   '/guest': typeof GuestRoute
   '/pair': typeof PairRoute
   '/welcome': typeof WelcomeRoute
+  '/board': typeof ChatBoardRoute
   '/branches': typeof ChatBranchesRoute
   '/commits': typeof ChatCommitsRoute
   '/issues': typeof ChatIssuesRoute
@@ -374,6 +381,7 @@ export interface FileRoutesByTo {
   '/guest': typeof GuestRoute
   '/pair': typeof PairRoute
   '/welcome': typeof WelcomeRoute
+  '/board': typeof ChatBoardRoute
   '/branches': typeof ChatBranchesRoute
   '/commits': typeof ChatCommitsRoute
   '/issues': typeof ChatIssuesRoute
@@ -427,6 +435,7 @@ export interface FileRoutesById {
   '/guest': typeof GuestRoute
   '/pair': typeof PairRoute
   '/welcome': typeof WelcomeRoute
+  '/_chat/board': typeof ChatBoardRoute
   '/_chat/branches': typeof ChatBranchesRoute
   '/_chat/commits': typeof ChatCommitsRoute
   '/_chat/issues': typeof ChatIssuesRoute
@@ -481,6 +490,7 @@ export interface FileRouteTypes {
     | '/guest'
     | '/pair'
     | '/welcome'
+    | '/board'
     | '/branches'
     | '/commits'
     | '/issues'
@@ -531,6 +541,7 @@ export interface FileRouteTypes {
     | '/guest'
     | '/pair'
     | '/welcome'
+    | '/board'
     | '/branches'
     | '/commits'
     | '/issues'
@@ -583,6 +594,7 @@ export interface FileRouteTypes {
     | '/guest'
     | '/pair'
     | '/welcome'
+    | '/_chat/board'
     | '/_chat/branches'
     | '/_chat/commits'
     | '/_chat/issues'
@@ -759,6 +771,13 @@ declare module '@tanstack/react-router' {
       path: '/branches'
       fullPath: '/branches'
       preLoaderRoute: typeof ChatBranchesRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/_chat/board': {
+      id: '/_chat/board'
+      path: '/board'
+      fullPath: '/board'
+      preLoaderRoute: typeof ChatBoardRouteImport
       parentRoute: typeof ChatRoute
     }
     '/threads/$environmentId/$threadId': {
@@ -1066,6 +1085,7 @@ const ChatSettingsRouteWithChildren = ChatSettingsRoute._addFileChildren(
 )
 
 interface ChatRouteChildren {
+  ChatBoardRoute: typeof ChatBoardRoute
   ChatBranchesRoute: typeof ChatBranchesRoute
   ChatCommitsRoute: typeof ChatCommitsRoute
   ChatIssuesRoute: typeof ChatIssuesRoute
@@ -1080,6 +1100,7 @@ interface ChatRouteChildren {
 }
 
 const ChatRouteChildren: ChatRouteChildren = {
+  ChatBoardRoute: ChatBoardRoute,
   ChatBranchesRoute: ChatBranchesRoute,
   ChatCommitsRoute: ChatCommitsRoute,
   ChatIssuesRoute: ChatIssuesRoute,

@@ -59,6 +59,7 @@ import {
   ArrowLeftIcon,
   BugIcon,
   ChartNoAxesColumnIcon,
+  SquareKanbanIcon,
   CheckIcon,
   ChevronRightIcon,
   CircleDotIcon,
@@ -1737,6 +1738,18 @@ function OpenCommandPaletteDialog(props: {
             ? paletteRouteTarget.threadRef.environmentId
             : null),
       );
+    },
+  });
+
+  actionItems.push({
+    kind: "action",
+    value: "action:board",
+    searchTerms: ["board", "kanban", "tasks", "columns", "review", "ship"],
+    title: "Open board",
+    icon: <SquareKanbanIcon className={ITEM_ICON_CLASS} />,
+    shortcutCommand: "board.open",
+    run: async () => {
+      await navigate({ to: "/board" });
     },
   });
 
