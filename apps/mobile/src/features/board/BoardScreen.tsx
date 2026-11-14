@@ -62,11 +62,17 @@ import { useSavedRemoteConnections } from "../../state/use-remote-environment-re
 import { vcsActionManager, vcsEnvironment } from "../../state/vcs";
 import { useThreadListActions } from "../home/useThreadListActions";
 import { usePendingTaskListActions } from "../home/usePendingTaskListActions";
+import { SymbolView } from "../../components/ui/AppSymbol";
 import { ChoiceChip } from "../layout/workspace/ChoiceChip";
+import { projectIcon } from "../layout/workspace/ProjectChoiceChip";
 import { useSelectWorkspaceDetail } from "../layout/workspace/useSelectWorkspaceDetail";
 import { SettingsScreen } from "../settings/components/SettingsScreen";
 
 const ALL_PROJECTS = "all";
+
+const allProjectsIcon = (size: number) => (
+  <SymbolView name="square.grid.2x2" size={size} tintColorClassName="accent-icon-subtle" />
+);
 /** Settled threads only pile up; the rest stay a tap away. */
 const DONE_LIMIT = 20;
 const WIDE_BOARD_WIDTH = 700;
@@ -373,9 +379,14 @@ export function BoardScreen() {
         <ChoiceChip
           label={scopedProject?.title ?? "All projects"}
           accessibilityLabel="Choose project"
+          leading={scopedProject ? projectIcon(scopedProject, 16) : allProjectsIcon(16)}
           options={[
-            { value: ALL_PROJECTS, label: "All projects" },
-            ...projects.map((project) => ({ value: projectKey(project), label: project.title })),
+            { value: ALL_PROJECTS, label: "All projects", icon: allProjectsIcon(24) },
+            ...projects.map((project) => ({
+              value: projectKey(project),
+              label: project.title,
+              icon: projectIcon(project, 24),
+            })),
           ]}
           selected={scope}
           active={scope !== ALL_PROJECTS}
