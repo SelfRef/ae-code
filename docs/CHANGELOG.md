@@ -10,6 +10,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 - Android: a new thread started in a chosen project keeps that project after you type and go back to the list, instead of showing up under another one.
 - Android: every project picker shows the project icons: the Issues, Branches and Releases chips and their menus, the scheduled task project row, the New thread long-press menu, and the project in the new chat heading.
+- Merging into the default branch no longer fails with "Could not run the pre-merge action: Project was not found" when no project overrides a setting.
 
 ## [v2026.11.13.9] - 2026-11-13
 

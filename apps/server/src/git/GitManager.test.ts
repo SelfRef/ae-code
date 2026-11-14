@@ -6374,11 +6374,53 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       Effect.gen(function* () {
         const { repoDir, worktreeDir, subjects } = yield* setupMerge;
         const triggers: Array<string | undefined> = [];
+        const projectIds: Array<string | undefined> = [];
+        const threadId = asThreadId("thread-check");
+        const providerInstanceId = ProviderInstanceId.make("codex");
+        const createdAt = DateTime.makeUnsafe("2026-09-27T00:00:00.000Z");
         const { manager } = yield* makeManager({
+          // No project overrides any setting, so the project must not come from the settings lookup.
+          seed: Effect.gen(function* () {
+            yield* (yield* ProjectionStore.ProjectionStoreV2).apply({
+              id: EventId.make("event:before-merge:thread"),
+              type: "thread.created",
+              threadId,
+              providerInstanceId,
+              occurredAt: createdAt,
+              payload: {
+                createdBy: "user",
+                creationSource: "web",
+                id: threadId,
+                projectId: ProjectId.make("project:before-merge"),
+                title: "Before merge",
+                providerInstanceId,
+                modelSelection: { instanceId: providerInstanceId, model: "gpt-5" },
+                runtimeMode: "full-access",
+                interactionMode: "default",
+                branch: null,
+                worktreePath: worktreeDir,
+                activeProviderThreadId: null,
+                lineage: {
+                  parentThreadId: null,
+                  relationshipToParent: null,
+                  rootThreadId: threadId,
+                },
+                forkedFrom: null,
+                createdAt,
+                updatedAt: createdAt,
+                archivedAt: null,
+                settledOverride: null,
+                settledAt: null,
+                lastVisitedAt: null,
+                deletedAt: null,
+              },
+            });
+          }),
           setupScriptRunner: {
             runForThread: (runInput) =>
               Effect.sync(() => {
                 triggers.push(runInput.trigger);
+                projectIds.push(runInput.projectId);
                 return {
                   status: "started" as const,
                   scriptId: "check",
@@ -6395,10 +6437,11 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
         const result = yield* runStackedAction(manager, {
           cwd: worktreeDir,
           action: "merge",
-          threadId: asThreadId("thread-check"),
+          threadId,
         }).pipe(Effect.result);
 
         expect(triggers).toEqual(["merge"]);
+        expect(projectIds).toEqual(["project:before-merge"]);
         expect(Result.isSuccess(result)).toBe(merges);
         expect(yield* subjects(repoDir, "main")).toEqual(
           merges ? ["Thread work", "Initial commit"] : ["Initial commit"],

@@ -719,6 +719,27 @@ export const make = Effect.gen(function* () {
   const serverSettingsService = yield* ServerSettings.ServerSettingsService;
   const threads = yield* ProjectionStore.ProjectionStoreV2;
   const projects = yield* ProjectStore.ProjectStoreV2;
+  const projectIdFor = Effect.fnUntraced(function* (input: {
+    readonly cwd: string;
+    readonly threadId?: ThreadId | undefined;
+    readonly projectId?: ProjectId | undefined;
+  }) {
+    const threadProjectId =
+      input.threadId === undefined
+        ? null
+        : yield* threads.getThreadShell(input.threadId).pipe(
+            Effect.map((thread) => thread?.projectId ?? null),
+            Effect.orElseSucceed(() => null),
+          );
+    return (
+      threadProjectId ??
+      input.projectId ??
+      (yield* projects.findActiveByWorkspaceRoot(input.cwd).pipe(
+        Effect.map((project) => Option.getOrNull(project)?.projectId ?? null),
+        Effect.orElseSucceed(() => null),
+      ))
+    );
+  });
   const projectSettingsFor = Effect.fnUntraced(function* (input: {
     readonly cwd: string;
     readonly threadId?: ThreadId | undefined;
@@ -727,20 +748,7 @@ export const make = Effect.gen(function* () {
     const settings = yield* serverSettingsService.getSettings;
     if (!hasProjectSettingsOverrides(settings))
       return { settings, projectId: null as ProjectId | null };
-    const threadProjectId =
-      input.threadId === undefined
-        ? null
-        : yield* threads.getThreadShell(input.threadId).pipe(
-            Effect.map((thread) => thread?.projectId ?? null),
-            Effect.orElseSucceed(() => null),
-          );
-    const projectId =
-      threadProjectId ??
-      input.projectId ??
-      (yield* projects.findActiveByWorkspaceRoot(input.cwd).pipe(
-        Effect.map((project) => Option.getOrNull(project)?.projectId ?? null),
-        Effect.orElseSucceed(() => null),
-      ));
+    const projectId = yield* projectIdFor(input);
     return { settings: resolveProjectSettings(settings, projectId).settings, projectId };
   });
   /** Null when merging by agent is turned off for the project (or its settings cannot be read). */
@@ -777,9 +785,8 @@ export const make = Effect.gen(function* () {
     threadId: ThreadId,
     emit: (event: GitActionProgressPayload) => Effect.Effect<void>,
   ) {
-    const { projectId } = yield* projectSettingsFor({ ...input, threadId }).pipe(
-      Effect.orElseSucceed(() => ({ projectId: null as ProjectId | null })),
-    );
+    // Not from the project's settings: those skip the lookup when no project overrides any.
+    const projectId = yield* projectIdFor({ ...input, threadId });
     const started = yield* projectSetupScriptRunner
       .runForThread({
         threadId,
