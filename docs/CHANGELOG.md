@@ -10,6 +10,19 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 Notes for the next release are the files in [changes/](changes/), one per change.
 
+## [v2026.11.14.1] - 2026-11-14
+
+- Android's git menu hides Review changes while the branch is clean, with nothing changed, ahead of its remote or different from its base.
+- Thread details card no longer shows a stray horizontal scrollbar.
+- Android's Memory list shows each memory as a short row, with the text cut after three lines, and the scope, who saved it and when on one line. Tap a memory to see and edit all of it.
+- Memory (web): editing or adding a memory opens the editor under the search bar, so the search and scope filter stay at the top.
+- Board: every column collapses into a thin vertical strip with its name and count; click its header to open it again. Parked now sits after Working, and drafts have no Open draft button (click the card).
+- Board (web and desktop): an overview of the columns in the header shows which part you are looking at; click or drag it to scroll.
+- Board: the project filter takes several projects, with project icons, and resets to All projects from the menu (web, desktop and Android).
+- The merge button and the Settle button in the web thread details panel are tinted violet and green, the colours of the Android ship button.
+- The web and desktop shell has a navigation bar at the far left with the sidebar toggle, New thread and the page icons (Board, Pull requests, Branches, Commits, Issues, Releases, Usage, Settings), highlighting the open page. Phones keep the icons in the sidebar footer.
+- Browser (web): the control selector is two-way like on Android, **View only** or **Take control**; Take control now always acts beside the agent without interrupting it, and the separate **Share control** option is gone.
+
 ## [v2026.11.14] - 2026-11-14
 
 - Android: a Board tab with the same columns and steps as the web board: columns side by side on tablets and unfolded phones, one at a time on phones. It starts last in the tab order; move it up in Settings → Navigation tabs.
