@@ -77,6 +77,17 @@ function compactMenuStatus(gitStatus: VcsStatusResult | null): string {
   return parts.join(" · ");
 }
 
+function hasNothingToReview(gitStatus: VcsStatusResult | null): boolean {
+  if (!gitStatus?.isRepo) return false;
+  const changes = gitStatus.branchChanges;
+  return (
+    !gitStatus.hasWorkingTreeChanges &&
+    !aheadLabel(gitStatus) &&
+    !changes?.insertions &&
+    !changes?.deletions
+  );
+}
+
 type QuickActionIcon =
   | typeof PullRequestGlyph.merged
   | "arrow.down.circle"
@@ -426,17 +437,21 @@ export function useThreadGitMenuDefinition(props: ThreadGitMenuProps): AppBarMen
             },
           ]
         : []),
-      {
-        id: "git-review",
-        title: "Review changes",
-        icon: "text.bubble",
-        disabled: !model.isRepo || props.hasThread === false,
-        subtitle:
-          props.hasThread === false
-            ? "Available after the first message"
-            : "Turn diffs and worktree changes",
-        onPress: model.openReview,
-      },
+      ...(hasNothingToReview(props.gitStatus)
+        ? []
+        : [
+            {
+              id: "git-review",
+              title: "Review changes",
+              icon: "text.bubble",
+              disabled: !model.isRepo || props.hasThread === false,
+              subtitle:
+                props.hasThread === false
+                  ? "Available after the first message"
+                  : "Turn diffs and worktree changes",
+              onPress: model.openReview,
+            },
+          ]),
       ...(props.onMergeBack
         ? [
             {
