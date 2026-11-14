@@ -36,7 +36,6 @@ import {
   FolderGit2Icon,
   GitBranchIcon,
   GitCommitHorizontalIcon,
-  GitMergeIcon,
   LayersIcon,
   MessageSquareIcon,
   SearchIcon,
@@ -217,7 +216,7 @@ function BranchRow({
             disabled={mergeAction.isPending}
             onClick={() => void merge()}
           >
-            <GitMergeIcon />
+            <PullRequestGlyph.merged />
           </Button>
         ) : null}
         {onDelete ? (
