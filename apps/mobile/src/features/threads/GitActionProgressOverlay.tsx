@@ -22,7 +22,8 @@ export function GitActionProgressOverlay(props: {
     }
   };
 
-  if (progress.phase === "idle") {
+  // A running action shows in the floating status at the bottom instead.
+  if (progress.phase === "idle" || progress.phase === "running") {
     return null;
   }
 
@@ -47,7 +48,6 @@ export function GitActionProgressOverlay(props: {
               ? "success"
               : "default"
         }
-        busy={progress.phase === "running"}
         action={progress.prUrl ? { label: "View", onPress: handlePress } : undefined}
       />
     </Animated.View>

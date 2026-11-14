@@ -1004,6 +1004,7 @@ function ThreadRouteContent(
           }
           canOperateThread={canOperateThread}
           shipAction={shipAction}
+          gitActionLabel={gitActionProgress.phase === "running" ? gitActionProgress.label : null}
           selectedThread={selectedThreadWithDraftSettings ?? selectedThread}
           selectedThreadDetailRef={selectedThreadDetailRef}
           contentPresentation={contentPresentation}
