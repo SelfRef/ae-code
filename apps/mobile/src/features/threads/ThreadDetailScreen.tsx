@@ -239,6 +239,8 @@ export interface ThreadDetailScreenProps {
   readonly canOperateThread: boolean;
   /** Shortcut to the next commit, merge or settle step; Android shows it as a floating button. */
   readonly shipAction?: ShipButton | null;
+  /** Label of the running source control action, shown in the floating status. */
+  readonly gitActionLabel?: string | null;
   readonly selectedThread: EnvironmentThreadShell;
   /** Use this for detail reads; it stays null until queued creation reaches the server. */
   readonly selectedThreadDetailRef: ScopedThreadRef | null;
@@ -808,6 +810,9 @@ function ThreadDetailBody(
     }
     if (props.creationState?.kind === "failed") {
       return null;
+    }
+    if (props.gitActionLabel) {
+      return { kind: "syncing", label: props.gitActionLabel };
     }
     if (threadSyncLabel !== null) {
       return { kind: "syncing", label: threadSyncLabel };

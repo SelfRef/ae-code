@@ -8,6 +8,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 ## [Unreleased]
 
+- Android: a running source control action (merge, commit, pull request) shows in the status pill above the composer instead of a second pill at the top of the screen.
 - A failed rebase onto the default branch now lists the conflicting files, or git's own message when it was not a conflict.
 - Android: source control errors show in full with a dismiss button and stay for 20 seconds, instead of being cut to one line after 5.
 - Android: the tool calls and reasoning listed under an expanded work group are indented less.
