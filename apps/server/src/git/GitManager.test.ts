@@ -6525,7 +6525,7 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
     );
 
     it.effect(
-      "deletes only branches the default branch contains and nothing is checked out on",
+      "deletes only branches the default branch contains, removing a linked worktree with its branch",
       () =>
         Effect.gen(function* () {
           const { repoDir, worktreeDir } = yield* setupMerge;
@@ -6543,13 +6543,9 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
             refNames: ["stale-merged", "wip", "main", "feature/merge-me", "missing"],
           });
 
-          expect(result.deleted).toEqual(["stale-merged"]);
-          expect(result.skipped.map((entry) => entry.name)).toEqual([
-            "wip",
-            "main",
-            "feature/merge-me",
-            "missing",
-          ]);
+          expect(result.deleted).toEqual(["stale-merged", "feature/merge-me"]);
+          expect(result.skipped.map((entry) => entry.name)).toEqual(["wip", "main", "missing"]);
+          expect(NodeFS.existsSync(worktreeDir)).toBe(false);
           const branches = (yield* runGit(repoDir, ["branch", "--format=%(refname:short)"])).stdout;
           expect(branches).not.toContain("stale-merged");
           expect(branches).toContain("wip");

@@ -2,6 +2,7 @@ import {
   branchMergeState,
   branchProjects,
   filterBranches,
+  isDeletableBranch,
   isPlainLocalBranch,
   sortBranches,
   threadForBranch,
@@ -274,12 +275,13 @@ export function BranchesScreen() {
     );
   };
   const deleteOne = (branch: VcsBranchOverviewEntry) => {
+    const inWorktree = branch.worktreePath !== null;
     const lost = branchMergeState(branch) !== "merged";
     confirmDelete(
-      `Delete branch ${branch.name}?`,
-      `${lost ? `Its ${branch.aheadOfDefault} commits not in ${defaultName} are lost unless another branch or a remote has them.` : `It is already in ${defaultName}.`} Remote copies stay.`,
+      `Delete ${inWorktree ? "worktree and " : ""}branch ${branch.name}?`,
+      `${lost ? `Its ${branch.aheadOfDefault} commits not in ${defaultName} are lost unless another branch or a remote has them.` : `It is already in ${defaultName}.`}${inWorktree ? " The worktree folder and its uncommitted changes are deleted." : ""} Remote copies stay.`,
       [branch.name],
-      lost,
+      lost || inWorktree,
     );
   };
   const unmerged = data?.branches.filter((branch) => branchMergeState(branch) === "unmerged") ?? [];
@@ -444,9 +446,7 @@ export function BranchesScreen() {
                       threadTitle={thread?.title ?? null}
                       onOpenCommits={() => setCommitsRef(branch.name)}
                       onDelete={
-                        canDelete && isPlainLocalBranch(branch)
-                          ? () => deleteOne(branch)
-                          : undefined
+                        canDelete && isDeletableBranch(branch) ? () => deleteOne(branch) : undefined
                       }
                       onOpenThread={() => {
                         if (thread)

@@ -1582,6 +1582,8 @@ merged into the default branch.
   `CLIENT_GUARDED_RPC_SCOPES`; `deleteMergedBranches.ts`): the server re-checks each name (exists, is an ancestor of the
   local default branch, is not checked out anywhere) and answers with what it deleted and what it kept and why. Remote
   copies stay. A thread whose branch is gone recreates it from the project's checkout on its next message.
-  Each such branch row also has its own delete button (a **Delete** link on Android): the same RPC with `force: true` for
-  a branch with commits the default branch lacks, behind a confirmation that says they are lost.
+  Each local branch row except the default and the one checked out in the project root also has its own delete button (a
+  **Delete** link on Android): the same RPC with `force: true` for a branch with commits the default branch lacks, behind a
+  confirmation that says they are lost. For a branch in a linked worktree the server removes the worktree first (forced,
+  so its uncommitted changes go too), then deletes the branch; the bulk **Delete merged** still skips worktree branches.
 - No data migration.

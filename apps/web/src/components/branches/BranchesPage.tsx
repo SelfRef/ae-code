@@ -4,6 +4,7 @@ import {
   branchProjects,
   canMergeBranch,
   filterBranches,
+  isDeletableBranch,
   isPlainLocalBranch,
   sortBranches,
   threadForBranch,
@@ -353,12 +354,13 @@ export function BranchList({
     if (confirmed === true) await deleteBranches(names, false);
   };
   const deleteOne = async (branch: VcsBranchOverviewEntry) => {
+    const inWorktree = branch.worktreePath !== null;
     const lost = branchMergeState(branch) !== "merged";
     const confirmed = await requestConfirmDialog(
-      `Delete branch ${branch.name}?\n${lost ? `Its ${branch.aheadOfDefault} commits not in ${data?.defaultRef ?? "the default branch"} are lost unless another branch or a remote has them.` : `It is already in ${data?.defaultRef ?? "the default branch"}.`} Remote copies stay.`,
+      `Delete ${inWorktree ? "worktree and " : ""}branch ${branch.name}?\n${lost ? `Its ${branch.aheadOfDefault} commits not in ${data?.defaultRef ?? "the default branch"} are lost unless another branch or a remote has them.` : `It is already in ${data?.defaultRef ?? "the default branch"}.`}${inWorktree ? " The worktree folder and its uncommitted changes are deleted." : ""} Remote copies stay.`,
       { variant: "destructive" },
     );
-    if (confirmed === true) await deleteBranches([branch.name], lost);
+    if (confirmed === true) await deleteBranches([branch.name], lost || inWorktree);
   };
   const remotes = data?.remotes ?? [];
   const remote = data === null ? ALL_VCS_REMOTES : (data.remote ?? ALL_VCS_REMOTES);
@@ -503,7 +505,7 @@ export function BranchList({
                   threadTitle={thread?.title ?? null}
                   onOpenCommits={() => onOpenCommits(branch.name)}
                   onDelete={
-                    canDelete && isPlainLocalBranch(branch)
+                    canDelete && isDeletableBranch(branch)
                       ? () => void deleteOne(branch)
                       : undefined
                   }
