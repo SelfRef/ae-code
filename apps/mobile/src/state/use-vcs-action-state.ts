@@ -20,6 +20,8 @@ export interface GitActionResultNotification {
 }
 
 const RESULT_DISMISS_MS = 5_000;
+// Errors carry details worth reading, so they stay up longer.
+const ERROR_DISMISS_MS = 20_000;
 
 const gitActionResultAtom = Atom.make<GitActionResultNotification | null>(null).pipe(
   Atom.keepAlive,
@@ -40,10 +42,13 @@ export function showGitActionResult(result: GitActionResultNotification): void {
   ).catch(() => undefined);
   if (dismissTimer) clearTimeout(dismissTimer);
   broadcast(result);
-  dismissTimer = setTimeout(() => {
-    dismissTimer = null;
-    broadcast(null);
-  }, RESULT_DISMISS_MS);
+  dismissTimer = setTimeout(
+    () => {
+      dismissTimer = null;
+      broadcast(null);
+    },
+    result.type === "error" ? ERROR_DISMISS_MS : RESULT_DISMISS_MS,
+  );
 }
 
 export function dismissGitActionResult(): void {

@@ -36,7 +36,8 @@ export function GitActionProgressOverlay(props: {
       onAccessibilityEscape={onDismiss}
     >
       <Toast
-        singleLine
+        singleLine={progress.phase !== "error"}
+        onDismiss={progress.phase === "error" ? onDismiss : undefined}
         message={progress.label ?? "Source control"}
         description={progress.description ?? undefined}
         tone={
