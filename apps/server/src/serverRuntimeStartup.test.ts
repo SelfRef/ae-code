@@ -303,6 +303,7 @@ it.effect("enqueueCommand fails queued work when readiness fails", () =>
 it.effect("automatic pull only updates enabled, behind, clean default-branch checkouts", () =>
   Effect.gen(function* () {
     const pulled: string[] = [];
+    const rebased: string[] = [];
     const git = {
       statusDetails: (cwd: string) =>
         Effect.succeed({
@@ -313,9 +314,10 @@ it.effect("automatic pull only updates enabled, behind, clean default-branch che
           aheadCount: cwd === "/ahead" ? 1 : 0,
           behindCount: cwd === "/current" ? 0 : 1,
         } as never),
-      pullCurrentBranch: (cwd: string) =>
+      pullCurrentBranch: (cwd: string, options?: { readonly rebase?: boolean }) =>
         Effect.sync(() => {
           pulled.push(cwd);
+          if (options?.rebase) rebased.push(cwd);
           return {
             status: "pulled" as const,
             refName: "main",
@@ -354,7 +356,8 @@ it.effect("automatic pull only updates enabled, behind, clean default-branch che
       }),
     ).pipe(Effect.provideService(GitVcsDriver.GitVcsDriver, git));
 
-    assert.deepStrictEqual(pulled, ["/clean"]);
+    assert.deepStrictEqual(pulled, ["/clean", "/ahead"]);
+    assert.deepStrictEqual(rebased, ["/ahead"]);
 
     pulled.length = 0;
     yield* ServerRuntimeStartup.autoPullProjects(

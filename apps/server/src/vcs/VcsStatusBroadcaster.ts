@@ -268,6 +268,7 @@ export const make = Effect.gen(function* () {
     Scope.close(scope, Exit.void),
   );
   const detailedSubscribers = new Map<string, number>();
+  const autoPullSkipReasons = new Map<string, string>();
   const branches = new Map<
     string,
     { readonly refName: string | null; readonly revision: number }
@@ -465,28 +466,35 @@ export const make = Effect.gen(function* () {
       const autoPullEnabled = (yield* Effect.forEach(policyCwds, autoPullPolicy.isEnabled, {
         concurrency: "unbounded",
       })).some(Boolean);
-      if (
-        remote === null ||
-        !remote.hasUpstream ||
-        remote.aheadCount > 0 ||
-        remote.behindCount <= 0 ||
-        !autoPullEnabled
-      ) {
+      if (remote === null || !remote.hasUpstream || remote.behindCount <= 0 || !autoPullEnabled) {
         return null;
       }
 
       yield* workflow.invalidateLocalStatus(cwd);
       const local = yield* workflow.localStatus({ cwd });
-      if (
-        !local.isRepo ||
-        !local.isDefaultRef ||
-        local.hasWorkingTreeChanges ||
-        local.refName !== remoteRead?.branch
-      )
+      const skipReason = !local.isRepo
+        ? "not-a-repository"
+        : !local.isDefaultRef || local.refName !== remoteRead?.branch
+          ? "not-on-default-branch"
+          : local.hasWorkingTreeChanges
+            ? "working-tree-changes"
+            : null;
+      if (skipReason !== null) {
+        // The poller repeats every interval; log a reason once until it changes.
+        if (autoPullSkipReasons.get(cwd) !== skipReason) {
+          autoPullSkipReasons.set(cwd, skipReason);
+          yield* Effect.logInfo("Skipped automatic project pull", {
+            cwdLength: cwd.length,
+            skipReason,
+          });
+        }
         return null;
+      }
+      autoPullSkipReasons.delete(cwd);
 
       pullAttempted = true;
-      yield* workflow.pullCurrentBranch(cwd);
+      // Unpushed local commits cannot fast-forward, so they are replayed on the new upstream.
+      yield* workflow.pullCurrentBranch(cwd, { rebase: remote.aheadCount > 0 });
       yield* workflow.invalidateStatus(cwd);
       yield* refreshLocalStatusCore(cwd);
       const refreshedRemote = yield* readRemoteStatus(cwd, { refreshUpstream: false });

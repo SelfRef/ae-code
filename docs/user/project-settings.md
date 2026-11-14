@@ -270,6 +270,8 @@ In Source control, enable **Automatically pull** to keep the default-branch chec
 with its configured upstream. Choose an environment to set the default or a project to override it.
 On mobile, use **Settings → Source control** to change selected environment defaults or project overrides.
 
-T3 Code only pulls when it can fast-forward and the checkout has no changed files, untracked files,
-or local commits. It skips checkouts on another branch or without an upstream. If a checkout has
-local work, resolve it yourself before automatic pulls can resume.
+T3 Code only pulls when the checkout has no changed files or untracked files. Local commits that
+are not pushed yet are rebased onto the new upstream commits; if that conflicts, the rebase is
+aborted and the checkout is left as it was. It skips checkouts on another branch or without an
+upstream, and logs why. If a checkout has local work, resolve it yourself before automatic pulls
+can resume.
