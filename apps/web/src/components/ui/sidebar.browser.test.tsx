@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { page, userEvent } from "vite-plus/test/browser";
 import { describe, expect, it, vi } from "vite-plus/test";
 
@@ -20,7 +21,8 @@ function CollapseFromInside() {
 
 function Harness(props: { readonly onResize?: (width: number) => void }) {
   return (
-    <SidebarProvider defaultOpen>
+    // This harness has no navigation rail beside the sidebar.
+    <SidebarProvider defaultOpen style={{ "--workspace-nav-rail-width": "0px" } as CSSProperties}>
       <Sidebar
         collapsible="offcanvas"
         resizable={{

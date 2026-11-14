@@ -1,17 +1,7 @@
-import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
-  ChartNoAxesColumnIcon,
-  CircleDotIcon,
-  GitBranchIcon,
-  GitCommitHorizontalIcon,
-  SettingsIcon,
-  TagIcon,
-  SquareKanbanIcon,
-} from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { memo } from "react";
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 
 import { useAtomValue } from "@effect/atom-react";
 import { useClientSettings, useEnvironmentIdentificationMode } from "../../hooks/useSettings";
@@ -23,11 +13,6 @@ import {
 } from "../../navigationHistory";
 import { primaryServerConfigAtom, primaryServerKeybindingsAtom } from "../../state/server";
 import { cn } from "../../lib/utils";
-import { usePullRequestsSupported } from "../../state/environments";
-import { useSourceControlSignIn } from "../../state/sourceControl";
-import { useProjects } from "../../state/entities";
-import { branchProjects } from "@t3tools/client-runtime/branch-overview";
-import { issueProjects } from "@t3tools/client-runtime/issue-projects";
 import { T3Wordmark } from "../T3Wordmark";
 import {
   resolveEnvironmentIdentificationPillLabel,
@@ -46,12 +31,11 @@ import {
   useSidebar,
 } from "../ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-import { readPullRequestListPreferences } from "../pullRequest/pullRequestListPreferences";
 import { isSidebarUtilityPage, useNavigateToMainApp } from "./mainAppLocation";
+import { useAppNavItems } from "./useAppNavItems";
 import { SidebarThreadUndoNotice } from "./SidebarThreadUndoNotice";
 import { SidebarProviderUpdatePill } from "./SidebarProviderUpdatePill";
 import { SidebarUpdateArchitectureWarning, SidebarUpdatePill } from "./SidebarUpdatePill";
-import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 import { observeResize } from "~/lib/observeResize";
 
 export const SidebarChromeHeader = memo(function SidebarChromeHeader({
@@ -230,7 +214,7 @@ function SidebarUtilityItem({
   onClick: () => void;
 }) {
   return (
-    <SidebarMenuItem className="shrink-0">
+    <SidebarMenuItem className="shrink-0 md:hidden">
       <Tooltip>
         <TooltipTrigger
           render={
@@ -246,124 +230,45 @@ function SidebarUtilityItem({
 }
 
 const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
-  const navigate = useNavigate();
   const navigateToMainApp = useNavigateToMainApp();
   const { isMobile, setOpenMobile } = useSidebar();
   const isOnUtilityPage = useLocation({
     select: (location) => isSidebarUtilityPage(location.pathname),
   });
-  const signIn = useSourceControlSignIn();
-  const pullRequestsSupported = usePullRequestsSupported() && !signIn.pullRequestsHidden;
-  const projects = useProjects();
-  const branchesSupported = branchProjects(projects).length > 0;
-  const issuesSupported = issueProjects(projects, signIn.githubSignedOut).length > 0;
+  const items = useAppNavItems();
   const closeMobileSidebar = () => {
     if (isMobile) {
       setOpenMobile(false);
     }
   };
-  const handlePullRequestsClick = () => {
-    closeMobileSidebar();
-    void navigate({
-      to: "/pull-requests",
-      search: readPullRequestListPreferences(),
-    });
-  };
-  const handleBoardClick = () => {
-    closeMobileSidebar();
-    void navigate({ to: "/board" });
-  };
-  const handleBranchesClick = () => {
-    closeMobileSidebar();
-    void navigate({ to: "/branches" });
-  };
-  const handleCommitsClick = () => {
-    closeMobileSidebar();
-    void navigate({ to: "/commits" });
-  };
-  const handleIssuesClick = () => {
-    closeMobileSidebar();
-    void navigate({ to: "/issues", search: { state: "open" } });
-  };
-  const handleReleasesClick = () => {
-    closeMobileSidebar();
-    void navigate({ to: "/releases" });
-  };
-  const handleSettingsClick = () => {
-    closeMobileSidebar();
-    void navigate({ to: "/settings" });
-  };
-
-  const handleUsageClick = () => {
-    if (isMobile) {
-      setOpenMobile(false);
-    }
-    void navigate({ to: "/usage" });
-  };
-
-  const handleBackClick = () => {
-    closeMobileSidebar();
-    void navigateToMainApp();
-  };
 
   return (
     <SidebarMenu className="flex-row items-center">
+      {/* From md up the nav rail carries these. */}
       {isOnUtilityPage ? (
-        <SidebarMenuItem className="min-w-0 flex-1">
-          <SidebarMenuButton onClick={handleBackClick}>
+        <SidebarMenuItem className="min-w-0 flex-1 md:hidden">
+          <SidebarMenuButton
+            onClick={() => {
+              closeMobileSidebar();
+              void navigateToMainApp();
+            }}
+          >
             <ArrowLeftIcon />
             <span>Back</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
       ) : (
-        <>
+        items.map((item) => (
           <SidebarUtilityItem
-            icon={<SettingsIcon />}
-            label="Settings"
-            onClick={handleSettingsClick}
+            key={item.id}
+            icon={item.icon}
+            label={item.label}
+            onClick={() => {
+              closeMobileSidebar();
+              item.go();
+            }}
           />
-          <SidebarUtilityItem
-            icon={<SquareKanbanIcon />}
-            label="Board"
-            onClick={handleBoardClick}
-          />
-          {pullRequestsSupported ? (
-            <SidebarUtilityItem
-              icon={<PullRequestGlyph.pullRequest />}
-              label="Pull requests"
-              onClick={handlePullRequestsClick}
-            />
-          ) : null}
-          {branchesSupported ? (
-            <SidebarUtilityItem
-              icon={<GitBranchIcon />}
-              label="Branches"
-              onClick={handleBranchesClick}
-            />
-          ) : null}
-          {branchesSupported ? (
-            <SidebarUtilityItem
-              icon={<GitCommitHorizontalIcon />}
-              label="Commits"
-              onClick={handleCommitsClick}
-            />
-          ) : null}
-          {issuesSupported ? (
-            <SidebarUtilityItem
-              icon={<CircleDotIcon />}
-              label="Issues"
-              onClick={handleIssuesClick}
-            />
-          ) : null}
-          {issuesSupported ? (
-            <SidebarUtilityItem icon={<TagIcon />} label="Releases" onClick={handleReleasesClick} />
-          ) : null}
-          <SidebarUtilityItem
-            icon={<ChartNoAxesColumnIcon />}
-            label="Usage"
-            onClick={handleUsageClick}
-          />
-        </>
+        ))
       )}
       <SidebarThreadUndoNotice />
       <SidebarUpdatePill />

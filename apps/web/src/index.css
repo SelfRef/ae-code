@@ -127,6 +127,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --workspace-native-controls-inset: 0px;
   --workspace-titlebar-control-size: 1.75rem;
   --workspace-titlebar-control-gap: 0.75rem;
+  --workspace-nav-rail-width: 0px;
   --workspace-titlebar-scroll-fade-height: 1.5rem;
   --chat-content-max-width: 46rem;
   --thread-details-panel-width: 20rem;
@@ -148,6 +149,28 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
     --app-scrollbar-thumb-hover: rgb(255 255 255 / 12%);
     --glass-blur: 16px;
     --glass-saturation: 1.08;
+  }
+}
+
+/* Window-control room before page titles. Phones keep the sidebar toggle in the header; from md up
+   it lives in the nav rail, so only the macOS traffic lights can reach past the rail. */
+@media (min-width: 768px) {
+  :root {
+    --workspace-nav-rail-width: 3rem;
+  }
+}
+
+[data-slot="sidebar-wrapper"] {
+  --workspace-titlebar-content-left: calc(
+    var(--workspace-controls-left) + var(--workspace-titlebar-control-size) +
+      var(--workspace-titlebar-control-gap)
+  );
+
+  @media (min-width: 768px) {
+    --workspace-titlebar-content-left: max(
+      var(--workspace-gutter-start),
+      calc(var(--workspace-controls-left) - var(--workspace-nav-rail-width))
+    );
   }
 }
 

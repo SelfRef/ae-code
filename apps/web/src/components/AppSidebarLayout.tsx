@@ -40,6 +40,7 @@ import {
 import { BackgroundThreadAnnouncer } from "./BackgroundThreadAnnouncer";
 import { HistorySwipeNavigation } from "./HistorySwipeNavigation";
 import ThreadSidebar from "./Sidebar";
+import { AppNavRail } from "./sidebar/AppNavRail";
 import { SidebarBrandWidthProbe } from "./sidebar/SidebarChrome";
 import { isAppModalPage } from "./sidebar/mainAppLocation";
 import type { SidebarRouteReveal } from "./sidebar/routeReveal";
@@ -313,6 +314,30 @@ function registerAppShellCommands(router: AnyRouter, shellElement: Element): () 
   };
 }
 
+function SidebarToggleButton({ onBackdrop }: { onBackdrop: boolean }) {
+  const usagePageOpen = useLocation({ select: (location) => location.pathname === "/usage" });
+  const keybindings = useAtomValue(primaryServerKeybindingsAtom);
+  const shortcutLabel = shortcutLabelForCommand(keybindings, "sidebar.toggle", {
+    context: { usagePageOpen },
+  });
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <SidebarTrigger
+            variant={onBackdrop ? "media-navigation" : "ghost"}
+            className={cn("pointer-events-auto", onBackdrop && "relative top-auto translate-y-0")}
+            aria-label="Toggle main sidebar"
+          />
+        }
+      />
+      <TooltipPopup side="bottom">
+        Toggle main sidebar{shortcutLabel ? ` (${shortcutLabel})` : ""}
+      </TooltipPopup>
+    </Tooltip>
+  );
+}
+
 function SidebarControl({ showSidebar }: { readonly showSidebar: boolean }) {
   const router = useRouter();
   const usagePageOpen = useLocation({ select: (location) => location.pathname === "/usage" });
@@ -322,9 +347,6 @@ function SidebarControl({ showSidebar }: { readonly showSidebar: boolean }) {
   const isSidebarVisible = useSidebarVisibility();
   const environmentIdentificationMode = useEnvironmentIdentificationMode();
   const stageBackdropVariant = useSidebarStageBackdropVariant(environmentIdentificationMode);
-  const shortcutLabel = shortcutLabelForCommand(keybindings, "sidebar.toggle", {
-    context: { usagePageOpen },
-  });
 
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- window keydown listener that toggles the sidebar on its shortcut
   useEffect(() => {
@@ -389,23 +411,9 @@ function SidebarControl({ showSidebar }: { readonly showSidebar: boolean }) {
       data-sidebar-control=""
     >
       {showSidebar ? (
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <SidebarTrigger
-                variant={isSidebarVisible && stageBackdropVariant ? "media-navigation" : "ghost"}
-                className={cn(
-                  "pointer-events-auto",
-                  isSidebarVisible && stageBackdropVariant && "relative top-auto translate-y-0",
-                )}
-                aria-label="Toggle main sidebar"
-              />
-            }
-          />
-          <TooltipPopup side="bottom">
-            Toggle main sidebar{shortcutLabel ? ` (${shortcutLabel})` : ""}
-          </TooltipPopup>
-        </Tooltip>
+        <div className="contents md:hidden">
+          <SidebarToggleButton onBackdrop={isSidebarVisible && stageBackdropVariant !== null} />
+        </div>
       ) : null}
     </div>
   );
@@ -469,6 +477,10 @@ export function AppSidebarLayout({
         {showSidebar ? (
           <>
             <SidebarBrandWidthProbe isElectron={isElectron} onWidthChange={setBrandWidth} />
+            <AppNavRail
+              reserveTitlebar={isMacosDesktop && !isWindowFullscreen}
+              toggle={<SidebarToggleButton onBackdrop={false} />}
+            />
             <Sidebar
               side="left"
               collapsible="offcanvas"

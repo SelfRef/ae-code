@@ -1,0 +1,1 @@
+The web and desktop shell has a navigation bar at the far left with the sidebar toggle, New thread and the page icons (Board, Pull requests, Branches, Commits, Issues, Releases, Usage, Settings), highlighting the open page. Phones keep the icons in the sidebar footer.

@@ -2,6 +2,7 @@ import appCss from "../index.css?inline";
 import type { EnvironmentServerConfig } from "@t3tools/client-runtime/connection";
 import * as shelfHooks from "../state/olderSettledShelf";
 import { createWorkspaceFocusController, workspaceAreaProps } from "../lib/workspaceFocus";
+import { AppNavRail } from "./sidebar/AppNavRail";
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell";
 import {
   DEFAULT_CLIENT_SETTINGS,
@@ -75,7 +76,7 @@ function project(id: string): Project {
   };
 }
 
-describe("sidebar header new thread", () => {
+describe("nav rail new thread", () => {
   it.each([
     { mode: "normal", count: 2, shift: false, picker: true },
     { mode: "boring", count: 2, shift: false, picker: true },
@@ -108,7 +109,7 @@ describe("sidebar header new thread", () => {
     vi.mocked(openCommandPalette).mockClear();
     await using screen = await render(
       <SidebarProvider>
-        <Sidebar routeReveal={{ observedKey: null, pendingKey: null }} />
+        <AppNavRail reserveTitlebar={false} toggle={null} />
       </SidebarProvider>,
     );
 
