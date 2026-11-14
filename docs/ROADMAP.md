@@ -1329,6 +1329,7 @@ branch and from its own upstream. Nothing here switches, pulls or pushes; the on
 - **Android**: a Branches tab before Issues (a page like Issues and Releases; the row's "Open thread" opens it). The tab bar
   holds four tabs, so with Pulls hidden Usage moves under the overflow entry. Search, sort and filter chips (merge state,
   kind, remote) and a project chip share their logic with the web (`filterBranches`, `sortBranches`).
+  A row's actions sit behind a swipe to the right, like a thread row (Commits; Merge and Delete, behind a More button when both apply), and a long press opens the same menu.
 - No data migration.
 
 ## Commit history (change 47)

@@ -1,0 +1,1 @@
+Android: a Branches row opens its actions with a swipe to the right, like a thread row (Commits, then Merge and Delete, behind a More button when both apply), and a long press opens the same menu. The row's three-dots button is gone.

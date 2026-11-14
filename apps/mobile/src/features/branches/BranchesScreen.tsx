@@ -19,10 +19,10 @@ import { ALL_VCS_REMOTES, type VcsBranchOverviewEntry } from "@t3tools/contracts
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
 import { useRef, useState } from "react";
 import { Pressable, ScrollView as RowScrollView, View, useWindowDimensions } from "react-native";
+import type { SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
 
 import { AppText as Text } from "../../components/ui/AppText";
 import { Button } from "../../components/ui/Button";
-import { IconButton } from "../../components/ui/IconButton";
 import { Menu } from "../../components/ui/Menu";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { AppActivityIndicator } from "../../components/ui/AppActivityIndicator";
@@ -31,6 +31,7 @@ import { ScreenScrollView as ScrollView } from "../../components/ui/ScreenScroll
 import { SearchField } from "../../components/ui/SearchField";
 import { cn } from "../../lib/cn";
 import { relativeTime } from "../../lib/time";
+import { useUniwindTheme } from "../../lib/useUniwindTheme";
 import { useProjects, useThreadShells } from "../../state/entities";
 import { usePageProject } from "../../state/page-project";
 import { useEnvironmentQuery } from "../../state/query";
@@ -40,6 +41,7 @@ import { useOpenWorkspaceDetail } from "../layout/useOpenWorkspaceDetail";
 import { ChoiceChip } from "../layout/workspace/ChoiceChip";
 import { PullRequestGlyph } from "../pull-requests/pullRequestGlyphs";
 import { ProjectChoiceChip } from "../layout/workspace/ProjectChoiceChip";
+import { ThreadSwipeable } from "../home/thread-swipe-actions";
 import { SettingsScreen } from "../settings/components/SettingsScreen";
 import { CommitsView } from "./CommitsView";
 import { useMergeBranch } from "./useMergeBranch";
@@ -64,9 +66,6 @@ const KIND_OPTIONS = [
   { value: "remote", label: "Remote only" },
 ] as const;
 
-/** Below this window width the row's actions collapse into a menu. */
-const COMPACT_WIDTH = 600;
-
 function BranchRow(props: {
   readonly project: Pick<EnvironmentProject, "environmentId" | "id">;
   readonly branch: VcsBranchOverviewEntry;
@@ -77,9 +76,12 @@ function BranchRow(props: {
   /** Absent when the branch cannot be deleted here. */
   readonly onDelete: (() => void) | undefined;
   readonly onMerged: () => void;
+  readonly onSwipeableWillOpen: (methods: SwipeableMethods) => void;
+  readonly onSwipeableClose: (methods: SwipeableMethods) => void;
 }) {
   const { branch } = props;
-  const compact = useWindowDimensions().width < COMPACT_WIDTH;
+  const { width } = useWindowDimensions();
+  const screenColor = useUniwindTheme()["--color-screen"];
   const onMerge = useMergeBranch(props.project, branch, props.defaultRef, props.onMerged);
   const handlers: Record<string, (() => void) | undefined> = {
     commits: props.onOpenCommits,
@@ -93,12 +95,30 @@ function BranchRow(props: {
       ? [{ id: "delete", title: "Delete", image: "trash", attributes: { destructive: true } }]
       : []),
   ];
-  const menuProps = {
-    title: branch.name,
-    actions: menuActions,
-    onPressAction: ({ nativeEvent }: { nativeEvent: { event: string } }) =>
-      handlers[nativeEvent.event]?.(),
+  const onPressAction = ({ nativeEvent }: { nativeEvent: { event: string } }) =>
+    handlers[nativeEvent.event]?.();
+  // Swipe reveals Commits and one more slot: Delete, Merge, or a menu when both apply.
+  const swipeMore = menuActions.filter((action) => action.id !== "commits");
+  const mergeAction = {
+    accessibilityLabel: `Merge ${branch.name} into ${props.defaultRef ?? "the default branch"}`,
+    icon: PullRequestGlyph.merged,
+    label: "Merge",
+    onPress: () => onMerge?.(),
   };
+  const secondaryAction =
+    swipeMore.length === 0
+      ? null
+      : swipeMore.length === 2
+        ? {
+            accessibilityLabel: `More actions for ${branch.name}`,
+            icon: "ellipsis" as const,
+            label: "More",
+            menu: { actions: swipeMore, onPressAction, title: branch.name },
+            onPress: () => {},
+          }
+        : onMerge
+          ? mergeAction
+          : undefined;
   const state = branchMergeState(branch);
   const kind = branch.isRemoteOnly ? "Remote only" : branch.worktreePath ? "Worktree" : "Branch";
   const sync = [
@@ -155,43 +175,37 @@ function BranchRow(props: {
     "flex-row items-start gap-1 border-b border-l-2 border-border py-3 pl-3",
     state === "unmerged" ? "border-l-warning-foreground bg-warning" : "border-l-transparent",
   );
-  return compact ? (
-    // A long press anywhere on the row opens the same menu as the button.
-    <Menu shouldOpenOnLongPress {...menuProps}>
-      <Pressable className={rowClassName}>
-        {body}
-        <Menu {...menuProps}>
-          <IconButton accessibilityLabel={`Actions for ${branch.name}`} icon="ellipsis" />
+  return (
+    <ThreadSwipeable
+      backgroundColor={screenColor}
+      fullSwipeAction="primary"
+      fullSwipeWidth={width - 40}
+      onDelete={props.onDelete ?? (() => {})}
+      onSwipeableClose={props.onSwipeableClose}
+      onSwipeableWillOpen={props.onSwipeableWillOpen}
+      primaryAction={{
+        accessibilityLabel: `Commit history of ${branch.name}`,
+        icon: "git.commit",
+        label: "Commits",
+        onPress: props.onOpenCommits,
+      }}
+      resetKey={branch.name}
+      secondaryAction={secondaryAction}
+      threadKey={`${props.project.environmentId}:${props.project.id}:${branch.name}`}
+      threadTitle={branch.name}
+    >
+      {() => (
+        // A long press anywhere on the row opens the full menu: the fallback for the swipe.
+        <Menu
+          shouldOpenOnLongPress
+          title={branch.name}
+          actions={menuActions}
+          onPressAction={onPressAction}
+        >
+          <Pressable className={rowClassName}>{body}</Pressable>
         </Menu>
-      </Pressable>
-    </Menu>
-  ) : (
-    <View className={rowClassName}>
-      {body}
-      <View className="flex-row items-center">
-        <IconButton
-          accessibilityLabel={`Commit history of ${branch.name}`}
-          icon="git.commit"
-          onPress={props.onOpenCommits}
-        />
-        {onMerge ? (
-          <IconButton
-            accessibilityLabel={`Merge ${branch.name} into ${props.defaultRef ?? "the default branch"}`}
-            icon={PullRequestGlyph.merged}
-            onPress={onMerge}
-          />
-        ) : null}
-        {props.onDelete ? (
-          <IconButton
-            accessibilityLabel={`Delete branch ${branch.name}`}
-            icon="trash"
-            variant="standard"
-            tintColorClassName="accent-danger-foreground"
-            onPress={props.onDelete}
-          />
-        ) : null}
-      </View>
-    </View>
+      )}
+    </ThreadSwipeable>
   );
 }
 
@@ -208,6 +222,16 @@ export function BranchesScreen() {
   const [query, setQuery] = useState("");
   const [commitsRef, setCommitsRef] = useState<string | null>(null);
   const searchRef = useRef(null);
+  const openSwipeableRef = useRef<SwipeableMethods | null>(null);
+  const handleSwipeableWillOpen = (methods: SwipeableMethods) => {
+    if (openSwipeableRef.current && openSwipeableRef.current !== methods) {
+      openSwipeableRef.current.close();
+    }
+    openSwipeableRef.current = methods;
+  };
+  const handleSwipeableClose = (methods: SwipeableMethods) => {
+    if (openSwipeableRef.current === methods) openSwipeableRef.current = null;
+  };
   const project = usePageProject(projects, selectedKey);
   const overview = useEnvironmentQuery(
     project === null
@@ -316,6 +340,7 @@ export function BranchesScreen() {
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
+        onScrollBeginDrag={() => openSwipeableRef.current?.close()}
         className="flex-1"
         contentContainerClassName="px-5 pt-4 pb-6"
       >
@@ -443,6 +468,8 @@ export function BranchesScreen() {
                       branch={branch}
                       defaultRef={data.defaultRef}
                       onMerged={overview.refresh}
+                      onSwipeableWillOpen={handleSwipeableWillOpen}
+                      onSwipeableClose={handleSwipeableClose}
                       threadTitle={thread?.title ?? null}
                       onOpenCommits={() => setCommitsRef(branch.name)}
                       onDelete={
