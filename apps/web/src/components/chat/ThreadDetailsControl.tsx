@@ -3,6 +3,7 @@ import { useRender } from "@base-ui/react/use-render";
 import type { ComponentProps } from "react";
 
 import { cn } from "~/lib/utils";
+import { PULL_REQUEST_STATE_PRESENTATION } from "../pullRequest/pullRequestIcons";
 import { Button } from "../ui/button";
 import {
   THREAD_DETAILS_PANEL_ROW_CLASS,
@@ -30,9 +31,8 @@ const parts = {
   meta: THREAD_DETAILS_PANEL_META_ACTION_CLASS,
 };
 
-// Violet is the merged colour of the pull request icons, which spell it as a raw palette class too.
-const MERGE_TONE_CLASS =
-  "bg-violet-600/10 text-violet-700 hover:!bg-violet-600/16 data-pressed:!bg-violet-600/16 dark:text-violet-300 dark:hover:!bg-violet-600/16 dark:data-pressed:!bg-violet-600/16";
+const STEP_TONE_CLASS = (text: string) =>
+  `bg-current/10 hover:!bg-current/16 data-pressed:!bg-current/16 ${text}`;
 
 export function ThreadDetailsControl({
   panel = true,
@@ -70,10 +70,10 @@ export function ThreadDetailsControl({
           // A tinted row that asks for attention; the row surface forces its own hover fill.
           tone === "warning" &&
             "bg-warning/10 hover:!bg-warning/16 data-pressed:!bg-warning/16 dark:hover:!bg-warning/16 dark:data-pressed:!bg-warning/16",
-          // The merge and settle steps keep the colours of the Android ship button.
-          tone === "merge" && MERGE_TONE_CLASS,
-          tone === "settle" &&
-            "bg-success/10 text-success-foreground hover:!bg-success/16 data-pressed:!bg-success/16 dark:hover:!bg-success/16 dark:data-pressed:!bg-success/16",
+          // The merge and settle steps keep the colours of the Android ship button: the pull request
+          // icons' merged and open tones, as a tinted fill.
+          tone === "merge" && STEP_TONE_CLASS(PULL_REQUEST_STATE_PRESENTATION.merged.toneClassName),
+          tone === "settle" && STEP_TONE_CLASS(PULL_REQUEST_STATE_PRESENTATION.open.toneClassName),
           // PR row actions share one 20px pill with a 1px inset focus ring that stays clear of the
           // label. The solid pill draws it in the canvas color so it shows against the fill.
           part === "meta" &&
