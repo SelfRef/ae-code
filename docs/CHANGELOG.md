@@ -16,6 +16,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 - Android tablets: a navigation tab past the rail's first five now opens from the top of Settings, as on phones, instead of being unreachable.
 - Board (web and desktop): your threads as cards in Draft, Working, Review, In PR, Done and Parked columns, with buttons (and drag) to move each one on: merge into the default branch or open a pull request, settle, un-settle, wake. Open it from the sidebar, the command palette or Ctrl+Alt+K.
 - Merging into the default branch no longer fails with "Could not run the pre-merge action: Project was not found" when no project overrides a setting.
+- Android: the device and browser buttons sit in their own pill beside the Merge, Commit and other idle status buttons, instead of inside the same pill.
 
 ## [v2026.11.13.9] - 2026-11-13
 
