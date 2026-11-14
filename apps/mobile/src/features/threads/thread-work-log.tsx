@@ -539,7 +539,7 @@ export function ThreadWorkLog(props: ThreadWorkLogProps) {
   return (
     <WorkLogBlock continues={props.continuesWorkLog}>
       {props.activities[0]?.groupedToolDetail ? (
-        <View className="ml-7">
+        <View className="ml-3">
           <ThreadWorkGroupList
             activities={props.activities}
             edgeFadeColor={props.edgeFadeColor}
@@ -577,7 +577,7 @@ function ThreadReasoningGroup(props: {
   }));
 
   return (
-    <View className="ml-7">
+    <View className="ml-3">
       <Animated.ScrollView
         nestedScrollEnabled
         className="max-h-96"

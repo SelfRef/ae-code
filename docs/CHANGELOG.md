@@ -10,6 +10,7 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 - A failed rebase onto the default branch now lists the conflicting files, or git's own message when it was not a conflict.
 - Android: source control errors show in full with a dismiss button and stay for 20 seconds, instead of being cut to one line after 5.
+- Android: the tool calls and reasoning listed under an expanded work group are indented less.
 - Android: a new thread started in a chosen project keeps that project after you type and go back to the list, instead of showing up under another one.
 - Android: every project picker shows the project icons: the Issues, Branches and Releases chips and their menus, the scheduled task project row, the New thread long-press menu, and the project in the new chat heading.
 - Android: a Board tab with the same columns and steps as the web board: columns side by side on tablets and unfolded phones, one at a time on phones. It starts last in the tab order; move it up in Settings → Navigation tabs.
