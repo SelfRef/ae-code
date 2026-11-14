@@ -1,6 +1,6 @@
 import { RegistryContext } from "@effect/atom-react";
 import { useNavigation } from "@react-navigation/native";
-import { useContext, useRef, useSyncExternalStore } from "react";
+import { createContext, useContext, useRef, useSyncExternalStore } from "react";
 import type { Atom } from "effect/reactivity";
 
 /**
@@ -41,12 +41,16 @@ export function recordHomeFocus(): void {
   setHomeVisible(true);
 }
 
+/** A Home copy drawn under a swiping chat is on screen while the real Home is still covered. */
+export const HomeRouteShownContext = createContext(false);
+
 export function useHomeRouteVisible(): boolean {
   const navigation = useNavigation();
+  const shown = useContext(HomeRouteShownContext);
   const visible = useSyncExternalStore(subscribeHomeVisibility, () => homeVisible);
   // Before Home's first navigation event: a cold deep link mounts Home under
   // its Thread without ever showing it.
-  return visible ?? navigation.isFocused();
+  return shown || (visible ?? navigation.isFocused());
 }
 
 export function useAtomValueWhileVisible<A>(atom: Atom.Atom<A>, visible: boolean): A {
