@@ -1756,6 +1756,11 @@ export default function GitActionsControl({
               size="xs"
               part="primary"
               panel
+              tone={
+                quickAction.action === "merge" || quickAction.action === "merge_push"
+                  ? "merge"
+                  : "default"
+              }
               disabled={!canWriteSourceControl || isGitActionRunning || quickAction.disabled}
               onClick={runQuickAction}
             >

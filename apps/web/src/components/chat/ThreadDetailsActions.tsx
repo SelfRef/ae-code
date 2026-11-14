@@ -94,6 +94,7 @@ export function ThreadDetailsActions(props: {
         size="xs"
         part="primary"
         panel
+        tone={blocked || settled ? "default" : "settle"}
         disabled={!canOperate || thread === null || blocked}
         onClick={() => void onSettle()}
       >
