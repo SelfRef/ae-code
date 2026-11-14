@@ -1,0 +1,1 @@
+Android: every project picker shows the project icons: the Issues, Branches and Releases chips and their menus, the scheduled task project row, the New thread long-press menu, the project in the new chat heading, and the Board's project filter.

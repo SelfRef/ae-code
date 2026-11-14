@@ -76,7 +76,7 @@ jobs:
 
       - name: Check the changelog has notes for the release
         if: steps.meta.outputs.release == 'true'
-        run: scripts/release-notes-section.sh "${{ steps.meta.outputs.tag }}" > /dev/null
+        run: scripts/changelog-fragments.sh > /dev/null
 
   # The Linux x64 server as an archive: the server bundle and web client packed
   # into a single executable, with the resource monitor and libatomic beside it.
@@ -416,7 +416,7 @@ jobs:
           path: release-assets
           merge-multiple: true
 
-      # The notes are docs/CHANGELOG.md (see scripts/release-notes-section.sh),
+      # The notes are docs/changes/*.md (see scripts/changelog-fragments.sh),
       # then a collapsed full list: a link to upstream's commits between the
       # two upstream bases, and the fork patches whose subjects the previous
       # release did not have (every rebase rewrites the hashes, so the subject
@@ -434,7 +434,7 @@ jobs:
           last="$(gh release list --limit 1 --json tagName --jq '.[0].tagName // ""')"
           git log --reverse --format='%s' "$base..HEAD" | { grep -Ev '^(fixup! |chore\(release\): )' || true; } > patches.txt
           {
-            scripts/release-notes-section.sh "$TAG"
+            scripts/changelog-fragments.sh
             echo
             echo "Built from ${GITHUB_REPOSITORY}@${REF:0:10} on top of pingdotgg/t3code@${base:0:10}."
             echo
@@ -468,8 +468,8 @@ jobs:
           } > release-notes.md
           cat release-notes.md
 
-      # Moves the notes under the tag's heading in docs/CHANGELOG.md (after they were
-      # read above), commits that to main and tags the commit. The push fails, and
+      # Writes the notes under the tag's heading in docs/CHANGELOG.md and removes the
+      # fragments (after they were read above), commits that to main and tags the commit. The push fails, and
       # nothing is published, when main moved on since the build.
       - name: Commit the changelog and tag the release
         env:
@@ -479,7 +479,7 @@ jobs:
           scripts/changelog-release.sh "$TAG"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git diff --quiet || git commit -am "chore(release): $TAG"
+          git diff --cached --quiet || git commit -m "chore(release): $TAG"
           git tag "$TAG"
           git push --atomic origin "HEAD:main" "$TAG"
 

@@ -1,0 +1,1 @@
+Automatic pull no longer skips a default-branch checkout that has unpushed local commits: it rebases them onto the new upstream commits (and aborts, leaving the checkout as it was, on a conflict). A skipped pull is now logged with its reason.

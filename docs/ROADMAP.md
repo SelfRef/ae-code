@@ -378,15 +378,17 @@ disabled.
 - **Versions:** tag and title `vYYYY.MM.DD`, then `vYYYY.MM.DD.1`, `.2` for later releases the same day. The apps need a
   semver, so the packages (and the updater feed) carry `YYYY.MMDD.N`: `2026.1109.0` for `v2026.11.09`. It increases
   with every release, which is all the updater needs. Only the Android app differs: its version name is the tag itself.
-- **Release notes:** `docs/CHANGELOG.md` (Keep a Changelog), the section named after the release's tag, else
-  `[Unreleased]` (`scripts/release-notes-section.sh`); the `prepare` job fails before building when both are empty.
+- **Release notes:** the unreleased changelog fragments, `docs/changes/*.md`, one bullet per file in the order their
+  commits added them (`scripts/changelog-fragments.sh`); the `prepare` job fails before building when there are none.
   Under it: the upstream commit the release sits on, and a collapsed "Full changelog": a compare link between the two
   upstream commits (`pingdotgg/t3code`) and the fork patches that release did not have. A patch counts as new by its
   subject, because every rebase rewrites the hashes, so a fixup that keeps the subject is not listed (`fixup!` commits
-  are left out). The first release lists every patch. The full list is the table above. Entries go under
-  `[Unreleased]` in the commit that lands a user-visible change; the `release` job moves them under the tag's
-  heading (`## [vYYYY.MM.DD] - date`, `scripts/changelog-release.sh`), commits that to `main` as `chore(release): <tag>` and
-  tags that commit, then publishes. The commit is not in your checkout until you pull: rebase onto it before the next push.
+  are left out). The first release lists every patch. The full list is the table above. A fragment is added in the
+  commit that lands a user-visible change. Each change owns its own file, so changes never conflict with each other or
+  with the release commit (one shared `[Unreleased]` list conflicted on every rebase and merge). The `release` job writes
+  the notes into `docs/CHANGELOG.md` under the tag's heading (`## [vYYYY.MM.DD] - date`, `scripts/changelog-release.sh`),
+  deletes the fragments, commits that to `main` as `chore(release): <tag>` and tags that commit, then publishes. The
+  commit is not in your checkout until you pull: rebase onto it before the next push (it touches no file you edit).
   Fork patches named `chore(release): ...` are left out of the "Full changelog" list.
 - **Contents:** `ae-code-linux-x64.tar.gz`, the Linux x64 server: the single executable `ae-code` with the web client,
   the resource monitor and its own libatomic (`ae-code serve`). Upstream's archive is `t3-<version>-linux-x64.tar.gz`
