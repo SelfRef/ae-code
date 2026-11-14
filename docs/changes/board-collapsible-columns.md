@@ -1,1 +1,0 @@
-Board: every column collapses into a thin vertical strip with its name and count; click its header to open it again. Parked now sits after Working, and drafts have no Open draft button (click the card).

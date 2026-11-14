@@ -1,1 +1,0 @@
-Browser (web): the control selector is two-way like on Android, **View only** or **Take control**; Take control now always acts beside the agent without interrupting it, and the separate **Share control** option is gone.
