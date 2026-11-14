@@ -11,6 +11,7 @@ Other forks of upstream, what each offers and where an idea here came from: [FOR
 | #    | Change                                                                                                                                                               | Status  |
 | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
 | [45] | The executable and command are `ae-code` (was `t3`); `AECODE_*` env vars work everywhere `T3CODE_*` did, which stays as the fallback                                 | done    |
+| 49   | Agents call `device_list` before saying a platform or device is unavailable (missing `adb` on PATH or an empty `adb devices` is not a missing SDK)                   | done    |
 | 48   | Fold and unfold a foldable Android emulator from the Android app's device menu; agents learn `agent-device fold` from `device_open`                                  | done    |
 | [47] | Commit history of a branch as a list or a graph, with a branch picker and changed files per commit, on the web (`/commits`, right panel) and in the Android app      | done    |
 | [46] | Default branch workflow: cleanup follows the local default branch, merges queue per repository and keep your edits there, and more (see the section)                 | done    |
@@ -1635,4 +1636,16 @@ thread handler in another (`useNewThreadAction`).
   collapsed page titles clear whatever of the lights reaches past the rail (`--workspace-titlebar-content-left`, now set
   in `index.css` per breakpoint instead of inline).
 - Untested on macOS and Windows desktop.
+- No data migration.
+
+## Device availability (change 49)
+
+An agent in a thread told the owner there was no Android SDK or emulator after `adb` was not on its PATH and
+`adb devices` was empty, though the Device hub listed a stopped AVD. The device instructions
+(`T3_CODE_DEVICE_TOOL_INSTRUCTIONS`, was "If the platform you need is unavailable, say so.") and the `device_list` tool
+description now tell every provider to call `device_list` first, which reads the SDK itself and lists stopped
+emulators, and to say a device is unavailable only when it is not listed. Eval case `UNAVAIL-01` in
+`evals/mcp-tool-use/cases/device-manager.ndjson` guards it; it has not been run against models yet (needs
+`ANTHROPIC_API_KEY`).
+
 - No data migration.
