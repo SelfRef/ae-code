@@ -15,7 +15,7 @@ import { usePageProject } from "../../state/page-project";
 import { issueEnvironment } from "../../state/issues";
 import { useEnvironmentQuery } from "../../state/query";
 import { useSourceControlSignIn } from "../../state/sourceControl";
-import { ChoiceChip } from "../layout/workspace/ChoiceChip";
+import { ProjectChoiceChip } from "../layout/workspace/ProjectChoiceChip";
 import { SettingsScreen } from "../settings/components/SettingsScreen";
 import { PullRequestMarkdown } from "../pull-requests/PullRequestMarkdown";
 
@@ -221,14 +221,9 @@ export function ReleasesScreen() {
         <View className="gap-3">
           {projects.length > 1 ? (
             <View className="flex-row">
-              <ChoiceChip
-                label={project.title}
-                accessibilityLabel="Choose project"
-                options={projects.map((candidate) => ({
-                  value: projectKey(candidate),
-                  label: candidate.title,
-                }))}
-                selected={projectKey(project)}
+              <ProjectChoiceChip
+                projects={projects}
+                project={project}
                 onSelect={(key) => {
                   setSelectedKey(key);
                   setPages(1);

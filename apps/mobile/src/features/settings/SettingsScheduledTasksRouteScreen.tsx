@@ -53,6 +53,7 @@ import {
   ENVIRONMENT_MACHINE_SYMBOLS,
 } from "../../components/EnvironmentMachineSymbol";
 import { Menu } from "../../components/ui/Menu";
+import { projectIcon } from "../layout/workspace/ProjectChoiceChip";
 import type { ComposerEditorSelection } from "../../components/ComposerEditor";
 import { ScreenScrollView as ScrollView } from "../../components/ui/ScreenScrollView";
 import { SegmentedControl } from "../../components/ui/SegmentedControl";
@@ -207,6 +208,7 @@ function SelectRow(props: {
   readonly label: string;
   readonly value: string;
   readonly valueIcon?: ReactNode;
+  readonly actionIcons?: Readonly<Record<string, ReactNode>>;
   readonly actions: MenuAction[];
   readonly onSelect: (id: string) => void;
   readonly borderTop?: boolean;
@@ -242,6 +244,7 @@ function SelectRow(props: {
   return (
     <Menu
       actions={props.actions}
+      actionIcons={props.actionIcons}
       onPressAction={({ nativeEvent }) => props.onSelect(nativeEvent.event)}
     >
       <Pressable
@@ -695,6 +698,7 @@ function TaskForm({
           project.id === draft.task?.projectId),
     )
     .sort((left, right) => Number(right.pinnedAt != null) - Number(left.pinnedAt != null));
+  const selectedProject = projects.find((project) => project.id === draft.projectId);
   const config = useEnvironmentServerConfig(environmentId);
   const destinationLabel = useScheduledTaskDestinationLabel(environmentId, draft.threadId);
   const boundThread = useScheduledTaskThread(environmentId, draft.threadId);
@@ -900,9 +904,13 @@ function TaskForm({
           <SelectRow
             label="Project"
             value={
-              projects.find((project) => project.id === draft.projectId)?.title ??
+              selectedProject?.title ??
               (projects.length ? "Choose project" : "No projects available")
             }
+            valueIcon={selectedProject ? projectIcon(selectedProject, 18) : undefined}
+            actionIcons={Object.fromEntries(
+              projects.map((project) => [project.id, projectIcon(project, 24)]),
+            )}
             actions={projects.map((project) => ({
               id: project.id,
               title: project.title,

@@ -36,6 +36,7 @@ type OverlayFrame = {
 
 export type AndroidAnchoredMenuProps = {
   readonly actions: readonly MenuAction[];
+  readonly actionIcons?: Readonly<Record<string, ReactNode>> | undefined;
   readonly title?: string;
   readonly onPressAction?: MenuComponentProps["onPressAction"];
   readonly className?: string;
@@ -175,6 +176,7 @@ export function AndroidAnchoredMenu(props: AndroidAnchoredMenuProps) {
                 anchor={windowHinge ? { ...local, x: left, width: menuWidth } : local}
                 menuWidth={menuWidth}
                 actions={levelActions}
+                actionIcons={props.actionIcons}
                 title={props.title}
                 parent={parent}
                 onPress={onPressItem}
@@ -206,6 +208,7 @@ export function AndroidAnchoredMenu(props: AndroidAnchoredMenuProps) {
                     anchor={local}
                     menuWidth={menuWidth}
                     actions={levelActions}
+                    actionIcons={props.actionIcons}
                     title={props.title}
                     parent={parent}
                     onPress={onPressItem}

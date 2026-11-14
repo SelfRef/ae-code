@@ -23,6 +23,7 @@ import { issueEnvironment } from "../../state/issues";
 import { useEnvironmentQuery } from "../../state/query";
 import { useSourceControlSignIn } from "../../state/sourceControl";
 import { ChoiceChip } from "../layout/workspace/ChoiceChip";
+import { ProjectChoiceChip } from "../layout/workspace/ProjectChoiceChip";
 import { SettingsScreen } from "../settings/components/SettingsScreen";
 import { PullRequestMarkdown } from "../pull-requests/PullRequestMarkdown";
 import { issueStateLabel } from "./issueStateLabel";
@@ -290,14 +291,9 @@ export function IssuesScreen() {
             contentContainerStyle={{ gap: 8 }}
           >
             {projects.length > 1 ? (
-              <ChoiceChip
-                label={project.title}
-                accessibilityLabel="Choose project"
-                options={projects.map((candidate) => ({
-                  value: projectKey(candidate),
-                  label: candidate.title,
-                }))}
-                selected={projectKey(project)}
+              <ProjectChoiceChip
+                projects={projects}
+                project={project}
                 onSelect={(key) => {
                   setSelectedKey(key);
                   restart();

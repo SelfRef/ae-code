@@ -32,6 +32,7 @@ vi.mock("@expo/ui/community/datetime-picker", () => ({ DateTimePicker: () => nul
 vi.mock("../../components/ui/Dialog", () => ({ alert: mocks.alert }));
 vi.mock("../../components/ui/AppText", () => ({ AppText: Children }));
 vi.mock("../../components/ui/AppSymbol", () => ({ SymbolView: () => null }));
+vi.mock("../layout/workspace/ProjectChoiceChip", () => ({ projectIcon: () => null }));
 vi.mock("../../components/EnvironmentMachineSymbol", () => ({
   EnvironmentMachineSymbol: () => null,
   ENVIRONMENT_MACHINE_SYMBOLS: {},

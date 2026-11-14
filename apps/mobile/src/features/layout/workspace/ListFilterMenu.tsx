@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Pressable } from "react-native";
 import { Chip } from "../../../components/ui/Chip";
 import { Menu } from "../../../components/ui/Menu";
@@ -9,6 +10,8 @@ export function ListFilterMenu(props: {
   readonly accessibilityLabel: string;
   readonly active?: boolean;
   readonly icon?: boolean;
+  readonly leading?: ReactNode;
+  readonly actionIcons?: Readonly<Record<string, ReactNode>>;
   readonly actions: MenuProps["actions"];
   readonly onSelect: (id: string) => void;
 }) {
@@ -17,6 +20,7 @@ export function ListFilterMenu(props: {
     <Menu
       title={props.accessibilityLabel}
       actions={props.actions}
+      actionIcons={props.actionIcons}
       onPressAction={({ nativeEvent }) => props.onSelect(nativeEvent.event)}
     >
       <Pressable
@@ -27,6 +31,7 @@ export function ListFilterMenu(props: {
       >
         <Chip
           label={props.label}
+          leading={props.leading}
           selected={props.active}
           icon={props.icon ? "line.3.horizontal.decrease" : undefined}
           trailingIcon={props.icon ? undefined : "chevron.down"}
