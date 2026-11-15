@@ -10,6 +10,10 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 Notes for the next release are the files in [changes/](changes/), one per change.
 
+## [v2026.11.15.1] - 2026-11-15
+
+- The Android tablet rail now shows every navigation tab that fits its height instead of the first five, and Board sits before Usage in the default tab order.
+
 ## [v2026.11.15] - 2026-11-15
 
 - Web: the terminal's split, new and close icons (and the terminal list icons) are larger and easier to hit.
