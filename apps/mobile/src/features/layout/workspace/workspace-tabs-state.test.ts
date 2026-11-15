@@ -72,8 +72,8 @@ describe("workspace root navigation", () => {
       "issues",
       "releases",
       "pullRequests",
-      "usage",
       "board",
+      "usage",
     ]);
     expect(resolveWorkspaceTabOrder(["home", "usage", "issues", "threads"])).toEqual([
       "usage",

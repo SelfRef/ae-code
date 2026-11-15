@@ -438,6 +438,7 @@ class T3WorkspaceNavigationView(
     "issues" -> "Issues"
     "releases" -> "Releases"
     "pullRequests" -> "Pulls"
+    "board" -> "Board"
     "usage" -> "Usage"
     else -> "Settings"
   }
@@ -453,6 +454,7 @@ class T3WorkspaceNavigationView(
       "issues" -> R.drawable.t3_issues
       "releases" -> R.drawable.t3_releases
       "pullRequests" -> R.drawable.t3_pull_requests
+      "board" -> R.drawable.t3_board
       "usage" -> R.drawable.t3_usage
       else -> R.drawable.t3_settings
     }

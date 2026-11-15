@@ -7,6 +7,7 @@ import {
   WORKSPACE_TAB_LABELS,
   useNavigationTabOrder,
   useHiddenNavigationTabs,
+  useNavigationTabCapacity,
 } from "../layout/workspace/navigation-tabs";
 import { currentWorkspaceSelections } from "../layout/workspace/workspace-selection-store";
 import { rememberedSettingsPage } from "../layout/workspace/workspace-tab-navigation";
@@ -23,7 +24,6 @@ import { deriveProjectGroupLabel } from "@t3tools/client-runtime/state/project-g
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { hasCloudPublicConfig } from "../cloud/publicConfig";
-import { useAdaptiveWorkspaceLayout } from "../layout/adaptive-workspace-context";
 import { useSavedRemoteConnections } from "../../state/use-remote-environment-registry";
 import { SettingsRow } from "./components/SettingsRow";
 import { SettingsSection, SettingsSidebarContext } from "./components/SettingsSection";
@@ -326,13 +326,8 @@ function useSettingsIndexSections(): SettingsListSection[] {
 function useOverflowRows(): SettingsListRow[] {
   const order = useNavigationTabOrder();
   const hidden = useHiddenNavigationTabs();
-  const { layout } = useAdaptiveWorkspaceLayout();
-  // The Android tablet rail holds five sections; the rest open from here, as on phones.
-  const tabs = overflowNavigationTabs(
-    order,
-    hidden,
-    Platform.OS === "android" && layout.usesSplitView ? 5 : 4,
-  );
+  // Sections beyond what the bar or rail holds open from here.
+  const tabs = overflowNavigationTabs(order, hidden, useNavigationTabCapacity());
   const selectTab = useSelectWorkspaceTab();
   return tabs.map((tab) => ({
     id: tab,

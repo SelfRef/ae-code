@@ -5,6 +5,7 @@ import {
   navigationCustomizationAvailable,
   moveNavigationTab,
   overflowNavigationTabs,
+  railNavigationTabCapacity,
   enabledNavigationTabs,
   toggleNavigationTabVisibility,
   resolveHiddenNavigationTabs,
@@ -42,12 +43,13 @@ describe("navigation tab order", () => {
 
   it("shows four sections, overflows the rest and keeps Settings selected during editing", () => {
     expect(visibleNavigationTabs()).toEqual(["threads", "branches", "issues", "releases"]);
-    expect(overflowNavigationTabs()).toEqual(["usage", "board"]);
-    expect(overflowNavigationTabs(undefined, [])).toEqual(["pullRequests", "usage", "board"]);
-    expect(overflowNavigationTabs(undefined, [], 5)).toEqual(["usage", "board"]);
+    expect(overflowNavigationTabs()).toEqual(["board", "usage"]);
+    expect(overflowNavigationTabs(undefined, [])).toEqual(["pullRequests", "board", "usage"]);
+    expect(overflowNavigationTabs(undefined, [], 5)).toEqual(["board", "usage"]);
+    expect(overflowNavigationTabs(undefined, [], railNavigationTabCapacity(760))).toEqual([]);
     expect(selectedNavigationTab(undefined, "threads", true)).toBe("settings");
     expect(selectedNavigationTab(undefined, "usage", false)).toBe("settings");
-    expect(selectedNavigationTab(undefined, "usage", false, undefined, 5)).toBe("usage");
+    expect(selectedNavigationTab(undefined, "usage", false, undefined, 6)).toBe("usage");
     expect(selectedNavigationTab(undefined, "usage", false, [], 2)).toBe("settings");
   });
 
@@ -73,8 +75,8 @@ describe("navigation tab order", () => {
       "branches",
       "issues",
       "releases",
-      "usage",
       "board",
+      "usage",
     ]);
     expect(resolveHiddenNavigationTabs()).toEqual(DEFAULT_HIDDEN_NAVIGATION_TABS);
     expect(toggleNavigationTabVisibility(undefined, "pullRequests")).toEqual([]);

@@ -25,7 +25,11 @@ import { useSoftKeyboardShowing } from "../../keyboard/useSoftKeyboardShowing";
 import { useAdaptiveWorkspaceLayout } from "../adaptive-workspace-context";
 import { useSidebarToggleState } from "../useSidebarToggle";
 import { useAndroidWorkspaceRoot } from "./AndroidWorkspaceTabsProvider";
-import { useNavigationTabOrder, useHiddenNavigationTabs } from "./navigation-tabs";
+import {
+  useNavigationTabCapacity,
+  useNavigationTabOrder,
+  useHiddenNavigationTabs,
+} from "./navigation-tabs";
 import { useWorkspaceTabs } from "./WorkspaceTabsContext";
 import { FLOATING_TABS, floatingTabsMetrics } from "./floating-workspace-tabs";
 
@@ -80,6 +84,7 @@ export function AndroidWorkspaceNavigation(props: {
   const workspace = useWorkspaceTabs()!;
   const order = useNavigationTabOrder();
   const hidden = useHiddenNavigationTabs();
+  const capacity = useNavigationTabCapacity();
   const root = useAndroidWorkspaceRoot();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -93,7 +98,7 @@ export function AndroidWorkspaceNavigation(props: {
   const window = useWindowDimensions();
   const rail = Boolean(props.rail);
   const floating = !rail && Boolean(props.floating);
-  const tabs = [...visibleNavigationTabs(order, hidden, rail ? 5 : 4), "settings"];
+  const tabs = [...visibleNavigationTabs(order, hidden, capacity), "settings"];
   const { containerColor, indicatorColor, selectedColor, unselectedColor } =
     androidWorkspaceNavigationColors(colors, rail, floating);
   const selectedTab = selectedNavigationTab(
@@ -101,7 +106,7 @@ export function AndroidWorkspaceNavigation(props: {
     workspace.state.selectedTab,
     root?.settingsOpen ?? false,
     hidden,
-    rail ? 5 : 4,
+    capacity,
   );
   // FloatingWorkspaceTabs starts the bar at the left inset, so a cutout narrows the room.
   const barWidth =

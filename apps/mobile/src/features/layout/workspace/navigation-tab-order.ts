@@ -4,10 +4,16 @@ export const NAVIGATION_TAB_ORDER = [
   "issues",
   "releases",
   "pullRequests",
-  "usage",
   "board",
+  "usage",
 ] as const;
 export type NavigationTab = (typeof NAVIGATION_TAB_ORDER)[number];
+
+/** Rail rows are 48dp plus a 4dp gap; the header, Settings and the compose slot (60dp) take the rest. */
+export function railNavigationTabCapacity(height: number) {
+  // Never below the five a short rail used to hold; the rest open from Settings.
+  return Math.max(5, Math.floor((height - 12 - 60) / 52) - 1);
+}
 
 /** Shown until the user picks tabs in Settings: this fork's work is tracked in issues, not pulls. */
 export const DEFAULT_HIDDEN_NAVIGATION_TABS: readonly NavigationTab[] = ["pullRequests"];

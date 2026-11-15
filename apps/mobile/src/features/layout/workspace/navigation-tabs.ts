@@ -1,9 +1,11 @@
 import { useAtomValue } from "@effect/atom-react";
 import { AsyncResult } from "effect/reactivity";
-import { Platform } from "react-native";
+import { Platform, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   NAVIGATION_TAB_LABELS,
   navigationCustomizationAvailable,
+  railNavigationTabCapacity,
   resolveHiddenNavigationTabs,
   enabledNavigationTabs,
   unavailableNavigationTabs,
@@ -13,6 +15,8 @@ import type { AppSymbolName } from "../../../components/ui/AppSymbol";
 import { mobilePreferencesAtom } from "../../../state/preferences";
 import { useSourceControlSignIn } from "../../../state/sourceControl";
 import { PullRequestGlyph } from "../../pull-requests/pullRequestGlyphs";
+import { useToolbarLayout } from "../../../components/ui/useToolbarLayout";
+import { useAdaptiveWorkspaceLayout } from "../adaptive-workspace-context";
 import { resolveWorkspaceTabOrder } from "./workspace-tabs-state";
 
 export const WORKSPACE_TAB_LABELS = {
@@ -60,4 +64,15 @@ export function useEnabledNavigationTabs() {
   const order = useNavigationTabOrder();
   const hidden = useHiddenNavigationTabs();
   return enabledNavigationTabs(order, hidden);
+}
+
+/** Tabs before the rest open from Settings: four on phones, as many as fit down the Android rail. */
+export function useNavigationTabCapacity() {
+  const { layout } = useAdaptiveWorkspaceLayout();
+  const toolbar = useToolbarLayout();
+  const insets = useSafeAreaInsets();
+  const window = useWindowDimensions();
+  return Platform.OS === "android" && layout.usesSplitView
+    ? railNavigationTabCapacity(window.height - toolbar.paddingTop - toolbar.height - insets.bottom)
+    : 4;
 }

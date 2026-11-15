@@ -539,11 +539,9 @@ A thread is the task; there is no task entity and no stored status. User guide: 
 - **Entry points** (web and desktop): `/board`, a sidebar button, **Open board** in the command palette, and
   `board.open` (`mod+alt+k`, a new keybinding command). Below the `md` breakpoint a row of column tabs shows one
   column at full width (`NarrowColumnContext`), like the Android phone layout.
-- **Android**: a `board` navigation tab (`features/board/BoardScreen.tsx`), last in the default order so existing tab
-  layouts do not shift. Columns side by side in a pane at least 700 dp wide, else one at a time behind a row of column chips; the same resolver and planner; cards name the machine when more than one is saved; the drafts are
-  the new-task drafts the thread list shows as Unsent. No drag. The Android tablet rail holds five sections and the
-  Settings list used to drop the rest in split view, which made a sixth enabled tab unreachable; overflow now follows
-  the rail's capacity. iOS gets the tab through the shared code but is not tested (out of scope for the fork).
+- **Android**: a `board` navigation tab (`features/board/BoardScreen.tsx`), before Usage in the default order (saved orders keep theirs). Columns side by side in a pane at least 700 dp wide, else one at a time behind a row of column chips; the same resolver and planner; cards name the machine when more than one is saved; the drafts are
+  the new-task drafts the thread list shows as Unsent. No drag. The Android tablet rail holds as many sections as fit its height
+  (at least five, `railNavigationTabCapacity`); the rest open from the top of Settings, which follows the same capacity. iOS gets the tab through the shared code but is not tested (out of scope for the fork).
 - **Filters and layout:** the project filter is a multi-select (`/board?projects=[...]`, project keys, empty = all;
   groups of the same repository toggle together) and every column collapses to a vertical strip (Parked starts
   collapsed; a collapsed column still takes drops). A draft card has no button, the card itself opens it. Web and

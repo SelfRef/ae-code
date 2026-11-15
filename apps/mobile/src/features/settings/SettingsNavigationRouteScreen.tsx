@@ -1,7 +1,6 @@
 import { useAtomSet, useAtomValue } from "@effect/atom-react";
 import { AsyncResult } from "effect/reactivity";
-import { useAdaptiveWorkspaceLayout } from "../layout/adaptive-workspace-context";
-import { Platform, View } from "react-native";
+import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   DEFAULT_HIDDEN_NAVIGATION_TABS,
@@ -22,6 +21,7 @@ import {
   useSavedHiddenNavigationTabs,
   useUnavailableNavigationTabs,
   useEnabledNavigationTabs,
+  useNavigationTabCapacity,
 } from "../layout/workspace/navigation-tabs";
 import { SettingsScreen } from "./components/SettingsScreen";
 import { SettingsSection } from "./components/SettingsSection";
@@ -30,8 +30,7 @@ import { resolveWorkspaceTabOrder } from "../layout/workspace/workspace-tabs-sta
 export function SettingsNavigationRouteScreen() {
   const insets = useSafeAreaInsets();
   const order = useNavigationTabOrder();
-  const { layout } = useAdaptiveWorkspaceLayout();
-  const capacity = Platform.OS === "android" && layout.usesSplitView ? 5 : 4;
+  const capacity = useNavigationTabCapacity();
   const hidden = useSavedHiddenNavigationTabs();
   const unavailable = useUnavailableNavigationTabs();
   const enabled = useEnabledNavigationTabs();
@@ -48,7 +47,7 @@ export function SettingsNavigationRouteScreen() {
       >
         <Text className="px-2 text-sm text-foreground-muted">
           {customizable
-            ? "Phones show the first four enabled sections; Android tablet rails show the first five. Remaining sections appear at the top of Settings. Hidden sections appear only here. Settings always stays last. Pulls starts hidden. Saved on this device."
+            ? "Phones show the first four enabled sections; Android tablet rails show as many as fit. Remaining sections appear at the top of Settings. Hidden sections appear only here. Settings always stays last. Pulls starts hidden. Saved on this device."
             : "Tab customization becomes available when there are six sections, including Settings."}
         </Text>
         <SettingsSection title="Tab order">
