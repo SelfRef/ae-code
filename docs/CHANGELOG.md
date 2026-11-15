@@ -10,6 +10,14 @@ by date (`vYYYY.MM.DD`, `.1`, `.2` for later ones the same day).
 
 Notes for the next release are the files in [changes/](changes/), one per change.
 
+## [v2026.11.15] - 2026-11-15
+
+- Web: the terminal's split, new and close icons (and the terminal list icons) are larger and easier to hit.
+- Android: on the wide Issues and Releases pages the list is as wide as the thread list, the open item's title is a step smaller, and a button above the item hides the list to give it the whole page.
+- Agents check `device_list` before saying an Android emulator or other device is unavailable, instead of concluding from a missing `adb` on PATH or an empty `adb devices`.
+- Cloning a private GitHub repository over HTTPS no longer fails with "could not read Username" when the server's Git has no credential helper: the clone falls back to the GitHub CLI's login.
+- Android: Settings → Projects lists every project when none is chosen in the filter, instead of an empty page; tap one to manage its name, checkouts and removal.
+
 ## [v2026.11.14.1] - 2026-11-14
 
 - Android's git menu hides Review changes while the branch is clean, with nothing changed, ahead of its remote or different from its base.
