@@ -84,6 +84,11 @@ const CLONE_ENV = {
   LANGUAGE: "C",
 } satisfies NodeJS.ProcessEnv;
 
+// Git has no credential helper on many hosts, so private HTTPS clones fail with prompts disabled.
+// Appended after the user's own helpers, so it only answers when they don't; gh answers only for
+// hosts it is signed in to, and stays silent otherwise.
+const HTTPS_CREDENTIAL_ARGS = ["-c", "credential.helper=!gh auth git-credential 2>/dev/null"];
+
 function mapRepositoryError(operation: string, provider: SourceControlProviderKind) {
   return Effect.mapError((cause: unknown) =>
     isSourceControlRepositoryError(cause)
@@ -356,7 +361,14 @@ export const make = Effect.gen(function* () {
       .execute({
         operation: "SourceControlRepositoryService.cloneRepository",
         cwd: path.dirname(destinationPath),
-        args: ["clone", "--progress", "--", normalizedCloneUrl, path.basename(destinationPath)],
+        args: [
+          ...(cloneUrlProtocol(normalizedCloneUrl) === "https" ? HTTPS_CREDENTIAL_ARGS : []),
+          "clone",
+          "--progress",
+          "--",
+          normalizedCloneUrl,
+          path.basename(destinationPath),
+        ],
         // The deadline is applied below so a timeout is reported as one, not as git's last line.
         timeoutMs: null,
         // Buffered output is unused and progress can be huge; cap it while retaining line callbacks.

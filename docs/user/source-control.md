@@ -164,7 +164,8 @@ clone runs in the background: you can write your first prompt, and sending waits
 are in place. A toast tracks progress and lets you cancel; if the clone fails, retry it from the
 toast or from the banner above the composer. When the host refuses the machine's SSH key, T3 Code
 clones over HTTPS with Git's credentials for that host instead, and the project's remote uses the
-HTTPS URL.
+HTTPS URL. HTTPS clones fall back to the GitHub CLI's login (`gh auth login`) on the server when Git
+has no credential helper of its own, so private GitHub repositories clone without extra setup.
 
 To lay clones out like [ghq](https://github.com/x-motemen/ghq), turn on **Clone into host folders**
 under **Settings → Threads** (or **Source control** on mobile). Clones then default to

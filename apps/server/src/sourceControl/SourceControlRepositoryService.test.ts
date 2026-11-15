@@ -179,7 +179,15 @@ it.effect("clones a looked-up repository after creating missing parent directori
       assert.deepStrictEqual(cloneCalls, [
         {
           cwd: parent,
-          args: ["clone", "--progress", "--", CLONE_URLS.url, "t3code"],
+          args: [
+            "-c",
+            "credential.helper=!gh auth git-credential 2>/dev/null",
+            "clone",
+            "--progress",
+            "--",
+            CLONE_URLS.url,
+            "t3code",
+          ],
         },
       ]);
     }).pipe(
@@ -280,7 +288,8 @@ it.effect.each([
         layer({
           git: {
             ...git,
-            execute: (input) => (input.args[0] === "clone" ? cloneInTwoSteps : git.execute(input)),
+            execute: (input) =>
+              input.args.includes("clone") ? cloneInTwoSteps : git.execute(input),
           },
         }),
       ),
