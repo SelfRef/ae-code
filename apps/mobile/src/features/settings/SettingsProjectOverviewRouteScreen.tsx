@@ -64,6 +64,7 @@ export function SettingsProjectOverviewRouteScreen() {
     availableTargets,
     selectedTargets,
     projectGroups,
+    selectableProjectGroups,
     selectedProjectKey,
     selectProject,
     getSelectedProjectKey,
@@ -93,9 +94,32 @@ export function SettingsProjectOverviewRouteScreen() {
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 18) + 18 }}
       >
         {selectedProjectKey === null ? (
-          <Text className="px-2 text-base text-foreground-muted">
-            Choose a project with the filter above to manage its name, checkouts and removal.
-          </Text>
+          selectableProjectGroups.length === 0 ? (
+            <Text className="px-2 text-base text-foreground-muted">
+              No projects on the selected connected environments.
+            </Text>
+          ) : (
+            <SettingsSection title="Projects">
+              {selectableProjectGroups.map((entry) => (
+                <SettingsActionRow
+                  key={entry.key}
+                  leading={
+                    <ProjectFavicon
+                      environmentId={entry.representative.environmentId}
+                      projectTitle={entry.representative.title}
+                      workspaceRoot={entry.representative.workspaceRoot}
+                      faviconPath={entry.representative.faviconPath}
+                      projectIcon={entry.representative.projectIcon}
+                      size={24}
+                    />
+                  }
+                  label={entry.label}
+                  description={entry.archived ? "Archived" : undefined}
+                  onPress={() => selectProject(entry.key)}
+                />
+              ))}
+            </SettingsSection>
+          )
         ) : !group || members.length === 0 ? (
           <Text className="px-2 text-base text-foreground-muted">
             This project has no checkout on the selected connected environments. Change the filter
